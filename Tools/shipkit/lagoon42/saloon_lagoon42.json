@@ -9,19 +9,23 @@
   "corner": [1.95, 1.9],
   "corner_round": 0.35,
   "side_window_aft": [-0.8, 2.75],
-  "aft": [-1.9, 2.8],
+  "aft": [-1.75, 2.8],
   "plinth_z": 1.78,
   "window_top_z": 2.55,
   "rake_front": 0.08,
   "tumblehome": 0.05,
   "door_half_width": 1.9,
-  "note": "The saloon in plan (starboard half; the port half mirrors it): the front windows bow forward from the corners to front_x on the centreline; each corner (rounded) turns into a side wall that runs aft and outboard to side_window_aft, where the side windows end, and on to the aft bulkhead at aft. Below plinth_z the walls are white (they stand on the foredeck and the hulls' decks); between it and window_top_z they are dark glass along the front and the side windows and, on the aft bulkhead, across the sliding door's width (door_half_width either side of the centreline). Above the glass the walls run up into the roof. The front leans aft rake_front at the top, the sides lean in tumblehome."
+  "note": "The saloon in plan (starboard half; the port half mirrors it): the front windows bow forward from the corners to front_x on the centreline; each corner (rounded) turns into a side wall that runs aft and outboard to side_window_aft, where the side windows end, and on to the aft bulkhead at aft. Below plinth_z the walls are white (they stand on the foredeck and the hulls' decks); between it and window_top_z they are dark glass along the front and the side windows and, on the aft bulkhead, across the sliding door's width (door_half_width either side of the centreline). Above the glass the walls run up into the roof. The front leans aft rake_front at the top, the sides lean in tumblehome. Slice 4: the aft bulkhead moved forward from x -1.9 to -1.75 (Lagoon's deck plan, read by eye); between the hulls it comes down to the cockpit sole, its glass reaches aft_glass_top_z under the cockpit's ceiling, and the sliding door (sliding_door_half_width either side of the centreline) is glass from the sole up.",
+  "aft_glass_top_z": 2.95,
+  "sliding_door_half_width": 0.75
  },
  "roof": {
   "top_z": 3.26,
   "crown": 0.04,
   "edge_z": 2.95,
+  "edge_z_aft": 3.05,
   "under_z": 2.58,
+  "under_z_aft": 2.9,
   "front_x": 2.6,
   "bow": 0.25,
   "aft_x": -5.15,
@@ -30,15 +34,38 @@
   "corner_aft": 0.6,
   "top_inset": 0.25,
   "under_inset": 0.35,
-  "note": "One moulding over the saloon and the cockpit (the coachroof and the hard top; slice 4 builds the cockpit and what holds the hard top up aft, slice 6 the mast on it). In plan a rounded rectangle, its front bowed forward by bow at the centreline. Its edge is thick and rounded: from the flat top (top_z on the centreline, crown lower at the sides) top_inset in from the edge, round out to the outermost line at edge_z, and back under to the flat underside (under_z) under_inset in. The front overhangs the windows by about 0.45 m."
+  "lip_x": [-2.5, -1.0],
+  "lip_width": 0.5,
+  "cove": 0.35,
+  "thickness": 0.15,
+  "helm_opening": {
+   "x": [-2.8, -1.85],
+   "y": [-2.7, -1.95],
+   "radius": 0.12
+  },
+  "note": "One moulding over the saloon and the cockpit (the coachroof and the hard top; slice 4 builds the cockpit and what holds the hard top up aft, slice 6 the mast on it). In plan a rounded rectangle, its front bowed forward by bow at the centreline. Its edge is thick and rounded: from the flat top (top_z on the centreline, crown lower at the sides) top_inset in from the edge, round out to the outermost line at edge_z, and back under to the flat underside (under_z) under_inset in. The front overhangs the windows by about 0.45 m. Slice 4: inside the lip (lip_width in from the edge) the underside rises through a cove (cove wide) to the ceiling, thickness under the top: about 2.06 m over the cockpit sole. Over the cockpit (aft of lip_x[0]) the lip is shallower than at the saloon's front (under_z_aft, edge_z_aft, eased in between): the cockpit's headroom at the aft edge is 1.85 m. Not measured, chosen for the headroom; the drone photo can't tell the lip's depth aft. helm_opening is the hole over the raised helm (port), through which the helmsman's head comes up to look forward over the roof."
  },
  "deck": {
   "camber": 0.03,
-  "toe_rail": {"height": 0.035, "width": 0.03, "from_x": -5.25, "to_x": 6.05},
+  "toe_rail": {
+   "height": 0.035,
+   "width": 0.03,
+   "from_x": -4.15,
+   "to_x": 6.05
+  },
   "hatches": [
-   {"x": 4.55, "size": [0.42, 0.42]},
-   {"x": 3.05, "size": [0.5, 0.5]},
-   {"x": -3.7, "size": [0.45, 0.45]}
+   {
+    "x": 4.55,
+    "size": [0.42, 0.42]
+   },
+   {
+    "x": 3.05,
+    "size": [0.5, 0.5]
+   },
+   {
+    "x": -3.7,
+    "size": [0.45, 0.45]
+   }
   ],
   "hatch_height": 0.025,
   "note": "Each hull's deck from the last step of the sugar scoop to the stem, between its inboard and outboard sheer, crowned camber over the hull's centre. A toe rail along the outboard edge. Hatches over the cabins on each hull's centreline (two forward, one aft, as the drone photo shows forward), flush dark acrylic in a low frame."

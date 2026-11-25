@@ -59,7 +59,7 @@ def lines():
     L["win_bottom"] = rows[1] + [rows[1][0]]
     L["win_top"] = rows[2] + [rows[2][0]]
     rr = S.roof_rings()
-    n_top = 10                                      # roof_rings: 10 rings on the top, 11 over the edge, 9 under
+    n_top = 10                                      # roof_rings: 10 rings on the top, 11 over the edge, 13 under
     for name, k in (("roof_top", n_top - 1), ("roof_edge", n_top + 5), ("roof_under", n_top + 10)):
         L[name] = rr[k] + [rr[k][0]]
     L["nose"] = [(B.nose_x(v, True), v * B.deck_span(B.nose_x(v, True)), B.nose_top_z(v))

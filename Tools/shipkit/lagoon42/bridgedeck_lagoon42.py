@@ -108,23 +108,29 @@ def bridgedeck_rows(n_in=40, n_under=90, n_nose=18, n_deck=14):
     return rows
 
 
-def lid_rows(n_in=40, n=60):
-    """The placeholder lid over the bridge deck from the saloon's front aft to the underside's aft end."""
-    return [across(lambda v: FD["aft_x"] + (US["aft_x"] - FD["aft_x"]) * i / n, lambda v: 0.0, n_in, 0.0, deck=True)
+def lid_rows(aft_x=None, n_in=40, n=60):
+    """The placeholder lid at the sheer from the foredeck's aft edge to aft_x (the underside's aft end by default;
+    slice 4 keeps it only inside the saloon, to its aft bulkhead, until slice 9 builds the saloon's floor)."""
+    ax = US["aft_x"] if aft_x is None else aft_x
+    n = max(4, round(n * (FD["aft_x"] - ax) / (FD["aft_x"] - US["aft_x"])))
+    return [across(lambda v: FD["aft_x"] + (ax - FD["aft_x"]) * i / n, lambda v: 0.0, n_in, 0.0, deck=True)
             for i in range(n + 1)]
 
 
-def aft_face(n_side=10):
-    """The bridge deck's aft face at the underside's aft end: one flat outline from the lid's port corner down the port
-    hull, round the fillet, across the underside and up the starboard hull."""
+def aft_face(top=None, n_side=10):
+    """The bridge deck's aft face at the underside's aft end: one flat outline from its port top corner down the port
+    hull, round the fillet, across the underside and up the starboard hull. top: its upper edge (the sheer by default;
+    slice 4's cockpit sole from then on)."""
     ax, uz, r = US["aft_x"], US["z"], US["fillet"]
     under = across(lambda v: ax, lambda v: uz, 6, r)
-    top = H.sheer_z(ax)
+    at_sheer = top is None
+    top = H.sheer_z(ax) if at_sheer else top
     port = [(ax, -span(ax, top - (top - (uz + r)) * k / n_side), top - (top - (uz + r)) * k / n_side) for k in range(n_side)]
     stbd = [(ax, span(ax, uz + r + (top - (uz + r)) * k / n_side), uz + r + (top - (uz + r)) * k / n_side)
             for k in range(1, n_side + 1)]
-    stbd[-1] = (ax, deck_span(ax), top)
-    port[0] = (ax, -deck_span(ax), top)
+    edge = deck_span(ax) if at_sheer else span(ax, top)
+    stbd[-1] = (ax, edge, top)
+    port[0] = (ax, -edge, top)
     return port + under + stbd
 
 

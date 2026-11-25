@@ -112,12 +112,15 @@ def keel_z(x):
 
 
 def scoop_steps():
-    """[(x0, x1, z)] of the sugar scoop's platform and steps, aft to forward; the inboard top climbs to the sheer at
-    the last x1."""
+    """[(x0, x1, z)] of the sugar scoop's platform and steps, aft to forward, the last one the cockpit-level landing
+    (to scoop.landing_to_x); a riser climbs from it to the sheer at its x1."""
     out, x = [], TRANSOM_X
     for z, ln in [(SCOOP["platform_z"], SCOOP["platform_length"])] + [(z, SCOOP["step_length"]) for z in SCOOP["steps_z"]]:
         out.append((x, x + ln, z))
         x += ln
+    if "landing_to_x" in SCOOP:            # slice 4: the top step runs on forward as the cockpit-level landing
+        x0, _, z = out[-1]
+        out[-1] = (x0, SCOOP["landing_to_x"], z)
     return out
 
 

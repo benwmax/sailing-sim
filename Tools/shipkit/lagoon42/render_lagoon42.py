@@ -15,6 +15,9 @@ over a pale blue-grey sea plane at the game's waterline, so the boot top and her
   foredeck        from above and ahead of her starboard bow: the trampolines, crossbeam, centre beam and bowsprit
   bridge_under    from ahead, just over the water between the bows: the bridge deck's nose and underside
   drone           from the CC BY drone photo's solved camera (match_two_canoes.camera.json, 4:3): to lay over the photo
+  cockpit         from astern and over her starboard quarter, under the roof's aft edge: the cockpit (slice 4 on)
+  helm            from the cockpit's starboard side, at a standing eye: the raised helm to port and its roof opening
+  plan            from overhead, orthographic, without the roof: the cockpit's plan against Lagoon's (port at the top)
 Cycles on the CPU, as render_set.py. Frame: Blender's (X forward, Y to port, Z up).
 """
 import json
@@ -35,7 +38,8 @@ sc = bpy.context.scene
 
 LOOKS = {"Topsides": ((0.86, 0.86, 0.84), 0.35), "Antifouling": ((0.05, 0.055, 0.07), 0.6),
          "CabinWindow": ((0.02, 0.025, 0.03), 0.08), "Teak": ((0.45, 0.30, 0.17), 0.7),
-         "Trampoline": ((0.05, 0.05, 0.055), 0.8), "Spar": ((0.6, 0.61, 0.63), 0.3)}
+         "Trampoline": ((0.05, 0.05, 0.055), 0.8), "Spar": ((0.6, 0.61, 0.63), 0.3),
+         "Cushion": ((0.62, 0.6, 0.56), 0.9)}
 for m in bpy.data.materials:
     if m.name not in LOOKS:
         continue
@@ -128,12 +132,19 @@ VIEWS = {   # name: camera, target, lens (or ortho width), sea shown
     "under": ((-12.0, -9.0, -5.0), (0.0, 0.0, -0.2), 35, False),
     "foredeck": ((11.0, -4.5, 6.5), (3.5, 0.0, 1.0), 32, True),
     "bridge_under": ((9.0, -1.2, 0.35), (-2.0, 0.0, 0.9), 30, True),
+    "cockpit": ((-11.0, -3.2, 4.0), (-3.0, 0.2, 1.6), 30, True),
+    "helm": ((-4.7, -1.3, 2.75), (-2.1, 2.3, 2.35), 22, True),
+    "plan": ((-1.5, 0.0, 30.0), (-1.5, 0.0, 0.0), ("ortho", 12.0), True),
 }
+HIDE = {"plan": ["L42_Roof"]}   # a view's objects left out of its render
 VIEWS["drone"] = (None, None, None, True)
 for name, (loc, tgt, lens, show_sea) in VIEWS.items():
     if ONLY and name not in ONLY:
         continue
     sea.hide_render = not show_sea
+    for o in sc.objects:
+        if o.type == "MESH" and o is not sea:
+            o.hide_render = o.name in HIDE.get(name, ())
     sc.render.resolution_y = int(RES * 0.6)
     if name == "drone":
         c = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "match_two_canoes.camera.json")))

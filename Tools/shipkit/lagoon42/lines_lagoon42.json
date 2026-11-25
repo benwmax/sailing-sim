@@ -170,6 +170,7 @@
   ],
   "platform_length": 0.42,
   "step_length": 0.36,
+  "landing_to_x": -4.15,
   "skirt": [
    [
     -6.39,
@@ -180,7 +181,7 @@
     1.55
    ]
   ],
-  "note": "The sugar scoop, from Lagoon's photo of the sterns and its 'just two steps separate the swim platform and the cockpit': a swim platform 0.40 m over the game's waterline (0.52 over the light boat's), then two steps up to the cockpit's level (about 1.05). Here the shell's inboard top climbs from the last step to the sheer in one riser; slice 4 builds the cockpit sole the steps really lead to. The outboard topsides rise aft as a skirt, a straight line from the platform's corner to the deck (skirt: [x, z] at each end; the profile sketch's raked stern line), so the steps sit inside a wall on the outboard side and open to the cockpit inboard."
+  "note": "The sugar scoop, from Lagoon's photo of the sterns and its 'just two steps separate the swim platform and the cockpit': a swim platform 0.40 m over the game's waterline (0.52 over the light boat's), then two steps up to the cockpit's level (about 1.05). The last step is the cockpit's level and runs on forward as a landing over the whole hull to landing_to_x (slice 4, from Lagoon's deck plan and stern photo, looked at by eye: the cockpit's teak floor reaches over each hull aft and the side decks start a step up at about 4.15 m aft of amidships), with the shell's inboard top at that level so the landing opens onto the cockpit sole; a riser there climbs to the side deck. The outboard topsides rise aft as a skirt, a straight line from the platform's corner to the deck (skirt: [x, z] at each end; the profile sketch's raked stern line), so the steps sit inside a wall on the outboard side and open to the cockpit inboard."
  },
  "windows": {
   "panes": [

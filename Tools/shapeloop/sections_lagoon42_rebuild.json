@@ -4,7 +4,7 @@
  "build_args": "blender -b --factory-startup -P build_lagoon42.py -- <out dir>: reads <out>/lagoon42.blend",
  "hull_object": "L42_Hull",
  "report": "lagoon42_report.json",
- "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows); slice 2 (docs/lagoon42-3) the bridge deck with its nose and foredeck (L42_Bridgedeck), the crossbeam and centre beam (L42_Crossbeam), the bowsprit (L42_Bowsprit) and the trampolines (L42_Trampolines), with a flat lid over the bridge deck aft of the foredeck (L42_BridgeLidPlaceholder, section 'placeholder', not budgeted) until slice 4's cockpit; slice 3 (docs/lagoon42-4) each hull's deck with its toe rail (L42_Deck) and hatches (L42_Hatches), the saloon's walls and windows (L42_Saloon) and the roof over the saloon and cockpit (L42_Roof), section 'coachroof'. Later slices add their parts here (cockpit, keels, rig, sails, fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows); slice 2 (docs/lagoon42-3) the bridge deck with its nose and foredeck (L42_Bridgedeck), the crossbeam and centre beam (L42_Crossbeam), the bowsprit (L42_Bowsprit) and the trampolines (L42_Trampolines), with a flat lid over the bridge deck aft of the foredeck (L42_BridgeLidPlaceholder, section 'placeholder', not budgeted; from slice 4 only inside the saloon, until slice 9 builds its floor); slice 3 (docs/lagoon42-4) each hull's deck with its toe rail (L42_Deck) and hatches (L42_Hatches), the saloon's walls and windows (L42_Saloon) and the roof over the saloon and cockpit (L42_Roof), section 'coachroof'; slice 4 (docs/lagoon42-5) the cockpit (L42_Cockpit: sole, benches, table, posts, raised helm), section 'cockpit'. Later slices add their parts here (keels, rig, sails, fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
  "sections": {
   "hull": {
    "objects": [
@@ -69,8 +69,28 @@
     "hull",
     "bridgedeck"
    ]
+  },
+  "cockpit": {
+   "objects": [
+    "L42_Cockpit"
+   ],
+   "owns": [
+    "build_cockpit",
+    "sole_rows",
+    "parts",
+    "riser_windows",
+    "add_box",
+    "add_slab",
+    "add_cylinder",
+    "add_torus"
+   ],
+   "borders": [
+    "hull",
+    "bridgedeck",
+    "coachroof"
+   ]
   }
  },
  "joins": [],
- "joins_note": "The bridge deck, the crossbeam and the trampolines end on the hulls' inboard topsides (bridgedeck_lagoon42.span), the bridge deck's foredeck and lid and the hulls' decks on the sheer; the saloon's walls start under the decks and end inside the roof: no joins are checked by a tool yet."
+ "joins_note": "The bridge deck, the crossbeam and the trampolines end on the hulls' inboard topsides (bridgedeck_lagoon42.span), the bridge deck's foredeck and lid and the hulls' decks on the sheer; the saloon's walls start under the decks (or the cockpit's sole) and end inside the roof; the cockpit's sole meets the hulls' inboard topsides at its height and the scoops' landings, what stands against the hulls or the saloon runs into them, the roof's posts run into the roof: no joins are checked by a tool yet."
 }

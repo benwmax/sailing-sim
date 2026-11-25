@@ -17,11 +17,14 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import bridgedeck_lagoon42 as B  # noqa: E402
 import hull_lagoon42 as H  # noqa: E402
 
 SD = json.load(open(os.path.join(HERE, "saloon_lagoon42.json")))
 SAL, ROOF, DECK = SD["saloon"], SD["roof"], SD["deck"]
-WALL_TOP = ROOF["under_z"] + 0.04            # the walls run 4 cm up into the roof
+SOLE_Z = json.load(open(os.path.join(HERE, "cockpit_lagoon42.json")))["sole"]["z"]
+WALL_TOP = ROOF["under_z"] + 0.04            # the front and sides' lean is reached here (the lip's underside + 4 cm)
+WINDOW, DOOR = 1, 2                          # a wall column's glazing: the window band, or the door from the sole up
 
 
 # ---- the hulls' decks ----
@@ -85,8 +88,8 @@ def _line(a, b, n):
 
 def saloon_half(n_front=14, n_corner=10, n_side=16, n_back=6, n_aft=14):
     """The starboard half of the saloon's plan from the front's centre round to the aft bulkhead's centre:
-    [(x, y, glazed)], glazed telling whether the wall from this point to the next is glass between the plinth and
-    the windows' top."""
+    [(x, y, glazing)], glazing telling what the wall from this point to the next is: 0 white, WINDOW glass between
+    the plinth and the windows' top, DOOR glass from the floor up as well (the aft bulkhead's sliding door)."""
     fx, (cx, cy), r = SAL["front_x"], SAL["corner"], SAL["corner_round"]
     swa, aft = SAL["side_window_aft"], SAL["aft"]
     front_x = lambda y: cx + (fx - cx) * (1 - (y / cy) ** 2)
@@ -94,16 +97,41 @@ def saloon_half(n_front=14, n_corner=10, n_side=16, n_back=6, n_aft=14):
     a = (front_x(ya), ya)
     d = math.hypot(swa[0] - cx, swa[1] - cy)
     b = (cx + (swa[0] - cx) * r / d, cy + (swa[1] - cy) * r / d)   # ...and ends here on the side
-    pts = [(front_x(ya * k / n_front), ya * k / n_front, True) for k in range(n_front)]
-    pts += [(x, y, True) for x, y in _bezier(a, (cx, cy), b, n_corner)[:-1]]
-    pts += [(x, y, True) for x, y in _line(b, swa, n_side)[:-1]]
-    pts += [(x, y, False) for x, y in _line(swa, aft, n_back)[:-1]]
-    pts += [(x, y, abs(y) < SAL["door_half_width"] + 1e-6) for x, y in _line(aft, (aft[0], 0.0), n_aft)]
+    pts = [(front_x(ya * k / n_front), ya * k / n_front, WINDOW) for k in range(n_front)]
+    pts += [(x, y, WINDOW) for x, y in _bezier(a, (cx, cy), b, n_corner)[:-1]]
+    pts += [(x, y, WINDOW) for x, y in _line(b, swa, n_side)[:-1]]
+    pts += [(x, y, 0) for x, y in _line(swa, aft, n_back)[:-1]]
+    pts += [(aft[0], y, glazing_aft(y)) for y in aft_ys(n_aft)]
     return pts
 
 
+def cockpit_edge(x):
+    """Where the cockpit ends at station x: 5 mm into the hull's inboard topsides at the sole and at the sheer (they
+    lean inboard as they rise, so the sole's is the wider), so what stands on the sole and against the hull meets it
+    without a gap."""
+    return max(B.span(x, SOLE_Z), B.deck_span(x)) + 0.005
+
+
+def aft_ys(n):
+    """The aft bulkhead's columns from its outboard corner to the centreline, through the cockpit's edge (the wall's
+    foot drops from the deck to the sole there, between two columns 5 mm apart) and the glass and door edges."""
+    y0, ye = SAL["aft"][1], cockpit_edge(SAL["aft"][0])
+    keys = sorted({y0, ye, ye - 0.005, SAL["door_half_width"], SAL["sliding_door_half_width"], 0.0}, reverse=True)
+    ys = []
+    for a, b in zip(keys[:-1], keys[1:]):
+        k = max(1, round((a - b) / (y0 / n)))
+        ys += [a + (b - a) * i / k for i in range(k)]
+    return ys + [0.0]
+
+
+def glazing_aft(y):
+    """The aft bulkhead's wall from y to the next column inboard: the door, the window band or white."""
+    y = abs(y)
+    return DOOR if y < SAL["sliding_door_half_width"] + 1e-6 else WINDOW if y < SAL["door_half_width"] + 1e-6 else 0
+
+
 def saloon_plan():
-    """The whole saloon's plan as one closed loop [(x, y, glazed)]: the front's centre, the starboard side, the aft
+    """The whole saloon's plan as one closed loop [(x, y, glazing)]: the front's centre, the starboard side, the aft
     bulkhead, the port side and back (counter-clockwise seen from above with X forward and Y starboard)."""
     stbd = saloon_half()
     port = [(x, -y, None) for x, y, _ in reversed(stbd)]
@@ -125,26 +153,36 @@ def _normals(loop):
     return out
 
 
-def wall_levels():
-    """The heights of the saloon walls' rows: under the deck, the plinth's top, the windows' top, inside the roof."""
-    return ["base", SAL["plinth_z"], SAL["window_top_z"], WALL_TOP]
-
-
 def wall_point(x, y, n, z):
-    """A wall point over plan point (x, y) at height z (or 'base': 3 cm under the sheer there), leaning in above the
-    plinth: the front by rake_front, the sides by tumblehome, by the wall's facing n."""
-    if z == "base":
-        return (x, y, H.sheer_z(x) - 0.03)
-    h = max(0.0, (z - SAL["plinth_z"]) / (WALL_TOP - SAL["plinth_z"]))
-    lean = (abs(n[0]) * SAL["rake_front"] + abs(n[1]) * SAL["tumblehome"]) * h
+    """A wall point over plan point (x, y) at height z, leaning in above the plinth by the wall's facing n: the front
+    (facing forward) aft by rake_front, the sides in by tumblehome, all of it reached at WALL_TOP and none above it
+    (the aft bulkhead stands upright)."""
+    h = min(max(0.0, (z - SAL["plinth_z"]) / (WALL_TOP - SAL["plinth_z"])), 1.0)
+    lean = (max(n[0], 0.0) * SAL["rake_front"] + abs(n[1]) * SAL["tumblehome"]) * h
     return (x - n[0] * lean, y - n[1] * lean, z)
 
 
+def over_cockpit(x, y):
+    """Whether a plan point of the aft bulkhead stands on the cockpit sole rather than a hull's deck."""
+    return x <= SAL["aft"][0] + 1e-6 and abs(y) < cockpit_edge(x) - 1e-4
+
+
 def wall_rows():
-    """The walls as rows (one per level) round the loop, and the loop's glazing flags."""
+    """The walls as rows round the loop: the foot (3 cm under the deck, or under the cockpit sole on the aft
+    bulkhead between the hulls), the plinth, the glass's top (higher on the aft bulkhead, under the cockpit's
+    ceiling) and the top, 4 cm up into the roof's underside wherever it is over the wall. And the loop's glazing."""
     loop = saloon_plan()
     ns = _normals(loop)
-    rows = [[wall_point(x, y, n, z) for (x, y, _), n in zip(loop, ns)] for z in wall_levels()]
+    rows = [[], [], [], []]
+    for (x, y, _), n in zip(loop, ns):
+        aft = x <= SAL["aft"][0] + 1e-6
+        base = (SOLE_Z if over_cockpit(x, y) else H.sheer_z(x)) - 0.03
+        glass = SAL["aft_glass_top_z"] if aft else SAL["window_top_z"]
+        rows[0].append((x, y, base))
+        rows[1].append(wall_point(x, y, n, SAL["plinth_z"]))
+        rows[2].append(wall_point(x, y, n, glass))
+        tx, ty, _ = wall_point(x, y, n, WALL_TOP)
+        rows[3].append((tx, ty, max(roof_under_z(tx, ty), glass + 0.05) + 0.04))
     return rows, [g for _, _, g in loop]
 
 
@@ -178,24 +216,77 @@ def roof_top_z(y):
     return ROOF["top_z"] - ROOF["crown"] * (y / ROOF["half_width"]) ** 2
 
 
+def _smooth(t):
+    t = min(max(t, 0.0), 1.0)
+    return t * t * (3 - 2 * t)
+
+
+def lip_t(x):
+    """1 where the roof's lip is at its deepest (over the saloon, forward of lip_x[1]), 0 over the cockpit."""
+    a, b = ROOF["lip_x"]
+    return _smooth((x - a) / (b - a))
+
+
+def edge_at(x):
+    """The roof's outermost line's height at station x."""
+    return ROOF["edge_z_aft"] + (ROOF["edge_z"] - ROOF["edge_z_aft"]) * lip_t(x)
+
+
+def lip_at(x):
+    """The underside of the roof's lip at station x."""
+    return ROOF["under_z_aft"] + (ROOF["under_z"] - ROOF["under_z_aft"]) * lip_t(x)
+
+
+def ceiling_z(y):
+    """The roof's underside inside the lip and the cove: the top less the roof's thickness."""
+    return roof_top_z(y) - ROOF["thickness"]
+
+
+def under_at(x, y, d):
+    """The roof's underside at plan point (x, y), d in from its outermost line: the brow's lower curve, the lip, the
+    cove rising to the ceiling, the ceiling."""
+    ui, lw, cv = ROOF["under_inset"], ROOF["lip_width"], ROOF["cove"]
+    e, u = edge_at(x), lip_at(x)
+    if d < ui:
+        return e - (e - u) * math.sqrt(max(0.0, 1 - (1 - d / ui) ** 2))
+    if d <= lw:
+        return u
+    return u + (ceiling_z(y) - u) * _smooth((d - lw) / cv)
+
+
+def roof_inset(x, y):
+    """How far plan point (x, y) is in from the roof's outermost line (its corners taken square: the walls and posts
+    this is asked for are clear of them)."""
+    R = ROOF
+    xc, L = R["front_x"] - R["bow"], R["half_width"] - R["corner_front"]
+    yy = min(abs(y), L)
+    front = xc + R["bow"] * (1 - (yy / L) ** 2) ** 2
+    return min(front - x, x - R["aft_x"], R["half_width"] - abs(y))
+
+
+def roof_under_z(x, y):
+    return under_at(x, y, roof_inset(x, y))
+
+
 def roof_rings(n_brow=10):
     """The roof as rings from the top's centre out over the edge and back under to the underside's centre:
     [[(x, y, z)]], every ring the same length. The first and last are nearly closed (a thin rounded slot)."""
     R = ROOF
-    deep = R["half_width"] - 0.05
+    deep = R["half_width"] - 0.06                             # the middle rings: a slot 12 cm wide, 1.8 m long
     top_d = [deep, 2.7, 2.4, 2.0, 1.6, 1.2, 0.85, 0.6, 0.42, 0.32]
-    under_d = [0.45, 0.6, 0.85, 1.2, 1.6, 2.0, 2.4, 2.7, deep]
+    lw, cv = R["lip_width"], R["cove"]
+    under_d = [0.45, lw] + [lw + cv * k / 5 for k in range(1, 6)] + [1.2, 1.6, 2.0, 2.4, 2.7, deep]
     rings = [[(x, y, roof_top_z(y)) for x, y in roof_outline(d)] for d in top_d]
     for k in range(n_brow + 1):                                # over the edge: a quarter ellipse out, one back under
         phi = math.pi * k / n_brow
         if phi <= math.pi / 2:
             d = R["top_inset"] * (1 - math.sin(phi))
-            zf = lambda y, c=math.cos(phi): R["edge_z"] + (roof_top_z(y) - R["edge_z"]) * c
+            zf = lambda x, y, c=math.cos(phi): edge_at(x) + (roof_top_z(y) - edge_at(x)) * c
         else:
             d = R["under_inset"] * (1 - math.sin(phi))
-            zf = lambda y, c=math.cos(phi): R["edge_z"] + (R["edge_z"] - R["under_z"]) * c
-        rings.append([(x, y, zf(y)) for x, y in roof_outline(d)])
-    rings += [[(x, y, R["under_z"]) for x, y in roof_outline(d)] for d in under_d]
+            zf = lambda x, y, c=math.cos(phi): edge_at(x) + (edge_at(x) - lip_at(x)) * c
+        rings.append([(x, y, zf(x, y)) for x, y in roof_outline(d)])
+    rings += [[(x, y, under_at(x, y, d)) for x, y in roof_outline(d)] for d in under_d]
     return rings
 
 

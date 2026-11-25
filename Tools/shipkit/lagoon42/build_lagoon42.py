@@ -15,6 +15,11 @@ Slice 3 (docs/lagoon42-4) replaces the deck's lid with each hull's deck, toe rai
 and adds the saloon's walls with their windows (L42_Saloon) and the roof over the saloon and cockpit (L42_Roof) from
 saloon_lagoon42.py.
 
+Slice 4 (docs/lagoon42-5) builds the cockpit from cockpit_lagoon42.py (L42_Cockpit: the sole, the aft bench, the roof's
+posts, the settee and table, the lounge, the raised helm with its steps, seat, console and wheel, the landings' riser
+windows), brings the bridge deck's aft face and the saloon's aft bulkhead down to the sole (the lid stays only inside
+the saloon), glazes the sliding door from the sole up and cuts the helm's opening through the roof.
+
 Writes <out>/lagoon42.blend, <out>/lagoon42_report.json (the shape loop's report: the canoe bodies' volume and centre
 of buoyancy beside the game's) and <out>/hydrostatics.json.
 Frame: Blender's, X forward, Y to PORT, Z up (the game's starboard-positive Y is mirrored, as build_fleet.py does), so
@@ -34,6 +39,7 @@ sys.path.insert(0, HERE)
 import hull_lagoon42 as H  # noqa: E402
 import bridgedeck_lagoon42 as B  # noqa: E402
 import saloon_lagoon42 as S  # noqa: E402
+import cockpit_lagoon42 as C  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -43,7 +49,8 @@ N_STATIONS, N_GIRTH = 220, 60          # stations along her length; girth steps 
 UV_M = 1.0
 BOTTOM_Z = 0.05                        # the antifouling's top over the game's waterline
 SLOT_RGB = {"Topsides": (0.92, 0.92, 0.9), "Antifouling": (0.16, 0.17, 0.2), "CabinWindow": (0.06, 0.07, 0.08),
-            "Teak": (0.55, 0.38, 0.22), "Trampoline": (0.1, 0.1, 0.11), "Spar": (0.55, 0.56, 0.58)}
+            "Teak": (0.55, 0.38, 0.22), "Trampoline": (0.1, 0.1, 0.11), "Spar": (0.55, 0.56, 0.58),
+            "Cushion": (0.78, 0.76, 0.72)}
 
 
 def clear_scene():
@@ -202,7 +209,7 @@ def build_bridgedeck():
     crossbeam with the centre beam, the bowsprit and the trampolines: each its own object."""
     bm = bmesh.new()
     faces = grid_faces(bm, B.bridgedeck_rows())
-    faces.append(bm.faces.new([bm.verts.new(bl(*p)) for p in B.aft_face()]))
+    faces.append(bm.faces.new([bm.verts.new(bl(*p)) for p in B.aft_face(S.SOLE_Z)]))
     bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-6)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     face_out(bm, bm.faces[:], (0.0, 0.0, B.US["z"]), (0, 0, -1))
@@ -211,7 +218,7 @@ def build_bridgedeck():
     to_object("L42_Bridgedeck", bm, ["Topsides"])
 
     bm = bmesh.new()
-    grid_faces(bm, B.lid_rows())
+    grid_faces(bm, B.lid_rows(S.SAL["aft"][0]))
     face_out(bm, bm.faces[:], (0.0, 0.0, 1.6), (0, 0, 1))
     to_object("L42_BridgeLidPlaceholder", bm, ["Topsides"])
 
@@ -289,11 +296,13 @@ def build_deck():
 
 
 def build_saloon():
-    """The saloon's walls round its plan, from under the decks up into the roof: white below the plinth and above the
-    windows, dark glass between along the front, the side windows and the aft door (L42_Saloon)."""
+    """The saloon's walls round its plan, from under the decks (or the cockpit's sole) up into the roof: white below
+    the plinth and above the windows, dark glass between along the front, the side windows and the aft bulkhead, and
+    from the sole up across the sliding door (L42_Saloon)."""
     rows, glazed = S.wall_rows()
     bm = bmesh.new()
-    _, faces = loop_faces(bm, rows, lambda k, i: 1 if k == 1 and glazed[i] else 0)
+    _, faces = loop_faces(bm, rows, lambda k, i: 1 if (k == 1 and glazed[i]) or (k == 0 and glazed[i] == S.DOOR)
+                          else 0)
     face_out(bm, faces, (S.SAL["front_x"], 0.0, 2.1), (1, 0, 0))
     for f in bm.faces:
         f.smooth = True
@@ -312,7 +321,152 @@ def build_roof():
     face_out(bm, faces, (0.0, 0.0, S.ROOF["top_z"]), (0, 0, 1))
     for f in bm.faces:
         f.smooth = len(f.verts) == 4
-    to_object("L42_Roof", bm, ["Topsides"])
+    roof = to_object("L42_Roof", bm, ["Topsides"])
+    ho = S.ROOF["helm_opening"]
+    (x0, x1), (y0, y1) = ho["x"], ho["y"]
+    bm = bmesh.new()
+    add_slab(bm, C.rounded_rect(x0, x1, y0, y1, ho["radius"], 6), (S.ROOF["under_z"] - 0.2, S.ROOF["top_z"] + 0.2))
+    cutter = to_object("L42_HelmOpeningCutter", bm, ["Topsides"])
+    mod = roof.modifiers.new("HelmOpening", "BOOLEAN")
+    mod.operation, mod.solver, mod.object = "DIFFERENCE", "EXACT", cutter
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(roof.evaluated_get(dg))
+    roof.modifiers.clear()
+    old = roof.data
+    roof.data = me
+    bpy.data.meshes.remove(old)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    if not me.materials:
+        me.materials.append(material("Topsides"))
+    for p in me.polygons:
+        p.material_index = 0
+    return roof
+
+
+def add_slab(bm, outline, z):
+    """A prism over a plan outline [(x, y)] from z[0] to z[1], its normals out. Returns its faces."""
+    lo = [bm.verts.new(bl(x, y, z[0])) for x, y in outline]
+    hi = [bm.verts.new(bl(x, y, z[1])) for x, y in outline]
+    n = len(outline)
+    faces = [bm.faces.new((lo[i], lo[(i + 1) % n], hi[(i + 1) % n], hi[i])) for i in range(n)]
+    faces += [bm.faces.new(lo[::-1]), bm.faces.new(hi)]
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return faces
+
+
+def add_box(bm, lo, hi, rnd):
+    """A box between game-frame corners lo and hi with its edges rounded rnd. Returns (faces, rounded faces)."""
+    before = set(bm.faces)
+    a, b = bl(*lo), bl(*hi)
+    c = [(a[i] + b[i]) / 2 for i in range(3)]
+    sz = [abs(b[i] - a[i]) for i in range(3)]
+    vs = bmesh.ops.create_cube(bm, size=1.0)["verts"]
+    for v in vs:
+        v.co = Vector([c[i] + v.co[i] * sz[i] for i in range(3)])
+    rounded = []
+    if rnd > 0:
+        es = list({e for v in vs for e in v.link_edges})
+        rounded = bmesh.ops.bevel(bm, geom=vs + es, offset=min(rnd, 0.45 * min(sz)), offset_type="OFFSET",
+                                  segments=3, profile=0.5, affect="EDGES", clamp_overlap=True)["faces"]
+    faces = [f for f in bm.faces if f not in before]
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    return faces, rounded
+
+
+def add_cylinder(bm, a, b, r, segments=16):
+    """A capped cylinder from game-frame point a to b. Returns its faces."""
+    before = set(bm.faces)
+    pa, pb = Vector(bl(*a)), Vector(bl(*b))
+    d = pb - pa
+    m = d.to_track_quat("Z", "Y").to_matrix().to_4x4()
+    m.translation = (pa + pb) / 2
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=segments, radius1=r, radius2=r, depth=d.length,
+                          matrix=m)
+    faces = [f for f in bm.faces if f not in before]
+    for f in faces:
+        f.smooth = len(f.verts) == 4
+    return faces
+
+
+def add_torus(bm, centre, axis, R, r, n=48, m=10):
+    """A ring of tube radius r round centre, R to the tube's centre, in the plane normal to axis (game frame)."""
+    ax = Vector(bl(*axis)).normalized()
+    u = ax.orthogonal().normalized()
+    w = ax.cross(u)
+    c = Vector(bl(*centre))
+    rings = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        radial = u * math.cos(t) + w * math.sin(t)
+        o = c + radial * R
+        ring = []
+        for j in range(m):
+            p = 2 * math.pi * j / m
+            ring.append(bm.verts.new(o + radial * (r * math.cos(p)) + ax * (r * math.sin(p))))
+        rings.append(ring)
+    faces = []
+    for i in range(n):
+        a, b = rings[i], rings[(i + 1) % n]
+        for j in range(m):
+            faces.append(bm.faces.new((a[j], a[(j + 1) % m], b[(j + 1) % m], b[j])))
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    for f in faces:
+        f.smooth = True
+    return faces
+
+
+def build_cockpit():
+    """The cockpit (L42_Cockpit): the teak sole, every part of cockpit_lagoon42.parts() and the dark windows in the
+    landings' risers."""
+    mats = ["Topsides", "Teak", "Cushion", "Spar", "CabinWindow"]
+    mi = {m: i for i, m in enumerate(mats)}
+    bm = bmesh.new()
+    sole = grid_faces(bm, C.sole_rows())
+    face_out(bm, sole, (-3.5, 0.0, C.SOLE_Z), (0, 0, 1))
+    for f in sole:
+        f.material_index = mi["Teak"]
+    for p in C.parts():
+        k = p["kind"]
+        if k == "box":
+            lo, hi = list(p["lo"]), list(p["hi"])
+            top_z = hi[2]
+            if p.get("cushion"):
+                hi[2] = top_z - C.CUSHION
+            faces, rounded = add_box(bm, lo, hi, p["round"])
+            for f in faces:
+                f.material_index = mi[p["mat"]]
+                f.smooth = False
+            for f in rounded:
+                f.smooth = True
+            if p.get("top"):
+                for f in faces:
+                    f.normal_update()
+                    if f.normal.z > 0.99 and f.calc_center_median().z > hi[2] - 1e-3:
+                        f.material_index = mi[p["top"]]
+            if p.get("cushion"):
+                c_lo = (lo[0] + 0.01, lo[1] + 0.01, top_z - C.CUSHION - 0.005)
+                c_hi = (hi[0] - 0.01, hi[1] - 0.01, top_z)
+                faces, rounded = add_box(bm, c_lo, c_hi, 0.03)
+                for f in faces:
+                    f.material_index = mi["Cushion"]
+                    f.smooth = False
+                for f in rounded:
+                    f.smooth = True
+        elif k == "slab":
+            for f in add_slab(bm, p["outline"], p["z"]):
+                f.material_index = mi[p["mat"]]
+                f.smooth = False
+        elif k == "cyl":
+            for f in add_cylinder(bm, p["a"], p["b"], p["radius"]):
+                f.material_index = mi[p["mat"]]
+        elif k == "torus":
+            for f in add_torus(bm, p["centre"], p["axis"], p["R"], p["r"]):
+                f.material_index = mi[p["mat"]]
+    for poly in C.riser_windows():
+        f = bm.faces.new([bm.verts.new(bl(*q)) for q in poly])
+        face_out(bm, [f], poly[0], (-1, 0, 0))
+        f.material_index = mi["CabinWindow"]
+    return to_object("L42_Cockpit", bm, mats)
 
 
 def mesh_volume_below(ob, z=0.0):
@@ -365,6 +519,7 @@ def main():
     build_bridgedeck()
     build_saloon()
     build_roof()
+    build_cockpit()
 
     h = H.hydrostatics()
     mesh_v = mesh_volume_below(hull)
@@ -381,13 +536,17 @@ def main():
               "bridgedeck_clearance_m": B.US["z"], "bridgedeck_clearance_light_m": round(B.US["z"] + sink, 4),
               "roof_top_z_m": S.ROOF["top_z"], "roof_top_light_m": round(S.ROOF["top_z"] + sink, 4),
               "mast_foot_measured": S.SD["measured"]["mast_foot"],
+              "cockpit_sole_z_m": C.SOLE_Z, "cockpit_headroom_m": round(S.ceiling_z(0.0) - C.SOLE_Z, 3),
+              "helm_side": "port", "helm_eye_m": [round(v, 3) for v in C.helm_eye()],
               "note": "canoe_volume_m3 is what lagoon42_check.py weighs: both hull meshes' volume under the game's "
                       "waterline (hull_volume_m3) plus the appendages' allowance (two keels and two rudders, a guess "
                       "until slice 5 builds them). design_hull_volume_m3 is the drawing's own integral "
                       "(hull_lagoon42.hydrostatics), which solve_depth sets to the target. load_sink_m: how far the "
                       "game's stores and crew (3.4 t) sink these hulls below the light boat's waterline, from the mesh "
                       "(today's hulls: 0.148, the card's game.load_sink_m); lagoon42_check.py measures the draft and "
-                      "air draft from it when it is here."}
+                      "air draft from it when it is here. helm_eye_m: the seated helmsman's eye at "
+                      "the raised helm, to port as on the real boat (today's model, and the crew's helm position in "
+                      "CrewMotion, have it to starboard until slice 12)."}
     json.dump(report, open(os.path.join(OUT, "lagoon42_report.json"), "w"), indent=1)
     json.dump(h, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
