@@ -52,7 +52,10 @@ SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Bar": (0.035,
             "SailA": (0.79, 0.033, 0.023), "SailB": (0.89, 0.26, 0.021), "SailC": (0.93, 0.64, 0.042),
             "SailD": (0.92, 0.92, 0.9), "SailJib": (0.92, 0.92, 0.9), "Batten": (0.85, 0.85, 0.83),
             # slice 6: the blocks' and cleats' moulded bodies, their sheaves
-            "Block": (0.03, 0.03, 0.035), "Sheave": (0.45, 0.46, 0.47)}
+            "Block": (0.03, 0.03, 0.035), "Sheave": (0.45, 0.46, 0.47),
+            # the lines' preview colours (slice 7's rope textures replace them): mainsheet blue fleck, jib sheet red,
+            # control lines gold; the halyards' tails keep "Line"
+            "SheetMain": (0.1, 0.16, 0.42), "SheetJib": (0.62, 0.06, 0.05), "Control": (0.8, 0.6, 0.1)}
 
 
 def clear_scene():

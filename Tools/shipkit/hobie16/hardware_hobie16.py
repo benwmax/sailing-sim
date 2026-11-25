@@ -8,7 +8,7 @@ clews, heads and the boom), so call hull_hobie16.solve_depth() first. Sheeted fo
 sails. build() returns platform_hobie16.Part meshes in Blender's frame, X forward, Y to PORT, Z up:
   Mainsheet   the traveller car, both mainsheet blocks, the six parts and tail, the traveller line
   JibSheet    the jib cars and their cleats, the working and lazy sheets and the tail between the cars
-  Lines       the downhauls, the outhaul, the halyards' tails and the mast base's cleats
+  Lines       the downhauls' tackles, the outhaul, the halyards' tails (coiled on the mast base's cleats)
 """
 import json
 import math
@@ -121,8 +121,9 @@ def sheave(part, centre, axle, radius, width, slot="Sheave"):
 
 
 def cam_cleat(part, centre, normal, along, length=0.075, slot="Block"):
-    """A cam cleat on its base: two toothed cams on posts either side of the rope's lead, a fairlead ring at the back.
-    `normal` is the face it stands on, `along` the way the rope pulls through it."""
+    """A cam cleat on its base: two toothed cams on posts either side of the rope's lead, a fairlead bridge at the tail
+    end. `normal` is the face it stands on, `along` the way the rope runs out through it toward the tail. Returns where
+    the rope leaves the fairlead."""
     n, t = unit(normal), unit(along)
     s = unit(np.cross(n, t))
     c = np.asarray(centre, float)
@@ -134,13 +135,28 @@ def cam_cleat(part, centre, normal, along, length=0.075, slot="Block"):
         teeth.append((rr * math.cos(a), rr * math.sin(a)))
     teeth = np.array(teeth + [(-0.004, -0.003), (-0.004, 0.003)])
     for side in (1, -1):
-        cc = c + 0.008 * n + side * 0.0125 * s + 0.006 * t
+        cc = c + 0.008 * n + side * 0.0125 * s - 0.006 * t
         cylinder(part, cc, cc + 0.019 * n, 0.003, "Cast", n=10)
         prof = np.array([[px, side * py] for px, py in teeth])
         # the cam: its toothed edge toward the rope (-side across), standing 0.016 off the base
         prof2 = np.stack([-side * prof[:, 1], prof[:, 0]], axis=1)
         PL.sweep(part, [cc + 0.003 * n, cc + 0.017 * n], prof2[::side], slot, up=tuple(t))
-    loop(part, c + 0.014 * n - (length / 2 - 0.006) * t, t, 0.009, 0.0025, "Cast", arc=(0.0, math.pi), n=10)
+    fl = c + 0.008 * n + (length / 2 - 0.008) * t
+    bridge = [fl + 0.009 * (math.cos(th) * s + math.sin(th) * n) for th in np.linspace(0, math.pi, 11)]
+    PL.sweep(part, bridge, PL.circle(0.0025, 8), "Cast", up=tuple(t))
+    return fl + 0.006 * n + 0.01 * t
+
+
+def shackle(part, centre, m, A, r=0.011, wire=0.0028, legs=0.012, slot="Cast"):
+    """A D-shackle: its bow a half ring toward `m` (what it hooks), legs back, the pin across `A` with a head."""
+    c = np.asarray(centre, float)
+    m, A = unit(m), unit(A)
+    bow = [c - legs * m + r * A] + [c + r * (math.cos(t) * A + math.sin(t) * m) for t in np.linspace(0, math.pi, 13)]
+    bow += [c - legs * m - r * A]
+    PL.sweep(part, bow, PL.circle(wire, 8), slot, up=tuple(unit(np.cross(m, A))))
+    pin = c - legs * m
+    cylinder(part, pin - (r + 0.004) * A, pin + (r + 0.004) * A, wire * 1.1, slot, n=10)
+    revolve(part, pin + (r + 0.004) * A, A, [(0.0055, 0.0), (0.0055, 0.003)], slot, n=10)
 
 
 def block_height(radius):
@@ -148,15 +164,18 @@ def block_height(radius):
     return 2 * radius * 1.12 + 0.03
 
 
-def head_reach(radius):
-    """A block's centre to its shackle's centre (the strap, swivel and shackle block() draws toward the mount)."""
-    return block_height(radius) / 2 + 0.040
+def head_reach(radius, head="shackle"):
+    """A block's centre to its shackle's centre (strap, swivel and shackle), or to the foot of its swivel base."""
+    return block_height(radius) / 2 + (0.040 if head == "shackle" else 0.024)
 
 
-def block(part, centre, lead, mount, sheaves, radius, width, cam=None, becket=False, slot="Block", axle=Y):
-    """A block: `sheaves` grooved sheaves side by side on an `axle` (athwartships by default), cheek plates between and outside
-    them, the axle's pins, a swivel and shackle toward `mount` (the fitting it hangs from), a becket opposite when the
-    sheet's dead end ties to it, and a cam cleat on an arm toward `cam` (the way the tail leaves) for the lower block."""
+def block(part, centre, lead, mount, sheaves, radius, width, cam=None, becket=False, slot="Block", axle=Y,
+          head="shackle", cam_tilt_deg=30.0, cam_top=False):
+    """A block: `sheaves` grooved sheaves side by side on an `axle` (athwartships by default), cheek plates between and
+    outside them, the axle's pins and, toward `mount` (what it hangs from), a strap, swivel and D-shackle (head
+    'shackle') or a strap on a swivel base (head 'swivel'); a becket opposite when the sheet's dead end ties to it. With
+    `cam` (the way the tail leaves) a cam cleat with its fairlead: on an arm off the cheeks, tilted cam_tilt_deg away
+    from the mount toward the crew, or (cam_top) on a bridge over the sheaves. Returns the tail's exit point and lead."""
     c = np.asarray(centre, float)
     m = unit(mount)
     A = unit(axle)
@@ -175,25 +194,31 @@ def block(part, centre, lead, mount, sheaves, radius, width, cam=None, becket=Fa
     for side in (1, -1):
         revolve(part, c + side * (span / 2 + 0.004) * A, side * A, [(0.007, 0.0), (0.007, 0.002), (0.004, 0.003)],
                 "Cast", n=12)
-    # the head: a strap over the cheeks, a swivel and a shackle toward the mount
     top = c + (h_ch / 2 + 0.012) * m
     plate(part, top - 0.006 * m, m, A, span + 0.01, 0.006, 0.012, 0.003, "Cast")
-    cylinder(part, top, top + 0.016 * m, 0.008, "Cast", n=12)
-    loop(part, top + 0.016 * m + 0.012 * m, unit(np.cross(m, A)), 0.011, 0.0028, "Cast", arc=(-0.15 * math.pi, 1.15 * math.pi))
+    if head == "shackle":
+        cylinder(part, top, top + 0.016 * m, 0.008, "Cast", n=12)
+        shackle(part, top + 0.028 * m, m, A)
+    else:
+        revolve(part, top, m, [(0.009, 0.0), (0.009, 0.006), (0.012, 0.008), (0.012, 0.012)], "Cast", n=16)
     if becket:
         loop(part, c - (h_ch / 2 - 0.004) * m - 0.008 * m, unit(np.cross(m, A)), 0.008, 0.0025, "Cast",
              arc=(0.15 * math.pi + math.pi, 1.85 * math.pi + math.pi))
-    if cam is not None:
-        f = unit(cam)
+    if cam is None:
+        return None
+    f = unit(cam)
+    ang = math.radians(cam_tilt_deg)
+    t = unit(f * math.cos(ang) - m * math.sin(ang))
+    n = unit(-m - float(-m @ t) * t)
+    if cam_top:
+        base = c - (radius * 1.12 + 0.004) * m + 0.012 * f
+        plate(part, base, -m, f, span + 0.012, 0.03, 0.005, 0.004, "Cast")
+        cc = base - 0.002 * m + 0.02 * t
+    else:
         arm0 = c - 0.01 * m + (w_ch / 2) * f
-        plate(part, arm0 + 0.02 * f, m, f, 0.03, 0.045, 0.006, 0.006, "Cast")
-        cam_cleat(part, arm0 + 0.035 * f - 0.003 * m, -m, f)      # its jaws open away from the mount
-
-
-def cam_exit(centre, mount, cam, radius):
-    """Where the tail leaves the jaws of the cam cleat block() puts on its arm (between the cams, at their far end)."""
-    m, f = unit(mount), unit(cam)
-    return np.asarray(centre, float) + (radius * 1.12 + 0.0725) * f - 0.025 * m
+        plate(part, arm0 + 0.018 * f, n, t, 0.03, 0.04, 0.006, 0.006, "Cast")
+        cc = arm0 + 0.032 * f + 0.004 * n
+    return cam_cleat(part, cc, n, t), t
 
 
 def car(part, centre, axis, length, width, height, rollers=True, slot="Cast"):
@@ -208,6 +233,51 @@ def car(part, centre, axis, length, width, height, rollers=True, slot="Cast"):
             w0 = c + end * (length / 2 - 0.012) * ax - height * 0.45 * Z
             revolve(part, w0 - 0.008 * across, across, [(0.004, 0.0), (0.011, 0.001), (0.011, 0.015), (0.004, 0.016)],
                     "Sheave", n=16)
+
+
+def helix(part, a, b, radius, turns, wire, slot="Cast"):
+    """A coil spring from a to b about their line (the stand-up spring under a block)."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    ax = unit(b - a)
+    e1, e2 = basis(ax)
+    n = int(turns * 16)
+    pts = [a + (b - a) * k / n + radius * (math.cos(2 * math.pi * turns * k / n) * e1
+                                           + math.sin(2 * math.pi * turns * k / n) * e2) for k in range(n + 1)]
+    PL.sweep(part, pts, PL.circle(wire, 6), slot, up=tuple(ax))
+
+
+def knot(part, at, along, r, slot):
+    """A stopper knot (a figure eight's lump) on a rope at `at`."""
+    t = unit(along)
+    revolve(part, np.asarray(at, float) - 2.2 * r * t, t,
+            [(r * 1.05, 0.0), (r * 2.1, 0.8 * r), (r * 2.3, 2.2 * r), (r * 2.1, 3.6 * r), (r * 1.05, 4.4 * r)], slot, n=12)
+
+
+def coil_hanging(part, top, out, r, loops, size, slot):
+    """A rope's tail coiled and hung from a cleat: `loops` long loops below `top`, splayed a little toward `out`."""
+    top, out = np.asarray(top, float), unit(out)
+    side = unit(np.cross(Z, out))
+    for k in range(loops):
+        spread = (k - (loops - 1) / 2) * 2.4 * r
+        pts = [top + spread * side + out * (0.02 + 0.004 * k)
+               + size * (0.45 * math.sin(th) * side - (1 - math.cos(th)) * 0.5 * Z) + 0.006 * k * out * math.sin(th / 2)
+               for th in np.linspace(0, 2 * math.pi, 22)]
+        PL.sweep(part, pts, PL.circle(r, 8), slot, up=tuple(out))
+
+
+def coil_flat(part, centre, r, loops, radius, slot, L):
+    """A rope's spare tail flaked in loose loops on the trampoline round `centre`."""
+    c = np.asarray(centre, float)
+    pts = []
+    for k in range(loops * 24 + 1):
+        th = 2 * math.pi * k / 24
+        rr = radius * (1 - 0.06 * k / 24) * (1 + 0.08 * math.sin(3 * th + k * 0.3))
+        p = c + np.array([rr * math.cos(th) * 1.25, rr * math.sin(th), 0.0])
+        lie = PL.tramp_top(L, p[0], p[1]) + r
+        p[2] = lie + 1.6 * r * (k / 24) / loops * (1 + math.sin(th + k)) * 0.5
+        pts.append(p)
+    PL.sweep(part, pts, PL.circle(r, 8), slot, up=(0.0, 0.0, 1.0))
+    return pts[0]
 
 
 def mast_aft(S, z):
@@ -238,12 +308,15 @@ def layout(Sv):
     hanger = boom_under(a_h)
     Rl, Ru = MS["lower_sheave_radius_m"], MS["upper_sheave_radius_m"]
     lead = unit(hanger - swivel_top)
-    # each block's shackle hooks through its fitting: the lower one's through the eye on the traveller's swivel post,
-    # the upper one's through the bottom of the boom's bail
+    # each block's D-shackle hooks through its fitting, the bow round the fitting's wire: the lower one's round the top
+    # of the eye on the traveller's swivel post, the upper one's round the bottom of the bail under the boom
     eye = swivel_top + MS["eye_m"] * Z
-    lo_c = eye + MS["eye_m"] * Z + head_reach(Rl) * lead
+    sh = MS["shackle_m"]
+    lo_sh = eye + MS["eye_m"] * Z - 0.004 * Z + sh * lead
+    lo_c = lo_sh + head_reach(Rl) * lead
     bail_bottom = hanger - MS["bail_m"] * 0.6 * Z
-    up_c = bail_bottom - head_reach(Ru) * lead
+    up_sh = bail_bottom + 0.004 * Z - sh * lead
+    up_c = up_sh - head_reach(Ru) * lead
     lo_top, up_bot = lo_c + Rl * lead, up_c - Ru * lead
     jtrack_z = L["zf"] + fc["height_m"] / 2 + fc["track_height_m"] / 2
     jx = L["fx"] - fc["track_aft_m"]
@@ -251,8 +324,8 @@ def layout(Sv):
     jclew = j["tack"] + SL.SA["jib"]["foot_m"] * j["foot_dir"]
     mclew = m["tack"] + SL.SA["main"]["foot_m"] * d
     return {"L": L, "S": S, "hanger": hanger, "car": car, "swivel_top": swivel_top, "up_bot": up_bot, "lead": lead,
-            "lo_c": lo_c, "up_c": up_c, "eye": eye,
-            "lo_top": lo_top, "jcar": jcar, "jclew": jclew, "mclew": mclew, "bar_top": bar_top, "boom_under": boom_under}
+            "lo_c": lo_c, "up_c": up_c, "eye": eye, "lo_top": lo_top, "jcar": jcar, "jclew": jclew, "mclew": mclew,
+            "bar_top": bar_top, "boom_under": boom_under}
 
 
 def build(Sv=None):
@@ -261,35 +334,49 @@ def build(Sv=None):
     MS, TR, JS, DH = HW["mainsheet"], HW["traveller"], HW["jib_sheet"], HW["downhauls"]
     L, S = K["L"], K["S"]
     ms, js, ln = Part("Mainsheet"), Part("JibSheet"), Part("Lines")
+    X = np.array([1.0, 0.0, 0.0])
 
-    # the traveller car on the rear crossbar's track, its swivel post; the line along the crossbar to a cam cleat at
-    # each end
+    # ---- the traveller: the car in the rear crossbar's track with its swivel post and eye; end stops on the track;
+    # the control line from each end of the car along the crossbar's top, through a cam cleat near each corner, a
+    # stopper knot inboard of it, the tail lying forward on the trampoline
+    tr = TR["line_radius_m"]
     car(ms, K["car"], Y, TR["car"][1], TR["car"][0], TR["car"][2])
-    cylinder(ms, K["car"] + TR["car"][2] / 2 * Z, K["swivel_top"], 0.011, "Cast")
-    loop(ms, K["car"] + np.array([0.0, 0.0, TR["car"][2] / 2 + 0.006]), Y, 0.012, 0.003, "Cast", arc=(0.0, math.pi))
+    cylinder(ms, K["car"] + TR["car"][2] / 2 * Z, K["swivel_top"], 0.010, "Cast")
+    loop(ms, K["eye"], Y, MS["eye_m"], 0.0032, "Cast", n=14)
     for side in (1, -1):
-        y_end = side * TR["line_to_y_m"]
-        a = K["car"] + np.array([0.0, side * TR["car"][1] / 2, 0.0])
-        cl = np.array([K["car"][0], y_end, K["bar_top"]])
-        cam_cleat(ms, cl, Z, -side * Y)
-        rope(ms, [a, cl + np.array([0.0, -side * 0.03, 0.016]), cl + np.array([0.0, side * 0.05, 0.016]),
-                  cl + np.array([0.0, side * 0.09, 0.006])], TR["line_radius_m"])
+        stop = np.array([K["car"][0], side * TR["stop_y_m"], K["bar_top"] + 0.012])
+        PL.box(ms, stop, (0.03, 0.03, 0.024), "Block")
+        cl = np.array([K["car"][0] + 0.012, side * TR["line_to_y_m"], K["bar_top"]])
+        out = cam_cleat(ms, cl, Z, side * Y, length=0.065)
+        a = K["car"] + np.array([0.0, side * (TR["car"][1] / 2 + 0.004), 0.004])
+        lift = K["bar_top"] + tr + 0.016
+        into = cl + np.array([0.0, -side * 0.032, 0.0]) + 0.012 * Z
+        rope(ms, [a, a + side * 0.03 * Y + np.array([0.0, 0.0, lift - a[2]]) * 0.6, into - side * 0.1 * Y, into, out],
+             tr, "Control")
+        knot(ms, into - side * 0.05 * Y, Y, tr, "Control")
+        tail = [out, out + side * 0.04 * Y - 0.004 * Z,
+                np.array([K["car"][0] + 0.12, side * (TR["line_to_y_m"] + 0.05), K["bar_top"] - 0.01]),
+                np.array([K["car"][0] + 0.3, side * (TR["line_to_y_m"] - 0.02), 0.0]),
+                np.array([K["car"][0] + 0.5, side * (TR["line_to_y_m"] - 0.12), 0.0])]
+        for p in tail[3:]:
+            p[2] = PL.tramp_top(L, p[0], p[1]) + tr
+        rope(ms, smooth(tail, 2), tr, "Control")
 
-    # the mainsheet: the lower block (its cam cleat forward) on the swivel, the upper block (with its becket) from the
-    # boom's bail, and the six parts between them, each pair off its own sheave's fore and aft sides
+    # ---- the mainsheet's 6:1
     lead = K["lead"]
     Rl, Ru = MS["lower_sheave_radius_m"], MS["upper_sheave_radius_m"]
     W, NS = MS["sheave_width_m"], MS["sheaves"]
+    rm = MS["rope_radius_m"]
     fwd = unit(np.cross(Y, lead))
-    # the swivel post's eye, which the lower block's shackle hooks through
-    loop(ms, K["eye"], Y, MS["eye_m"], 0.0032, "Cast", n=14)
-    block(ms, K["lo_c"], lead, -lead, NS, Rl, W, cam=fwd)
+    lo_ex, lo_t = block(ms, K["lo_c"], lead, -lead, NS, Rl, W, cam=fwd, cam_tilt_deg=MS["cam_tilt_deg"])
     block(ms, K["up_c"], lead, lead, NS, Ru, W, becket=True)
+    # the stand-up spring round the swivel, eye and shackle, holding the lower block upright
+    car_top = K["car"] + TR["car"][2] / 2 * Z
+    helix(ms, car_top + 0.002 * Z, K["lo_c"] - (block_height(Rl) / 2 + 0.006) * lead, 0.017, 7, 0.0016)
     # the bail: a strap riveted under the boom, its loop hanging for the upper block's shackle
     hb = K["hanger"]
     rb = MS["bail_m"] * 0.6
     loop(ms, hb, Y, rb, 0.0032, "Cast", arc=(math.pi, 2 * math.pi), n=12)
-    X = np.array([1.0, 0.0, 0.0])
     for side in (1, -1):
         foot = hb + side * (rb + 0.008) * X + 0.002 * Z
         plate(ms, foot, Z, X, 0.026, 0.02, 0.004, 0.004, "Cast")
@@ -299,29 +386,33 @@ def build(Sv=None):
     for k in range(NS):
         off = (-span / 2 + 0.003 + W / 2 + k * (W + 0.003)) * Y
         for fa in (1, -1):
-            rope(ms, [K["lo_c"] + off + fa * Rl * 0.84 * fwd, K["up_c"] + off + fa * Ru * 0.84 * fwd],
-                 MS["rope_radius_m"])
-    # the tail: out through the cam's jaws, down to the trampoline and forward along it
-    jaw = cam_exit(K["lo_c"], -lead, fwd, Rl)
-    tail = [jaw, jaw + 0.06 * fwd]
-    x0 = jaw[0] + 0.2
-    for k in range(7):
-        x = x0 + k * MS["tail_m"] / 6 * 0.8
-        y = 0.12 * math.sin(k * 0.9)
-        tail.append(np.array([x, y, PL.tramp_top(L, x, y) + MS["rope_radius_m"]]))
-    rope(ms, [tail[0]] + smooth(tail[1:], 2), MS["rope_radius_m"])
+            rope(ms, [K["lo_c"] + off + fa * Rl * 0.84 * fwd, K["up_c"] + off + fa * Ru * 0.84 * fwd], rm, "SheetMain")
+    # the tail: out of the cam's fairlead toward the crew, falling to the trampoline, forward, and the spare flaked in a
+    # loose pile
+    tail = [lo_ex, lo_ex + 0.04 * lo_t, lo_ex + 0.09 * lo_t - 0.07 * Z]
+    x0 = lo_ex[0] + 0.3
+    for k in range(5):
+        x = x0 + k * MS["tail_m"] / 4 * 0.7
+        y = 0.1 * math.sin(k * 0.9 + 0.4)
+        tail.append(np.array([x, y, PL.tramp_top(L, x, y) + rm]))
+    pile = np.array([tail[-1][0] + 0.1, tail[-1][1] - 0.3, 0.0])
+    start = coil_flat(ms, pile, rm, MS["pile_loops"], MS["pile_radius_m"], "SheetMain", L)
+    tail.append(start)
+    rope(ms, smooth(tail, 3), rm, "SheetMain")
 
-    # the jib sheet, 2:1 a side and one line: from the becket on one car up to its sheave in the clew's double block,
-    # back down round the car's ratchet block and out through the cam above it, across the trampoline to the other
-    # car, and the same way up and back to that car's becket. The working (port) side is tight, the lazy side slack.
+    # ---- the jib sheet, 2:1 a side and one line: from the becket on one car up to its sheave in the clew's double
+    # block, back down round the car's ratchet block and out through the cam over it, across the trampoline to the other
+    # car, and the same way up and back to that car's becket. The working (port) side tight, the lazy side slack.
     clew = K["jclew"]
     Rc, Rj, wj, rj = JS["clew_sheave_radius_m"], JS["car_sheave_radius_m"], JS["sheave_width_m"], JS["rope_radius_m"]
     work = unit(K["jcar"][1] + np.array([0.0, 0.0, 0.12]) - clew)       # the clew block leans toward the working car
-    c_axle = unit(np.cross(work, np.array([1.0, 0.0, 0.0])))
+    c_axle = unit(np.cross(work, X))
     c_axle = c_axle if c_axle[1] > 0 else -c_axle
-    cb = clew + (head_reach(Rc) + 0.008) * work
+    sh = MS["shackle_m"]
+    ring = clew + 0.010 * work                                          # the clew's ring, sewn into the sail
+    loop(js, ring, unit(np.cross(work, c_axle)), 0.010, 0.003, "Cast", n=12)
+    cb = ring + (0.010 - 0.004 + sh) * work + head_reach(Rc) * work     # its shackle's bow round the ring
     block(js, cb, work, -work, 2, Rc, wj, axle=c_axle)
-    loop(js, clew + 0.008 * work, unit(np.cross(work, c_axle)), 0.009, 0.0028, "Cast", n=12)  # the clew ring
     cspan = 2 * wj + 3 * 0.003
     c_side = unit(np.cross(c_axle, work))
     tails = {}
@@ -333,87 +424,116 @@ def build(Sv=None):
         cylinder(js, knob, knob + 0.012 * Z, 0.005, "Cast", n=12)
         revolve(js, knob + 0.012 * Z, Z, [(0.009, 0.0), (0.009, 0.006), (0.006, 0.009)], "Block", n=14)
         beck = cc + np.array([0.0, -side * 0.028, JS["car"][2] / 2 + 0.008])
-        loop(js, beck, np.array([1.0, 0.0, 0.0]), 0.008, 0.0025, "Cast", arc=(0.0, math.pi), n=10)
-        # the swivel post and the car's block, its sheave square to the pull, the cam over it toward the trampoline
+        loop(js, beck, X, 0.008, 0.0025, "Cast", arc=(0.0, math.pi), n=10)
+        # the car's ratchet block on a swivel base, its sheave square to the pull, the cam on a bridge over it
         post = cc + (JS["car"][2] / 2) * Z
-        cylinder(js, post, post + 0.012 * Z, 0.010, "Cast", n=14)
-        up = unit(clew + sheave_off - (post + 0.06 * Z))
+        up = unit(clew + sheave_off - (post + 0.05 * Z))
         hp = np.array([up[0], up[1], 0.0])
         b_axle = unit(np.cross(Z, hp))
         inboard = unit(np.array([-0.35, -side, 0.0]))
-        bc = post + 0.012 * Z + (head_reach(Rj) - 0.02) * Z
-        block(js, bc, Z, -Z, 1, Rj, wj, cam=inboard, axle=b_axle)
-        # the two parts: becket to the clew block's sheave, then its other side down to the car's sheave
+        bc = post + head_reach(Rj, "swivel") * Z
+        j_ex, j_t = block(js, bc, Z, -Z, 1, Rj, wj, cam=inboard, axle=b_axle, head="swivel", cam_top=True,
+                          cam_tilt_deg=0.0)
         top_c = cb + sheave_off
         p1 = [beck + 0.008 * Z, top_c + Rc * 0.9 * c_side]
         p2 = [top_c - Rc * 0.9 * c_side, bc + Rj * 0.9 * up]
         if side == 1:
-            rope(js, p1, rj)
-            rope(js, p2, rj)
+            rope(js, p1, rj, "SheetJib")
+            rope(js, p2, rj, "SheetJib")
         else:
             # the lazy side runs from the starboard car to the clew behind the mast, so it bears on the mast's aft
             # face and hangs slack either side of it
             for k, (s0, s1) in enumerate((p1, p2)):
                 h = (s0[2] + s1[2]) / 2 - 0.08
                 mp = mast_aft(S, h) + (k - 0.5) * 0.012 * Y
-                rope(js, sagged(s0, mp, JS["lazy_sag_m"] * 0.15, 7)[:-1] + sagged(mp, s1, JS["lazy_sag_m"] * 0.35, 7), rj)
-        tails[side] = (cam_exit(bc, -Z, inboard, Rj), inboard)
-    # the tail across the trampoline: off each cam, down onto the trampoline aft of the front crossbar, a loose bight
-    # between them
+                rope(js, sagged(s0, mp, JS["lazy_sag_m"] * 0.15, 7)[:-1] + sagged(mp, s1, JS["lazy_sag_m"] * 0.35, 7),
+                     rj, "SheetJib")
+        tails[side] = (j_ex, j_t)
+    # the tail across the trampoline: out of each cam's fairlead, falling onto the trampoline aft of the front
+    # crossbar, a loose bight between the cars
     (a, da), (b, db) = tails[1], tails[-1]
     x_on = L["fx"] - JS["tail_on_tramp_aft_m"]
-    fc = PL.P["front_crossbar"]
-    x_edge, z_edge = L["fx"] - fc["width_m"] / 2, L["zf"] + fc["height_m"] / 2 + rj + 0.004
-    x_off = min(x_edge, a[0] - 0.04)
-    ctrl = [a, a + 0.05 * da, np.array([x_off, a[1] * 0.82, z_edge]), np.array([x_on, a[1] * 0.6, 0.0]),
+    ctrl = [a, a + 0.05 * da, a + 0.1 * da - 0.06 * Z, np.array([x_on, a[1] * 0.55, 0.0]),
             np.array([x_on - JS["tail_aft_m"], 0.0, 0.0]),
-            np.array([x_on, b[1] * 0.6, 0.0]), np.array([x_off, b[1] * 0.82, z_edge]), b + 0.05 * db, b]
+            np.array([x_on, b[1] * 0.55, 0.0]), b + 0.1 * db - 0.06 * Z, b + 0.05 * db, b]
     for c_ in ctrl:
         if c_[2] == 0.0:
             c_[2] = PL.tramp_top(L, c_[0], c_[1]) + rj
     out = []
     for p in smooth(ctrl, 3):
         out.append(np.array([p[0], p[1], max(p[2], PL.tramp_top(L, p[0], p[1]) + rj)]))
-    rope(js, out, rj)
+    rope(js, out, rj, "SheetJib")
 
-    # the jib's tack downhaul to the bridle plate
+    # ---- the jib's tack downhaul to the bridle plate
     r = DH["rope_radius_m"]
     jt = Sv["jib"]["tack"]
     J = np.array(S["junction"]) + np.array([0.0, 0.0, 0.03])
     for k in range(DH["jib_parts"]):
         off = (k - (DH["jib_parts"] - 1) / 2) * 0.012 * Y
-        rope(ln, [jt + off, J + off], r)
+        rope(ln, [jt + off, J + off], r, "Control")
 
-    # the main's downhaul from the gooseneck's ring to its cleat on the mast base; the base's cleats
+    # ---- the main's downhaul (cunningham): a double block with a becket hooked to the gooseneck's ring under the tack,
+    # a double with a cam shackled to the eye on the mast's foot, four parts between, the tail out of the cam
     t, s, u = RG.frame(S["rake"])
     tack = Sv["main"]["tack"]
-    HL = HW["halyards"]
     G = RG.G["mast"]
-    base_cleat = {side: S["heel"] + HL["cleat_along_m"] * t + side * (G["width_m"] / 2 + 0.012) * s for side in (1, -1)}
-    for side, c in base_cleat.items():
-        cam_cleat(ln, c - side * 0.012 * s, side * s, -t)
-    for k in range(DH["main_parts"]):
-        off = (k - 0.5) * 0.012 * s
-        rope(ln, [tack + off - 0.03 * t, base_cleat[-1] + off * 0.5 + 0.03 * t], r)
+    Rd, wd = DH["sheave_radius_m"], DH["sheave_width_m"]
+    ring = tack - DH["ring_below_tack_m"] * t
+    loop(ln, ring, s, 0.009, 0.003, "Cast", n=12)
+    foot_eye = mast_aft(S, S["heel"][2] + DH["foot_eye_up_m"]) - 0.004 * u
+    loop(ln, foot_eye, s, 0.009, 0.003, "Cast", n=12)
+    dl = unit(ring - foot_eye)
+    dh_up = ring - (0.009 - 0.004 + sh) * dl - head_reach(Rd) * dl
+    dh_lo = foot_eye + (0.009 - 0.004 + sh) * dl + head_reach(Rd) * dl
+    block(ln, dh_up, dl, dl, 2, Rd, wd, becket=True, axle=s)
+    d_ex, d_t = block(ln, dh_lo, dl, -dl, 2, Rd, wd, cam=-u, axle=s)
+    d_fwd = unit(np.cross(s, dl))
+    dspan = 2 * wd + 3 * 0.003
+    for k in range(2):
+        off = (-dspan / 2 + 0.003 + wd / 2 + k * (wd + 0.003)) * s
+        for fa in (1, -1):
+            rope(ln, [dh_lo + off + fa * Rd * 0.84 * d_fwd, dh_up + off + fa * Rd * 0.84 * d_fwd], r, "Control")
+    dtail = [d_ex, d_ex + 0.04 * d_t, d_ex + 0.08 * d_t - 0.12 * Z]
+    x = dtail[-1][0] - 0.1
+    dtail.append(np.array([x, 0.05, PL.tramp_top(L, x, 0.05) + r]))
+    x -= 0.2
+    dtail.append(np.array([x, 0.12, PL.tramp_top(L, x, 0.12) + r]))
+    rope(ln, [dtail[0]] + smooth(dtail[1:], 2), r, "Control")
 
-    # the outhaul from the clew along the boom to its cleat near the end
+    # ---- the outhaul: from the clew's ring aft round a sheave in the boom's end cap, forward along the boom's port
+    # side to a cam cleat on it, the tail hanging in a bight
     clew = K["mclew"]
     d = Sv["main"]["foot_dir"]
     OH = HW["outhaul"]
-    rope(ln, [clew, clew - 0.03 * Z + 0.06 * d, K["boom_under"](SL.SA["main"]["foot_m"] - 0.25) + 0.012 * Z],
-         OH["rope_radius_m"])
+    ro = OH["rope_radius_m"]
+    B = SL.SA["boom"]
+    a_end = SL.SA["main"]["foot_m"] + B["end_cap_m"]
+    boom_c = lambda a_: Sv["main"]["tack"] + a_ * d - 0.05 * Z
+    sv = boom_c(a_end - 0.02) + (B["height_m"] / 2 - 0.004) * Z
+    sheave(ln, sv, Y, 0.012, 0.008)
+    loop(ln, clew - 0.008 * Z, Y, 0.009, 0.003, "Cast", n=12)
+    side_y = (B["width_m"] / 2 + ro + 0.002) * Y
+    cleat_c = boom_c(a_end - OH["cleat_from_end_m"]) + (B["width_m"] / 2) * Y
+    o_ex = cam_cleat(ln, cleat_c, Y, -d, length=0.06)
+    rope(ln, [clew - 0.014 * Z, sv + 0.012 * Z - 0.012 * d, sv + 0.012 * d + 0.004 * Z, sv + 0.016 * d - 0.012 * Z,
+              boom_c(a_end - 0.06) + side_y, cleat_c + 0.03 * d + 0.012 * Y + 0.008 * Y], ro, "Control")
+    rope(ln, sagged(o_ex, o_ex - 0.16 * d - 0.01 * Z, 0.06, 15), ro, "Control")
 
-    # the halyards: the jib's head on a short wire from the hounds; both tails down the mast's sides to the base cleats
+    # ---- the halyards: the jib's head on a short wire from the hounds; both tails down the mast's sides to the cam
+    # cleats on its foot, each tail coiled and hung from its cleat
+    HL = HW["halyards"]
     jhead = Sv["jib"]["tack"] + SL.SA["jib"]["luff_m"] * Sv["jib"]["luff_dir"]
-    fwd = G["axis_from_le"] * G["chord_m"] * RG.mast_scale(S["hounds_along"]) * 1.08
-    RG.wire(ln, jhead, S["hounds"] + (fwd + 0.03) * u - 0.03 * t, 0.0016)
+    fwd_h = G["axis_from_le"] * G["chord_m"] * RG.mast_scale(S["hounds_along"]) * 1.08
+    RG.wire(ln, jhead, S["hounds"] + (fwd_h + 0.03) * u - 0.03 * t, 0.0016)
     hr = HL["rope_radius_m"]
     mast_len = G["length_m"]
     for side, top_a in ((1, S["hounds_along"] - 0.04), (-1, mast_len - 0.12)):
-        w = lambda a: (G["width_m"] / 2) * RG.mast_scale(a) + hr + 0.002
-        path = [S["heel"] + a * t + side * w(a) * s + 0.01 * u
-                for a in np.linspace(top_a, HL["cleat_along_m"] + 0.06, 10)]
-        rope(ln, path, hr)
+        w = lambda a_: (G["width_m"] / 2) * RG.mast_scale(a_) + hr + 0.002
+        c = S["heel"] + HL["cleat_along_m"] * t + side * (G["width_m"] / 2 + 0.012) * s
+        h_ex = cam_cleat(ln, c - side * 0.012 * s, side * s, -t)
+        path = [S["heel"] + a_ * t + side * w(a_) * s + 0.01 * u for a_ in np.linspace(top_a, HL["cleat_along_m"] + 0.08, 10)]
+        rope(ln, path + [h_ex + 0.03 * t], hr)
+        coil_hanging(ln, h_ex - 0.004 * t, side * s, hr, 3, HL["coil_m"], "Line")
     return [ms, js, ln], K
 
 

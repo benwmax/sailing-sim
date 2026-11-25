@@ -14,10 +14,14 @@
   "sheave_width_m": 0.012,
   "bail_m": 0.02,
   "note_blocks": "Both blocks are triples (6:1): three grooved sheaves side by side on an athwartships axle, cheek plates between and outside them, a strap, swivel and shackle to the fitting each hangs from. The upper one has a becket for the sheet's dead end and hooks through a bail riveted under the boom; the lower one, on the traveller car's swivel post (through an eye on its top), carries a cam cleat on an arm forward. The six parts leave each sheave fore and aft.",
-  "swivel_m": 0.035,
-  "tail_m": 1.6,
-  "note_tail": "The tail leaves the lower block's jaws forward and lies along the trampoline toward the helm's hand.",
-  "eye_m": 0.01
+  "swivel_m": 0.015,
+  "tail_m": 0.9,
+  "note_tail": "The tail leaves the lower block's cam through its fairlead, forward and up toward the crew, lies along the trampoline toward the helm's hand and the spare is flaked in a loose pile. A stand-up spring round the swivel holds the lower block upright, and each block's D-shackle hooks round its fitting's wire (round review 1: a gap at the boom and an open hook).",
+  "eye_m": 0.01,
+  "shackle_m": 0.011,
+  "pile_loops": 3,
+  "pile_radius_m": 0.2,
+  "cam_tilt_deg": 15.0
  },
  "traveller": {
   "car": [
@@ -26,9 +30,10 @@
    0.03
   ],
   "car_y_m": 0.0,
-  "line_radius_m": 0.003,
+  "line_radius_m": 0.0035,
   "line_to_y_m": 0.75,
-  "note": "The car rides the rear crossbar's deep track, centred under the boom for upwind; its control line runs both ways along the crossbar's top to cleats near the corners (class_facts.rear_crossbar)."
+  "note": "The car rides the rear crossbar's deep track, centred under the boom for upwind, with end stops near the corner castings. Owners on Hobie's forum describe the control line through rollers on the car to a cleat and fairlead on the crossbar, with a stopper knot so the car can't slam into the casting; the arrangement varies by year. Drawn: a 7 mm line from each end of the car along the crossbar's top to a cam cleat near each corner, a figure-eight stopper inboard of it, the tail lying forward on the trampoline (class_facts.rear_crossbar).",
+  "stop_y_m": 0.82
  },
  "jib_sheet": {
   "car_y_m": 0.42,
@@ -49,17 +54,23 @@
  },
  "downhauls": {
   "jib_parts": 2,
-  "main_parts": 2,
+  "main_parts": 4,
   "rope_radius_m": 0.003,
-  "note": "The jib's tack downhaul to the bridle plate, and the main's downhaul (cunningham) from the gooseneck's ring to its cleat on the mast base (class_facts.boom: up to 6:1; drawn as its two visible parts)."
+  "note": "The jib's tack downhaul to the bridle plate (two parts), and the main's downhaul (cunningham): class_facts.boom allows up to 6:1; drawn as a 4:1 between two 24 mm doubles, the upper with a becket hooked to a ring under the gooseneck, the lower with a cam on the mast foot's eye, its tail falling aft to the trampoline.",
+  "sheave_radius_m": 0.012,
+  "sheave_width_m": 0.006,
+  "ring_below_tack_m": 0.03,
+  "foot_eye_up_m": 0.12
  },
  "outhaul": {
   "rope_radius_m": 0.003,
-  "note": "From the clew along the boom to the V-jam cleat near its end (class_facts.boom)."
+  "note": "From a ring at the clew aft round a sheave in the boom's end cap, forward along the boom's port side to a cam cleat 0.45 m from the end, the tail hanging in a bight (class_facts.boom: the outhaul cleats on the boom).",
+  "cleat_from_end_m": 0.45
  },
  "halyards": {
   "rope_radius_m": 0.0025,
   "cleat_along_m": 0.32,
-  "note": "Both sails hang on hooks (the main's at the masthead, the jib's at the hounds), so the halyards are slack once hooked: each tail runs down the mast's side to its cleat on the mast base (class_facts.mast). The jib's head ties to a short wire from the hounds."
+  "note": "Both sails hang on hooks (the main's at the masthead, the jib's at the hounds), so the halyards are slack once hooked: each tail runs down the mast's side to its cam cleat on the mast's foot and is coiled and hung there (class_facts.mast). The jib's head ties to a short wire from the hounds.",
+  "coil_m": 0.18
  }
 }
