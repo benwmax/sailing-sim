@@ -1,5 +1,5 @@
 """The Hobie 16's rebuild in Blender (docs/hobie16-2 on): slice 1, the twin hulls; slice 2, the platform; slice 3, the
-rudders.
+rudders; slice 4, the mast and standing rig.
 
     blender -b --factory-startup -P build_hobie16.py -- <out dir>
 
@@ -8,7 +8,10 @@ crew): one closed shell a hull, its deck (above the greatest breadth: the non-sk
 material slots, the transom a flat face. They're one object, H16_Hull, so the shape loop measures her overall beam.
 Slice 2 adds the platform from platform_hobie16.py (docs/hobie16-3) as H16Platform_Frame, _Boss, _Tramp and _Bridle;
 slice 3 the rudders from rudder_hobie16.py (docs/hobie16-4) as H16Rudder_P and _S (origins on the pivot line),
-H16Rudder_Gudgeons and H16Tiller_Crossbar; the rig comes in slices 4 and 5.
+H16Rudder_Gudgeons and H16Tiller_Crossbar; slice 4 the mast and standing rig from rig_hobie16.py (docs/hobie16-5) as
+H16Mast (origin on the step's ball), H16Rig_Stays and H16Rig_Trapeze, with the bridle plate moved onto the forestay's
+line and <out>/hobie16_sockets.json (MastBase, Masthead and the rig's other points: the check's mast length); the sails
+come in slice 5.
 
 Writes <out>/hobie16.blend, <out>/hobie16_report.json (the mesh's volume under the design waterline, which
 hobie16_check.py weighs, with the centre of buoyancy beside the game's centre of gravity, and how far she rises without
@@ -29,6 +32,7 @@ sys.path.insert(0, HERE)
 import hull_hobie16 as H  # noqa: E402
 import platform_hobie16 as PL  # noqa: E402
 import rudder_hobie16 as RU  # noqa: E402
+import rig_hobie16 as RG  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -38,7 +42,8 @@ N_STATIONS, N_QUARTER = 200, 28       # stations along each hull; points a quart
 UV_M = 1.0                            # box-projected UVs, 1 UV unit per metre (the tangent frame Unreal's import needs)
 SLOT_RGB = {"Hull": (0.93, 0.93, 0.91), "Deck": (0.9, 0.9, 0.88), "Bar": (0.035, 0.035, 0.04),
             "Cast": (0.6, 0.61, 0.62), "Corner": (0.06, 0.06, 0.065), "Tramp": (0.05, 0.05, 0.055), "Wire": (0.75, 0.76, 0.78), "Line": (0.85, 0.85, 0.82),
-            "Arm": (0.7, 0.71, 0.72), "Blade": (0.9, 0.9, 0.88), "Extension": (0.07, 0.07, 0.07)}
+            "Arm": (0.7, 0.71, 0.72), "Blade": (0.9, 0.9, 0.88), "Extension": (0.07, 0.07, 0.07),
+            "Mast": (0.04, 0.04, 0.045), "Handle": (0.05, 0.05, 0.05), "Cord": (0.12, 0.12, 0.13)}
 
 
 def clear_scene():
@@ -144,9 +149,20 @@ def build_rudders():
     return [part_object(p, names[p.name], o) for p, o in parts], RU.report(lay)
 
 
-def build_platform():
-    """Slice 2: the platform's parts (platform_hobie16.py) as objects H16Platform_<Part>, one material slot a kind."""
-    parts, lay = PL.build()
+def build_rig(S):
+    """Slice 4: the mast and standing rig (rig_hobie16.py): H16Mast (its origin on the step's ball, so it can turn about
+    its axis), H16Rig_Stays (forestay, shrouds, chainplates) and H16Rig_Trapeze; and the rig's sockets file."""
+    parts, S = RG.build(S)
+    names = {"Mast": "H16Mast", "Stays": "H16Rig_Stays", "Trapeze": "H16Rig_Trapeze"}
+    obs = [part_object(p, names[p.name], tuple(S["heel"]) if p.name == "Mast" else (0.0, 0.0, 0.0)) for p in parts]
+    json.dump(RG.sockets(S), open(os.path.join(OUT, "hobie16_sockets.json"), "w"), indent=1)
+    return obs, RG.report(S)
+
+
+def build_platform(hounds=None):
+    """Slice 2: the platform's parts (platform_hobie16.py) as objects H16Platform_<Part>, one material slot a kind.
+    From slice 4 the bridle plate rides on the forestay's line to the rig's hounds."""
+    parts, lay = PL.build(hounds)
     obs = []
     for p in parts:
         obs.append(part_object(p, "H16Platform_" + p.name))
@@ -170,8 +186,10 @@ def main():
     clear_scene()
     depth = H.solve_depth()
     hull = build_hulls()
-    platform, plat = build_platform()
+    rig_solved = RG.solve()
+    platform, plat = build_platform((rig_solved["hounds"][0], rig_solved["hounds"][2]))
     rudders, rud = build_rudders()
+    rig, rg = build_rig(rig_solved)
     h = H.hydrostatics()
     g = H.CARD["game"]
     mesh_v = mesh_volume_below(hull)
@@ -196,15 +214,21 @@ def main():
                       "built wire length (class minimum 1.118 m) and plate, and the mast step ball's top. "
                       "rudders (slice 3): the pivot line, the blades' tip, the draft with the rudders down (the empty "
                       "boat's, what the card's 2 ft is; and with the crew), the blades' wetted area each, the tiller "
-                      "crossbar (x, length, height) and the transom's and gudgeons' heights.",
-              "platform": plat, "rudders": rud}
+                      "crossbar (x, length, height) and the transom's and gudgeons' heights. "
+                      "rig (slice 4): the mast's rake (aft, solved from the wires' lengths), the hounds (distance up the "
+                      "mast, share of it, height), heel and head, the masthead's height with the boat empty, the "
+                      "masthead to the transom's top (the class's rake measure), the bridle plate on the forestay's "
+                      "line, each wire's pin-to-pin length as built against its target, the trapeze rings' height and "
+                      "the mast's section (chord, width).",
+              "platform": plat, "rudders": rud, "rig": rg}
     json.dump(report, open(os.path.join(OUT, "hobie16_report.json"), "w"), indent=1)
     json.dump(h, open(os.path.join(OUT, "hydrostatics.json"), "w"), indent=1)
     tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
     ptris = sum(len(p.vertices) - 2 for o in platform for p in o.data.polygons)
     rtris = sum(len(p.vertices) - 2 for o in rudders for p in o.data.polygons)
+    gtris = sum(len(p.vertices) - 2 for o in rig for p in o.data.polygons)
     print(f"H16: keel depth {depth:.4f} m, volume {h['volume_m3']:.4f} m^3 (mesh {mesh_v:.4f}), CB x {h['cb'][0]:+.3f} "
-          f"(CG {cg_x:+.3f}), LWL {h['lwl']:.3f} m, hull triangles {tris}, platform triangles {ptris}, rudder triangles {rtris}")
+          f"(CG {cg_x:+.3f}), LWL {h['lwl']:.3f} m, hull triangles {tris}, platform triangles {ptris}, rudder triangles {rtris}, rig triangles {gtris}, rake {rg['rake_deg']} deg")
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, "hobie16.blend"))
 
 

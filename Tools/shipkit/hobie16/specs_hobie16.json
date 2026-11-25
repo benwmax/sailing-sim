@@ -62,8 +62,8 @@
  "recheck": [
   "Waterline length, rocker and deck line, and the hulls' asymmetry (the inboard face against the outboard): slice 1 drew them from the CC0 broadside's pixels and the card (docs/hobie16-2); Bean's photos of a Hobie on a trailer or the sand, bow-on and broadside, are the check still to come, above all for the sections below the water.",
   "Beam positions along the hulls, the beams' height over the water, the trampoline's outline: slice 2 kept the game's beam positions (0.55 and -1.75) and set the frame's height from two photos by eye (docs/hobie16-3). Reviewers remembered the rear crossbar 0.4-0.6 m from the transoms, a side photo puts it about 1.0 m; a photo from straight above or Bean's tape measure decides (it moves the traveller and the crew in the physics, slice 9).",
-  "Rudder blade length and rake, draft with the rudders down: slice 3 drew the blade to boat-specs.com's 2 ft full draft and the class rule's thickness and taper, with a 7 deg rake and a 9 3/4 in chord from Hobie's forum (docs/hobie16-4). A photo of a Hobie on the beach or a trailer with the rudders down, or Bean's tape on a blade, decides.",
-  "Mast step height and the bridle's junction height: from a bow view (slice 4)."
+  "Rudder blade length and rake, draft with the rudders down: slice 3 drew the blade to the class rule's thickness and taper (0.672 m under the empty waterline; boat-specs.com gives 0.6 m, reviewers remembered about 0.76 m), with a 2 deg rake and a 9 3/4 in chord from Hobie's forum (docs/hobie16-4). A photo of a Hobie on the beach or a trailer with the rudders down, or Bean's tape on a blade, decides; so does the tiller extension's length (parts guide 84 in, reviewers 1.2-1.8 m).",
+  "Mast rake, hounds height, bridle plate and chainplates: slice 4 solves the rake (12.9 deg aft) and the hounds (69% up) from Hobie's wire lengths as owners quote them, with the chainplates at the hulls' outer deck edge and the bridle plate on the forestay's line; owners' halyard measure then reads 16.7 in below the transom (their usual start: about 16 in) (docs/hobie16-5). A broadside of a rigged boat on the beach and a close photo of a chainplate decide; so does the mast's section (one owner's rough 4 1/2 x 3 in; drawn 0.14 x 0.075 m)."
  ],
  "game": {
   "note": "What today's game boat is (Fleet.cpp Hobie16(), BoatExport's hobie16 json, build_fleet.py 'Hobie16'): two formula hulls 0.935 m either side of the centreline. Slice 9 replaces them with the new hulls' sections; until then the new model must keep the sockets the game draws its rig and crew from (slice 8 writes the new file).",
@@ -127,7 +127,7 @@
   "beam_m": "shape",
   "draft_hull_m": "shape: the hulls' deepest point below the game's design waterline, less the crew's sink (the build report's crew_sink_m, or game.crew_sink_m for today's model): the empty boat's draft (game.draft_condition)",
   "weight_kg": "shape",
-  "mast_length_m": "later: the rebuild's sockets MastBase to Masthead (slice 4)",
+  "mast_length_m": "sockets: the build's hobie16_sockets.json MastBase (the heel on the step's ball) to Masthead (slice 4, rig_hobie16.sockets)",
   "main_area_m2": "build: the sails' report (hobie16_report.json main_area_m2, slice 5)",
   "jib_area_m2": "build: the sails' report (hobie16_report.json jib_area_m2, slice 5)",
   "height_bow_m": "shape: the hull's deck at its bow station above its lowest point (the keel on a flat floor)",
@@ -139,7 +139,7 @@
   "rudders": "two kick-up rudders: an adjustable upper casting (port and starboard) on the transom gudgeons, an adjustable lower casting holding the blade with a cam, pin, spring-loaded plunger and adjuster screw (since 1983); blade max 25.8 mm thick, tapering over 610 mm to 12.7 mm thick 51 mm from the tip; tiller arms joined by a straight 'Miracle' crossbar with end connectors; one fibreglass tiller extension, 84 in (2.13 m) with a hinge",
   "front_crossbar": "black extrusion with the mast step and an integrated jib track on top; three mast pivot bearings; left and right front corner castings on pylons into the hulls; jib traveller control (cleat, guide, fairlead); a dolphin striker (post and rod) under it, required by the class (rule 6.4)",
   "rear_crossbar": "black extrusion with the integrated main traveller track (deep track) and a car access plate; traveller car with lower roller unit; swivel cam cleat on a pad; padeye; left and right rear corner castings on pylons",
-  "trampoline": "laced between the crossbars and two black sidebars (one per hull's inner side) with a centre lacing line (20 ft, 32 ft on double-grommeted trampolines) and two rear lacing lines; shroud chainplates on the sidebars",
+  "trampoline": "laced between the crossbars and two black sidebars (one per hull's inner side) with a centre lacing line (20 ft, 32 ft on double-grommeted trampolines) and two rear lacing lines; shroud chainplates listed beside the sidebars (slice 4 found Hobie's wire lengths and owners' halyard rake measure fit only chainplates at the hulls' outer deck edge, where today's model has them: docs/hobie16-5)",
   "jib_sheeting": "jib sheet cars with swivel cleats running on the FRONT crossbar's track (rule 2.3: cars move in the track, cleats or stops stay on the front crossbar). Today's model leads the jib sheets to sockets near the rear beam (JibLead_S/P at x -0.85): slice 6 moves them.",
   "mainsheet": "6:1 blocks between the rear crossbar's traveller car and the boom's block hanger at the clew; 35 ft line; Cam-Matic jaws on the lower block",
   "mast": "black aluminium mast (current 'comptip' head), luff track, halyard hooks and stop sleeve, downhaul/halyard cleats at the base, cheek block; mast base casting with rotation stops; the mast must stay free to rotate (rule 4.6)",

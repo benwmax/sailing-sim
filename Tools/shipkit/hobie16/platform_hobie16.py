@@ -163,8 +163,11 @@ def deck_z(x, inboard):
     return max(zs)
 
 
-def layout():
-    """The frame's numbers: corners, heights, the trampoline's outline and the bridle plate."""
+def layout(hounds=None):
+    """The frame's numbers: corners, heights, the trampoline's outline and the bridle plate. Without `hounds` the plate
+    stands junction_over_frame_m over the front crossbar (slice 2); with the rig's hounds (x, z: rig_hobie16.solve,
+    slice 4) it rides where a stay from the hounds pulls it, on the circle the two wires allow nearest the hounds, so
+    the wires line up with the forestay."""
     F, fc, rc, sb = P["frame"], P["front_crossbar"], P["rear_crossbar"], P["sidebar"]
     fx, rx, ci = F["front_x"], F["rear_x"], F["casting_inboard_m"]
     yc = CY - ci
@@ -176,12 +179,18 @@ def layout():
     eye = 0.02
     dz = jz - (tz + eye)
     dx = math.sqrt(max(B["wire_length_m"] ** 2 - CY ** 2 - dz ** 2, 0.0))
+    junction = (B["tang_x"] - dx, 0.0, jz)
+    if hounds is not None:
+        c = np.array([B["tang_x"], tz + eye])
+        d = np.array(hounds, float) - c
+        j = c + math.sqrt(B["wire_length_m"] ** 2 - CY ** 2) * d / np.linalg.norm(d)
+        junction = (float(j[0]), 0.0, float(j[1]))
     T = P["trampoline"]
     x0 = rx + rc["width_m"] / 2 + T["rear_gap_m"]
     x1 = fx - fc["width_m"] / 2 + 0.004
     y_edge = yc - sb["width_m"] / 2 + sb["groove_m"] / 2
     return {"fx": fx, "rx": rx, "yc": yc, "zf": zf, "zr": zr, "tang": (B["tang_x"], CY, tz + eye),
-            "junction": (B["tang_x"] - dx, 0.0, jz), "tramp_x": (x0, x1), "tramp_y": (T["centre_gap_m"] / 2, y_edge)}
+            "junction": junction, "tramp_x": (x0, x1), "tramp_y": (T["centre_gap_m"] / 2, y_edge)}
 
 
 def frame_z(L, x):
@@ -199,8 +208,8 @@ def tramp_top(L, x, y):
 
 # ---- the parts -------------------------------------------------------------------------------------------------------
 
-def build():
-    L = layout()
+def build(hounds=None):
+    L = layout(hounds)
     F, fc, rc, sb, ca = P["frame"], P["front_crossbar"], P["rear_crossbar"], P["sidebar"], P["casting"]
     fx, rx, yc, zf, zr = L["fx"], L["rx"], L["yc"], L["zf"], L["zr"]
     frame, boss, tramp, bridle = Part("Frame"), Part("Boss"), Part("Tramp"), Part("Bridle")
