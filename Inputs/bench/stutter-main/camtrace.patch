@@ -1,0 +1,66 @@
+diff --git a/Source/SailingSim/Private/SailingGameMode.cpp b/Source/SailingSim/Private/SailingGameMode.cpp
+index 7c8b3994f..aecc623ef 100644
+--- a/Source/SailingSim/Private/SailingGameMode.cpp
++++ b/Source/SailingSim/Private/SailingGameMode.cpp
+@@ -1,4 +1,6 @@
+ #include "SailingGameMode.h"
++#include "Camera/PlayerCameraManager.h"
++#include "Misc/CoreDelegates.h"
+ #include "CannonBattery.h"
+ #include "SailingFrame.h"
+ #include "EasyAssists.h"
+@@ -1274,6 +1276,20 @@ void ASailingGameMode::StartPlay()
+ 		// (Saved/Bench/<shot>.frames.csv) to see where the frames settle.
+ 		FParse::Value(SailingArgs::Dev(), TEXT("SailingBenchWarmup="), BenchWarmup);
+ 		bBenchTrace = FParse::Param(SailingArgs::Dev(), TEXT("SailingBenchTrace"));
++		if (bBenchTrace && FParse::Param(SailingArgs::Dev(), TEXT("SailingCamTrace")) && !CamTraceHandle.IsValid())
++		{
++			TWeakObjectPtr<ASailingGameMode> Weak(this);
++			CamTraceHandle = FCoreDelegates::OnEndFrame.AddLambda([Weak]()
++			{
++				ASailingGameMode* GM = Weak.Get();
++				APlayerController* PC = GM && GM->GetWorld() ? GM->GetWorld()->GetFirstPlayerController() : nullptr;
++				const APawn* P = PC ? PC->GetPawn() : nullptr;
++				if (!P || !PC->PlayerCameraManager) return;
++				const FMinimalViewInfo& View = PC->PlayerCameraManager->GetCameraCacheView();
++				GM->CamTrace.Add({ GM->Elapsed, FVector3f(View.Location - P->GetActorLocation()), FRotator3f(View.Rotation),
++					float(P->GetActorRotation().Yaw), float(P->GetVelocity().Size()) });
++			});
++		}
+ 		SAIL_LOG(Display, TEXT("SailingBench: measuring %.1f s after %.1f s warm-up"), BenchSeconds, BenchWarmup);
+ 		FrameTimes.Reserve(FMath::CeilToInt(BenchSeconds * 240.f));
+ 		FParse::Value(SailingArgs::Dev(), TEXT("SailingRecord="), RecordSeconds);
+@@ -1640,6 +1656,17 @@ void ASailingGameMode::FinishBenchmark()
+ 		FFileHelper::SaveStringToFile(Csv, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.frames.csv"), *ShotName)));
+ 	}
+ 
++	if (CamTraceHandle.IsValid())
++	{
++		FCoreDelegates::OnEndFrame.Remove(CamTraceHandle);
++		CamTraceHandle.Reset();
++		FString Csv = TEXT("t_s,rel_x,rel_y,rel_z,cam_pitch,cam_yaw,cam_roll,boat_yaw,boat_cms\n");
++		for (const FCamSample& S : CamTrace)
++		{
++			Csv += FString::Printf(TEXT("%.4f,%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f\n"), S.T, S.Rel.X, S.Rel.Y, S.Rel.Z, S.Cam.Pitch, S.Cam.Yaw, S.Cam.Roll, S.BoatYaw, S.BoatCms);
++		}
++		FFileHelper::SaveStringToFile(Csv, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.camera.csv"), *ShotName)));
++	}
+ 	// The capture's telemetry CSV is written once, now that the measured frames are over.
+ 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+ 	{
+diff --git a/Source/SailingSim/Public/SailingGameMode.h b/Source/SailingSim/Public/SailingGameMode.h
+index 55ae795e5..8245ca9cd 100644
+--- a/Source/SailingSim/Public/SailingGameMode.h
++++ b/Source/SailingSim/Public/SailingGameMode.h
+@@ -318,6 +318,11 @@ private:
+ 	 *  engine last published: those lag the frame by one or two). */
+ 	struct FTraceFrame { float T, FrameMs, GameMs, RenderMs, RhiMs, GpuMs; };
+ 	TArray<FTraceFrame> TraceTimes;
++	/** -SailingCamTrace (with -SailingBenchTrace, local measuring, stutter-main): the view and the player's boat at the end of
++	 *  each frame (FCoreDelegates::OnEndFrame), to <shot>.camera.csv: the camera's offset from the boat and its rotation. */
++	struct FCamSample { float T; FVector3f Rel; FRotator3f Cam; float BoatYaw, BoatCms; };
++	TArray<FCamSample> CamTrace;
++	FDelegateHandle CamTraceHandle;
+ 	float RecordSeconds = 0.f;
+ 	TArray<TPair<float, FString>> ExecAt;   // -SailingExecAt: (seconds, console command)
+ 	int32 NextExecAt = 0;
