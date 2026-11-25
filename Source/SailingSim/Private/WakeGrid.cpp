@@ -271,7 +271,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			// about 4.5 kn) to full by 0.42 (6 kn, her hull speed). The grid's crest at her side is a few centimetres (4 cm at
 			// 6 kn on High: the curl, UpdateBowWave, draws the rest), so the rate is scaled to it: about 0.5 foam over the half
 			// second a cell spends beside her bow at 6 kn, a narrow white band that she leaves along her track.
-			if (Depth[I] < 0.005f && NearFroude[I] > 0.3f && Kept > 0.015f)
+			if (bBowFoam && Depth[I] < 0.005f && NearFroude[I] > 0.3f && Kept > 0.015f)
 			{
 				const int32 Ru = FMath::Max(R - 1, 0), Rd = FMath::Min(R + 1, N - 1), Cl = FMath::Max(C - 1, 0), Cr = FMath::Min(C + 1, N - 1);
 				const float Beside = FMath::Max(FMath::Max(Depth[Ru * N + C], Depth[Rd * N + C]), FMath::Max(Depth[R * N + Cl], Depth[R * N + Cr]));

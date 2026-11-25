@@ -58,8 +58,10 @@ No new GPU work and no material changes. Everything is in `Source/`.
 Cost: the curl does about 360 bilinear lookups a frame per boat on the game thread (a few microseconds). The grid's new
 foam test runs only on cells beside a hull.
 
-**Compare:** `-SailingClassicBowWave` draws the curl as before (formula on the bare waves, 20 by 8). The spray and the
-grid's side foam stay new.
+**Switch and compare:** the console's `sailing.BowWave2` (default 1) turns all of phase 2 on or off: the curl, the bow
+spray and the grid's side foam. Its default is one line in `WaterSurface.cpp` (`GBowWave2`), so the release can ship
+without it if the Dec 9-10 sweep finds a water regression. `-SailingClassicBowWave` turns it off for one run, for
+before and after stills.
 
 **Test:** `SailingSim.Visual.BowCrest` sails the J/22 on the High grid at 3, 5 and 6 kn. It checks that the side crest
 grows with speed, is a few centimetres at 6 kn and turns white there (not at 3 kn), with no foam ahead. The bounds are

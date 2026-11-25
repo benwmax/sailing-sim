@@ -50,6 +50,10 @@ public:
 	/** Height (m) at a map point (0 outside). */
 	float HeightAt(const FVector2D& Point) const;
 
+	/** Bow wave 2 (docs/bow-wave/): foam where a hull's bow wave presses up beside her once she is fast for her length
+	 *  (AWaterSurface sets it from AWaterSurface::BowWave2On before each step). */
+	bool bBowFoam = true;
+
 private:
 	void StepOnce(float Dt, const TArray<FHull>& Hulls);
 	float DisplacedDepth(const FHull& Hull, const FVector2D& Point) const;

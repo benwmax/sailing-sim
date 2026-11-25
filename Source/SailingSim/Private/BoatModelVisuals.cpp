@@ -1886,8 +1886,10 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	// standing off its trough. At her side its top is the higher of the formula's crest and the grid's: the grid gets the
 	// far wake right but its crest at her side is small (4 cm at 6 kn for the J/22, about 8% of the speed head, peaking
 	// 2-2.7 m aft of the stem; docs/bow-wave/), so near the stem the formula leads and further aft the grid's crest carries
-	// the lip. Its lip (BowLip) is where UpdateSpray peels the bow's sheets. -SailingClassicBowWave: the sheet as before.
-	constexpr int32 NS = 20, NU = 8;
+	// the lip. Its lip (BowLip) is where UpdateSpray peels the bow's sheets. Off (AWaterSurface::BowWave2On: sailing.BowWave2
+	// 0 or -SailingClassicBowWave): the sheet as before, 10 by 6 on the bare waves.
+	const bool bClassic = !AWaterSurface::BowWave2On();
+	const int32 NS = bClassic ? 10 : 20, NU = bClassic ? 6 : 8;
 	static SailingArgs::FCachedFlag NoBowWaveArg(TEXT("SailingNoBowWave"));
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
@@ -1936,8 +1938,6 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	TArray<FLinearColor> Col;
 	TArray<int32> Tris;
 	V.Reserve(2 * NS * NU); UV.Reserve(2 * NS * NU); Col.Reserve(2 * NS * NU);
-	static SailingArgs::FCachedFlag ClassicBowWaveArg(TEXT("SailingClassicBowWave"));
-	const bool bClassic = ClassicBowWaveArg.Get();
 	const AWaterSurface* Drawn = bClassic ? nullptr : Water.Get();
 	auto WakeAt = [Drawn](double X, double Y) { return Drawn ? double(Drawn->DrawnWakeHeightAt(X, Y)) : 0.0; };
 	BowLip.Reset();
@@ -2048,7 +2048,9 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 			}
 		}
 	}
-	if (BowWave->GetNumSections() == 0)
+	// (Created again when sailing.BowWave2 is switched: the two sheets have different vertex counts.)
+	const FProcMeshSection* Section = BowWave->GetNumSections() > 0 ? BowWave->GetProcMeshSection(0) : nullptr;
+	if (!Section || Section->ProcVertexBuffer.Num() != V.Num())
 	{
 		BowWave->CreateMeshSection_LinearColor(0, V, Tris, N, UV, Col, Tan, false);
 	}

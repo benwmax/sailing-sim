@@ -243,6 +243,16 @@ namespace
 	int32 GPolarized = 0;
 	FAutoConsoleVariableRef CVarPolarized(TEXT("sailing.Polarized"), GPolarized,
 		TEXT("Polarized sunglasses on the water (1 on, 0 off): the sky's glare cut near Brewster's angle."));
+	// Bow wave 2 (docs/bow-wave/): the release switch. 0 here ships the bow as it was before it.
+	int32 GBowWave2 = 1;
+	FAutoConsoleVariableRef CVarBowWave2(TEXT("sailing.BowWave2"), GBowWave2,
+		TEXT("Bow wave 2 (1 on, 0 off): the bow's curl on the water as drawn, its spray from the curl's lip, foam where her bow wave presses on her side."));
+}
+
+bool AWaterSurface::BowWave2On()
+{
+	static SailingArgs::FCachedFlag ClassicBowWaveArg(TEXT("SailingClassicBowWave"));
+	return GBowWave2 != 0 && !ClassicBowWaveArg.Get();
 }
 
 AWaterSurface::AWaterSurface()
@@ -1447,6 +1457,7 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 	for (int32 I = 0; I < Hulls.Num(); ++I) Hulls[I].Shape = &(*Shapes)[I];
 
 	FWakeGrid* Grid = &Wake;
+	Grid->bBowFoam = BowWave2On();
 	const FVector2D Centre = BoatPos;
 	const float Dt = WakeDtPending;
 	WakeDtPending = 0.f;
@@ -2021,7 +2032,7 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 			// boats) from the deck edge on the bare waves, as before.
 			const TArray<FVector4>& BowLip = It->GetBowLip();
 			double LipSum = 0.0;
-			for (const FVector4& L : BowLip) LipSum += L.W;
+			if (BowWave2On()) for (const FVector4& L : BowLip) LipSum += L.W;
 			for (int32 I = 0; I < Peel; ++I)
 			{
 				float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;

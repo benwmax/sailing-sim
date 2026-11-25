@@ -196,6 +196,10 @@ public:
 	 *  draws (the last upload, sampled bilinearly at texel centres as the material does); 0 outside the grid or before its
 	 *  first frame. Lets the bow's curl and spray sit on the water as drawn, the solver's own bow wave included. */
 	float DrawnWakeHeightAt(double MapX, double MapY) const;
+	/** Bow wave 2's switch (docs/bow-wave/): the console's sailing.BowWave2 (default on, GBowWave2 in WaterSurface.cpp, the
+	 *  one line to turn it off for a release), off with -SailingClassicBowWave. Off, the curl, the bow spray and the wake
+	 *  grid's side foam are as before. */
+	static bool BowWave2On();
 
 	UPROPERTY(EditAnywhere, Category = "Water")
 	float FarPlaneSizeMeters = 40000.f;
