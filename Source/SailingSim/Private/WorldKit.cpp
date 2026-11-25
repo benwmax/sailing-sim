@@ -5,6 +5,10 @@
 #include "MarinaActor.h"
 #include "FarRing.h"
 #include "LakeTerrainActor.h"
+#include "SailingGameMode.h"
+#include "SailingSettings.h"
+#include "BenchRunner.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
@@ -252,6 +256,30 @@ FString FKitGeometry::TileAssetName(const FString& Prefix, const FIntPoint& Tile
 	return FString::Printf(TEXT("SM_%s_%s_%s"), *Prefix, *Num(Tile.X), *Num(Tile.Y));
 }
 
+bool TideFollowersSkipDistanceFields(const UWorld* World, bool bCrown)
+{
+	const ASailingGameMode* GM = World ? World->GetAuthGameMode<ASailingGameMode>() : nullptr;
+	if (!GM || !GM->GetLake().IsLoaded() || GM->GetLake().Tides.HeightStations.size() == 0) return false;   // no tide, no steps
+	// -SailingTideDF=1 keeps every follower in the distance fields (as before); =2 takes out only the crowns, on Ultra, where
+	// they are in ray tracing (measuring).
+	int32 Keep = 0;
+	FParse::Value(SailingArgs::Dev(), TEXT("SailingTideDF="), Keep);
+	if (Keep == 2) return bCrown && USailingSettings::Get()->Quality == ESailingQuality::Ultra;
+	return Keep == 0 && USailingSettings::Get()->Quality >= ESailingQuality::High;
+}
+
+void MarkTideFollower(UPrimitiveComponent* Component, const UWorld* World)
+{
+	if (!Component) return;
+	// The crowns (their tiles and lighting proxies) are the terrain's tree meshes.
+	const UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Component);
+	const bool bCrown = Mesh && Mesh->GetStaticMesh() && Mesh->GetStaticMesh()->GetPathName().StartsWith(TEXT("/Game/World/Trees/"));
+	if (!TideFollowersSkipDistanceFields(World, bCrown)) return;
+	Component->bAffectDistanceFieldLighting = false;
+	Component->SetCanEverAffectNavigation(false);
+	if (UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(Component)) Ism->SetUseConservativeBounds(true);
+}
+
 int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,
 	TFunctionRef<UMaterialInterface*(EKitLook)> Material, TArray<TObjectPtr<UPrimitiveComponent>>& Out, EComponentMobility::Type Mobility)
 {
@@ -269,6 +297,7 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		{
 			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Owner);
 			C->SetMobility(Mobility);
+			if (Mobility != EComponentMobility::Static || Keeper) MarkTideFollower(C, Owner->GetWorld());   // docs/tide-hitch
 			Place(C);
 			C->SetStaticMesh(Mesh);
 			C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;

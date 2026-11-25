@@ -86,6 +86,7 @@ void ALandmarksActor::BeginPlay()
 			Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Ism->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 			Ism->SetCullDistances(0, 30000 * 100);
+			MarkTideFollower(Ism, GetWorld());   // docs/tide-hitch
 			Ism->RegisterComponent();
 		}
 		// Platforms stand in the water (the datum is the water's chart datum on a coast); the rest stand on the ground.

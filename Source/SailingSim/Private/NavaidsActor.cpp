@@ -1,4 +1,5 @@
 #include "NavaidsActor.h"
+#include "WorldKit.h"
 #include "SailingFrame.h"
 #include "FarLightsActor.h"
 #include "BenchRunner.h"
@@ -53,6 +54,7 @@ UInstancedStaticMeshComponent* ANavaidsActor::MakeIsm(UStaticMesh* Mesh, const F
 	Mid->SetVectorParameterValue(TEXT("Color"), Color);
 	if (bEmissive) Mid->SetScalarParameterValue(TEXT("Intensity"), 250.f);
 	Ism->SetMaterial(0, Mid);
+	MarkTideFollower(Ism, GetWorld());   // docs/tide-hitch: the marks follow the tide (fixed) or the waves (floating)
 	Ism->RegisterComponent();
 	Meshes.Add(Ism);
 	return Ism;
@@ -70,6 +72,7 @@ UInstancedStaticMeshComponent* ANavaidsActor::ModelIsm(const TCHAR* Name, bool b
 	Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Ism->SetCullDistances(0, 600000);
 	Ism->NumCustomDataFloats = 3;
+	MarkTideFollower(Ism, GetWorld());   // docs/tide-hitch
 	Ism->RegisterComponent();
 	Meshes.Add(Ism);
 	Models.Add(Key, Ism);

@@ -209,6 +209,7 @@ void ABridgesActor::BuildTraffic()
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCullDistances(0, 4000 * 100);
 		C->NumCustomDataFloats = 3;
+		MarkTideFollower(C, GetWorld());   // docs/tide-hitch: the traffic moves every frame on a moving actor
 		C->RegisterComponent();
 		TArray<FTransform> X;
 		X.Init(FTransform::Identity, KindVehicles[K].Num());

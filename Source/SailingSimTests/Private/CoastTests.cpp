@@ -15,6 +15,7 @@
 #include "LakeTerrainActor.h"
 #include "SailingGameMode.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Dom/JsonObject.h"
@@ -730,6 +731,60 @@ bool FSailingCoastTideStepTest::RunTest(const FString&)
 		Last = Now;
 	}
 	TestEqual(TEXT("A step every 10 s for a minute"), Forced, 5);
+	return true;
+}
+
+// A tide step moves the terrain actor's kept components a budget of instances a frame (20,000 by default), not all at once:
+// on Galveston the crown tiles' half a million instances moved in one frame stalled the render thread 400-800 ms
+// (re-binning in scene culling and the distance-field update; Inputs/bench/tide-df-fix). Every component still ends up
+// exactly where attaching would put it, and a world re-centre during the spread keeps each one's lag.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCoastTideStepBatchedTest, "SailingSim.Coast.TideStepBatched", Flags)
+bool FSailingCoastTideStepBatchedTest::RunTest(const FString&)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingTideBatchWorld"));
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	ALakeTerrainActor* Terrain = World->SpawnActor<ALakeTerrainActor>(FVector(0.0, 0.0, -30.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("Terrain actor"), Terrain))
+	{
+		// Three tiles of 15,000 instances (each alone under the budget, any two over it) and a plain mesh.
+		TArray<USceneComponent*> Parts;
+		for (int32 K = 0; K < 3; ++K)
+		{
+			UInstancedStaticMeshComponent* Ism = NewObject<UInstancedStaticMeshComponent>(Terrain);
+			Ism->SetMobility(EComponentMobility::Static);
+			Ism->SetRelativeLocation(FVector(1000.0 * K, 0.0, 100.0));
+			Terrain->KeepWithActor(Ism);
+			Ism->RegisterComponent();
+			TArray<FTransform> X;
+			X.Init(FTransform::Identity, 15000);
+			Ism->AddInstances(X, false);
+			Parts.Add(Ism);
+		}
+		UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(Terrain);
+		Mesh->SetMobility(EComponentMobility::Static);
+		Mesh->SetRelativeLocation(FVector(0.0, 5000.0, 100.0));
+		Terrain->KeepWithActor(Mesh);
+		Mesh->RegisterComponent();
+		Parts.Add(Mesh);
+		auto AtZ = [&Parts](double Z) { int32 N = 0; for (USceneComponent* P : Parts) if (FMath::IsNearlyEqual(P->GetComponentLocation().Z, Z, 0.01)) ++N; return N; };
+		TestEqual(TEXT("All placed at the 30 cm tide"), AtZ(70.0), 4);
+
+		Terrain->SetActorLocation(FVector(0.0, 0.0, -32.0));   // a 2 cm step
+		Terrain->FollowActor();
+		TestEqual(TEXT("First frame: one tile (15,000 of the 20,000 budget)"), AtZ(68.0), 1);
+		Terrain->FollowActor();
+		TestEqual(TEXT("Second frame: two"), AtZ(68.0), 2);
+		// A re-centre mid-step: everything shifts at once, the parts still behind stay 2 cm behind.
+		Terrain->ApplyWorldOffset(FVector(-1920000.0, 0.0, 0.0), true);
+		TestEqual(TEXT("The shift moves every part"), Parts[0]->GetComponentLocation().X, -1920000.0, 0.01);
+		for (int32 Frame = 0; Frame < 4; ++Frame) Terrain->FollowActor();
+		TestEqual(TEXT("A few frames later every part is on the step"), AtZ(68.0), 4);
+		TestEqual(TEXT("... and in its place after the shift"), Parts[2]->GetComponentLocation().X, 2000.0 - 1920000.0, 0.01);
+		TestEqual(TEXT("... the plain mesh too"), Mesh->GetComponentLocation().Y, 5000.0, 0.01);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
 	return true;
 }
 

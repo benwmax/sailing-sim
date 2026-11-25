@@ -515,6 +515,9 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
 {
 	FollowActor();
+	// docs/tide-hitch: on a coast the kept components (the crowns' tiles and proxies, the houses, the kit tiles) move with every
+	// 2 cm tide step; where the distance fields don't show they stay out of them (callers register after this).
+	MarkTideFollower(Cast<UPrimitiveComponent>(Component), GetWorld());
 	Component->SetRelativeTransform(Component->GetRelativeTransform() * GetActorTransform());   // where attaching would put it
 	// The crown tiles turn over as the trees regroup (their clones are destroyed): on a lake nothing else walks the list,
 	// so drop the dead entries whenever it has doubled since the last time.
@@ -524,22 +527,56 @@ void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
 		KeptPruneAt = FMath::Max(64, 2 * Kept.Num());
 	}
 	Kept.Add(Component);
+	KeptAtEach.Add(KeptAt);   // placed at the actor's transform now, which FollowActor just made KeptAt
 }
 
 void ALakeTerrainActor::PruneKept()
 {
-	Kept.RemoveAllSwap([](const TWeakObjectPtr<USceneComponent>& C) { return !C.IsValid(); }, EAllowShrinking::No);
+	check(KeptAtEach.Num() == Kept.Num());
+	for (int32 I = Kept.Num() - 1; I >= 0; --I)
+	{
+		if (Kept[I].IsValid()) continue;
+		Kept.RemoveAtSwap(I, 1, EAllowShrinking::No);
+		KeptAtEach.RemoveAtSwap(I, 1, EAllowShrinking::No);
+	}
 }
 
 void ALakeTerrainActor::FollowActor()
 {
 	const FVector At = GetActorLocation();
-	if (At.Equals(KeptAt, 0.01)) return;
-	const FVector Delta = At - KeptAt;
-	KeptAt = At;
-	// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
-	PruneKept();
-	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(Delta, false);
+	if (!At.Equals(KeptAt, 0.01))
+	{
+		KeptAt = At;
+		bKeptLagging = true;
+		PruneKept();
+	}
+	if (!bKeptLagging) return;
+	// docs/tide-hitch: the step is spread over frames, a budget of instances a frame (the crown tiles hold most of them); a
+	// component that alone is over the budget still moves whole. A few frames of 2 cm between the parts don't show.
+	static int32 Budget = -1;
+	static uint32 BudgetGen = MAX_uint32;
+	if (BudgetGen != SailingArgs::Generation())
+	{
+		BudgetGen = SailingArgs::Generation();
+		Budget = 20000;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTideBatch="), Budget);
+	}
+	int64 Spent = 0;
+	bool bAll = true;
+	for (int32 I = 0; I < Kept.Num(); ++I)
+	{
+		if (KeptAtEach[I].Equals(KeptAt, 0.01)) continue;
+		USceneComponent* C = Kept[I].Get();
+		if (!C) continue;
+		const UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(C);
+		const int64 Cost = Ism ? FMath::Max(1, Ism->GetInstanceCount()) : 1;
+		if (Budget > 0 && Spent > 0 && Spent + Cost > Budget) { bAll = false; break; }
+		// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
+		C->ApplyWorldOffset(KeptAt - KeptAtEach[I], false);
+		KeptAtEach[I] = KeptAt;
+		Spent += Cost;
+	}
+	if (bAll) bKeptLagging = false;
 }
 
 void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
@@ -547,6 +584,7 @@ void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShi
 	Super::ApplyWorldOffset(InOffset, bWorldShift);   // the root and what is attached to it
 	PruneKept();
 	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(InOffset, bWorldShift);
+	for (FVector& A : KeptAtEach) A += InOffset;   // a lagging component keeps its lag
 	KeptAt += InOffset;
 }
 
