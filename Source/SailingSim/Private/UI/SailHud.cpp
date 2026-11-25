@@ -833,12 +833,13 @@ void SSailHud::Construct(const FArguments& A)
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(0.f, 12.f, 0.f, 0.f)
 			[
 				SNew(SHorizontalBox).Visibility_Lambda(NotOff)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(0.f, 0.f, 10.f, 0.f)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Fill).Padding(0.f, 0.f, 10.f, 0.f)
 				[
-					HudPanel(SNew(SVerticalBox)
+					// The panel stretches to the full height of the speed and depth stack beside it (Bean Nov 24); its contents stay centred.
+					HudPanel(SNew(SBox).VAlign(VAlign_Center)[ SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).WidthOverride(180.f).HeightOverride(170.f)[ SNew(SWindDialHud).Awa_Lambda(Awa).Twa_Lambda(Twa).NoGo_Lambda(NoGo).Cue_Lambda(Cue).Wide_Lambda(Wide).Bare_Lambda(Bare) ] ]
 						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ ShadowText(TAttribute<FText>::CreateLambda([this]() { return AwaText; }), EType::Value, FSlateColor(Fg), false) ]
-						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ FullOnly(TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwsText; }), EType::Label, FSlateColor(Muted))) ], FMargin(10.f, 8.f))
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ FullOnly(TextAttr(TAttribute<FText>::CreateLambda([this]() { return AwsText; }), EType::Label, FSlateColor(Muted))) ] ], FMargin(10.f, 8.f))
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
 				[
