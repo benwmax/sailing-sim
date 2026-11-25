@@ -59,6 +59,12 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
   deck (`DeckCopyPaths`), draws them as one instanced mesh per part (`SetDeckCopies`, off the distance field) and lights
   the deck's lanterns with the export's colour, lumens, reach and shadowing (`SetDeckLamps`), all gone when the deck
   unloads. `SailingSim.ShipOutside.Decks`.
+  The deck over the walker's is shown with it (`FShipWalker::DecksOverhead`: a deck mesh carries its own planks and their
+  underside, so the berth deck's overhead is the gun deck mesh; the berth deck's own has only the beams and ledges) but
+  its lamps stay unlit (unshadowed, they would light down through the planks); its lamps are created when it becomes a
+  walker's deck or a ladder's end and dropped after the unload delay, never shown and hidden (the PC's 4K GPU hang). The
+  Mac's first berth deck stills (`Inputs/bench/frigate-import/mac-d7188785/`) saw the sky and the gun carriages through
+  the bays between the beams.
 - Not yet: the
   twin by distance rather than tier, and the boat card and boat cycle guards. The decks' planking (seams, butts, plugs,
   the nibbed margin) from the `Planking` and `Margin` UVs the export keeps, as Bluebonnet's laid deck (kind 18), and the

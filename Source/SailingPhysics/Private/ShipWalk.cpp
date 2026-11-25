@@ -549,4 +549,11 @@ namespace Sailing
 		}
 		return Want;
 	}
+
+	uint32_t FShipWalker::DecksOverhead(const FWalkMap& Map, double NearM) const
+	{
+		// Deck K's overhead is deck K - 1's underside (the frigate's berth deck lies under the gun deck's planks, which
+		// are the gun deck mesh's; its own mesh has only the beams and ledges between them).
+		return DecksWanted(Map, NearM) >> 1;
+	}
 }

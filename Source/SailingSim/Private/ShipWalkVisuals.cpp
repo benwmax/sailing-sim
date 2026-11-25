@@ -89,6 +89,8 @@ void ASailboatPawn::ClearDeckMeshes()
 	for (UPointLightComponent* Lamp : DeckLamps) if (Lamp) Lamp->DestroyComponent();
 	DeckLamps.Reset();
 	DeckLampDecks.Reset();
+	DeckLampsLit.Reset();
+	DeckLampsUnlitSince.Reset();
 	for (UInstancedStaticMeshComponent* Copies : DeckCopies) if (Copies) Copies->DestroyComponent();
 	DeckCopies.Reset();
 	DeckCopyDecks.Reset();
@@ -147,6 +149,8 @@ void ASailboatPawn::LoadWalkMap()
 		DeckMeshes.SetNum(N);
 		DeckLoads.SetNum(N);
 		DeckUnwantedSince.Init(-1.0, N);
+		DeckLampsLit.Init(false, N);
+		DeckLampsUnlitSince.Init(-1.0, N);
 		SAIL_LOG(Log, TEXT("Walk map %s: %d decks, %d ladders, %d spots"), *Name, N, int32(WalkMap.Links.size()), int32(WalkMap.Spots.size()));
 		PlaceWalkerAtHelm();
 		return;
@@ -342,11 +346,15 @@ uint32 ASailboatPawn::GetDecksShown() const
 void ASailboatPawn::UpdateDeckStreaming()
 {
 	const int32 N = DeckMeshPaths.Num();
-	if (!CanWalk() || N == 0 || DeckMeshes.Num() != N || DeckLoads.Num() != N || DeckUnwantedSince.Num() != N) return;
+	if (!CanWalk() || N == 0 || DeckMeshes.Num() != N || DeckLoads.Num() != N || DeckUnwantedSince.Num() != N
+		|| DeckLampsLit.Num() != N || DeckLampsUnlitSince.Num() != N) return;
 	// Aboard (walking, or at a ship's wheel): the decks the walker wants (his, a ladder's other end, what shows through
-	// the hatches). Outside, or in a yacht's own helm view: what her top deck shows (the frigate's gun deck through the
-	// open waist; nothing of Bluebonnet's cabins, which load only once you set off about her deck).
-	const uint32 Want = (bWalking || (bCockpit && HelmOnWalkMap())) ? Walker.DecksWanted(WalkMap) : WalkMap.Decks[0].AlsoLoad;
+	// the hatches), lit, and the deck over each (its planks are the overhead: the gun deck's over the berth deck),
+	// shown but unlit. Outside, or in a yacht's own helm view: what her top deck shows (the frigate's gun deck through
+	// the open waist; nothing of Bluebonnet's cabins, which load only once you set off about her deck).
+	const bool bAboard = bWalking || (bCockpit && HelmOnWalkMap());
+	const uint32 Lit = bAboard ? Walker.DecksWanted(WalkMap) : WalkMap.Decks[0].AlsoLoad;
+	const uint32 Want = Lit | (bAboard ? Walker.DecksOverhead(WalkMap) : 0u);
 	const double Now = FPlatformTime::Seconds();
 	for (int32 K = 0; K < N && K < 32; ++K)
 	{
@@ -354,7 +362,31 @@ void ASailboatPawn::UpdateDeckStreaming()
 		if (Want & (1u << K))
 		{
 			DeckUnwantedSince[K] = -1.0;
-			if (DeckMeshes[K]) continue;
+			if (DeckMeshes[K])
+			{
+				// Its lamps follow the lit set, with the unload delay on the way out (creation and destruction only,
+				// never a shown/hidden toggle: docs/frigate-import, the PC's GPU hang).
+				if (Lit & (1u << K))
+				{
+					DeckLampsUnlitSince[K] = -1.0;
+					if (!DeckLampsLit[K])
+					{
+						SetDeckLamps(K, true);
+						DeckLampsLit[K] = true;
+					}
+				}
+				else if (DeckLampsLit[K])
+				{
+					if (DeckLampsUnlitSince[K] < 0.0) DeckLampsUnlitSince[K] = Now;
+					else if (Now - DeckLampsUnlitSince[K] > ShipWalkGame::DeckUnloadDelay)
+					{
+						SetDeckLamps(K, false);
+						DeckLampsLit[K] = false;
+						DeckLampsUnlitSince[K] = -1.0;
+					}
+				}
+				continue;
+			}
 			if (!DeckLoads[K].IsValid())
 			{
 				TArray<FSoftObjectPath> Wanted = DeckCopyPaths.IsValidIndex(K) ? DeckCopyPaths[K] : TArray<FSoftObjectPath>();
@@ -378,7 +410,9 @@ void ASailboatPawn::UpdateDeckStreaming()
 			Part->RegisterComponent();
 			DeckMeshes[K] = Part;
 			SetDeckCopies(K, true);
-			SetDeckLamps(K, true);
+			DeckLampsLit[K] = (Lit & (1u << K)) != 0u;
+			DeckLampsUnlitSince[K] = -1.0;
+			if (DeckLampsLit[K]) SetDeckLamps(K, true);
 		}
 		else if (DeckMeshes[K] || DeckLoads[K].IsValid())
 		{
@@ -389,6 +423,8 @@ void ASailboatPawn::UpdateDeckStreaming()
 				DeckMeshes[K] = nullptr;
 				SetDeckCopies(K, false);
 				SetDeckLamps(K, false);
+				DeckLampsLit[K] = false;
+				DeckLampsUnlitSince[K] = -1.0;
 				if (DeckLoads[K].IsValid()) DeckLoads[K]->ReleaseHandle();
 				DeckLoads[K].Reset();
 				DeckUnwantedSince[K] = -1.0;
