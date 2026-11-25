@@ -23,6 +23,7 @@
   "jib_area_m2": 5.12,
   "height_bow_m": 0.597,
   "height_stern_m": 0.61,
+  "draft_rudders_down_m": 0.672,
   "tolerance": 0.03
  },
  "in_feet": {
@@ -34,7 +35,8 @@
   "mast": "26 ft 6 in",
   "sail_area": "main 148.2 sq ft, jib 55.1 sq ft: 203 sq ft upwind (the spinnaker adds 188)",
   "crew": "1 to 4; the game sails her with two (150 kg)",
-  "heights": "23.5 in floor to bow, 24 in floor to stern (the hulls standing on a flat floor)"
+  "heights": "23.5 in floor to bow, 24 in floor to stern (the hulls standing on a flat floor)",
+  "draft_rudders_down": "2 ft 2 in with the rudders down (from the class rule's blade taper; sources give 2 ft to 2 ft 7 in)"
  },
  "sources": {
   "note": "Read on Nov 25 2026: Hobie's own spec page and the class's rule book and the maker's parts guide through the desktop app's browser (the cloud's network blocks those sites), the rest through web search results. Each is a published fact; nothing is copied from a drawing.",
@@ -54,12 +56,13 @@
    "https://media.hobie.com/digital_assets/USA_H16_Parts_Guide_.pdf"
   ],
   "heights": "Hobie's spec page (opened Nov 25 2026): height from floor to bow 23.5 in (59.69 cm), floor to stern 24 in (60.96 cm): a hull standing on its keel on a flat floor, top of the deck at each end. These are the hulls' depth plus their rocker at the ends, and the main check that the hulls aren't too tall.",
-  "sail_area_total": "Hobie's page: total sail area 218 sq ft / 20 m^2; main 148.2 + jib 55.1 = 203 sq ft, so the page's total counts something more (roach, or the jib's overlap); the sail slices use the per-sail figures."
+  "sail_area_total": "Hobie's page: total sail area 218 sq ft / 20 m^2; main 148.2 + jib 55.1 = 203 sq ft, so the page's total counts something more (roach, or the jib's overlap); the sail slices use the per-sail figures.",
+  "draft_rudders_down": "Not published by Hobie (only the 10 in with the rudders up). boat-specs.com gives 0.6 m (2 ft) full draft; reviewers recalled about 2.5 ft. The target is the class rule's: the blade tapers over 610 mm to a point 51 mm from its tip, starting where it leaves the lower casting, so it reaches 0.661 m below the casting's foot: 0.672 m under the empty boat's waterline on this drawing (docs/hobie16-4). recheck[2] keeps it open."
  },
  "recheck": [
   "Waterline length, rocker and deck line, and the hulls' asymmetry (the inboard face against the outboard): slice 1 drew them from the CC0 broadside's pixels and the card (docs/hobie16-2); Bean's photos of a Hobie on a trailer or the sand, bow-on and broadside, are the check still to come, above all for the sections below the water.",
   "Beam positions along the hulls, the beams' height over the water, the trampoline's outline: slice 2 kept the game's beam positions (0.55 and -1.75) and set the frame's height from two photos by eye (docs/hobie16-3). Reviewers remembered the rear crossbar 0.4-0.6 m from the transoms, a side photo puts it about 1.0 m; a photo from straight above or Bean's tape measure decides (it moves the traveller and the crew in the physics, slice 9).",
-  "Rudder blade length and rake, draft with the rudders down: from a photo of a Hobie on the beach or a trailer (slice 3).",
+  "Rudder blade length and rake, draft with the rudders down: slice 3 drew the blade to boat-specs.com's 2 ft full draft and the class rule's thickness and taper, with a 7 deg rake and a 9 3/4 in chord from Hobie's forum (docs/hobie16-4). A photo of a Hobie on the beach or a trailer with the rudders down, or Bean's tape on a blade, decides.",
   "Mast step height and the bridle's junction height: from a bow view (slice 4)."
  ],
  "game": {
@@ -128,7 +131,8 @@
   "main_area_m2": "build: the sails' report (hobie16_report.json main_area_m2, slice 5)",
   "jib_area_m2": "build: the sails' report (hobie16_report.json jib_area_m2, slice 5)",
   "height_bow_m": "shape: the hull's deck at its bow station above its lowest point (the keel on a flat floor)",
-  "height_stern_m": "shape: the hull's deck at its stern station above its lowest point"
+  "height_stern_m": "shape: the hull's deck at its stern station above its lowest point",
+  "draft_rudders_down_m": "build: the rudders' report (hobie16_report.json rudders.draft_rudders_down_m, slice 3): the blades' tip under the empty boat's waterline"
  },
  "class_facts": {
   "note": "Facts from the IHCA rule book (2025-2028, rev. Mar 1 2026, Hobie 16 class rules pp. 19-21) and Hobie's US parts guide for the Hobie 14/16 (opened Nov 25 2026 in the desktop app's browser). Lists of parts and numbers only; the guide's drawings are not copied. They tell each slice what assemblies she has and where they sit.",

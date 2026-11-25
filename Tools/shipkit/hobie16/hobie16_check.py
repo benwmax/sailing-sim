@@ -24,6 +24,8 @@ How each is measured (the C22's check, catalina22/c22_check.py, for two hulls):
                           crew the game floats her with (game.crew_kg): the physics floats every boat in water of
                           1,000 kg/m^3 (kWaterDensity) and its design volume is the boat's mass with her crew
   mast length             sockets MastBase (the mast's heel on the step) to Masthead (slice 4 adds Masthead)
+  draft, rudders down     the build report's rudders.draft_rudders_down_m (slice 3): the blades' tip under the empty
+                          boat's waterline
   sail areas              the sails' build report (main_area_m2, jib_area_m2, slice 5)
   class rules             from slice 2, the build report's platform block against the card's class_rules: the
                           bridle wires' length (rule 5.1) and a dolphin striker under the front crossbar (rule 6.4)
@@ -65,6 +67,9 @@ def measure(stats, sockets, card):
             m["height_stern_m"] = st[0]["sheer_z"] - min(keels)
     if phys.get("canoe_volume_m3"):
         m["weight_kg"] = phys["canoe_volume_m3"] * WATER_KG_M3 - card["game"]["crew_kg"]
+    rud = phys.get("rudders") or {}
+    if rud.get("draft_rudders_down_m") is not None:
+        m["draft_rudders_down_m"] = rud["draft_rudders_down_m"]
     for k in ("main_area_m2", "jib_area_m2"):
         if phys.get(k):
             m[k] = phys[k]

@@ -4,7 +4,7 @@
  "build_args": "<out dir>: writes <out>/hobie16.blend",
  "hull_object": "H16_Hull",
  "report": "hobie16_report.json",
- "note": "The Hobie 16's rebuild (docs/hobie16-2 on). Slice 1 builds the two hulls, as one object so the loop measures her overall beam; slice 2 adds the platform (H16Platform_ objects), slice 3 the rudders, slices 4 and 5 the rig and sails, slice 6 the hardware. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "note": "The Hobie 16's rebuild (docs/hobie16-2 on). Slice 1 builds the two hulls, as one object so the loop measures her overall beam; slice 2 adds the platform (H16Platform_ objects), slice 3 the rudders (H16Rudder_ and H16Tiller_ objects), slices 4 and 5 the rig and sails, slice 6 the hardware. Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
  "sections": {
   "hull": {
    "objects": [
@@ -15,7 +15,8 @@
     "build_hulls"
    ],
    "borders": [
-    "platform"
+    "platform",
+    "rudder"
    ]
   },
   "platform": {
@@ -29,13 +30,30 @@
    "borders": [
     "hull"
    ]
+  },
+  "rudder": {
+   "objects": [
+    "H16Rudder_",
+    "H16Tiller_"
+   ],
+   "owns": [
+    "rudder_hobie16",
+    "build_rudders"
+   ],
+   "borders": [
+    "hull"
+   ]
   }
  },
  "joins": [
   [
    "H16Platform_Boss",
    "H16_Hull"
+  ],
+  [
+   "H16Rudder_Gudgeons",
+   "H16_Hull"
   ]
  ],
- "joins_note": "Slice 2: the four bosses moulded round the pylons sit on the hulls' decks, their feet 4 mm under the crowned deck all round (H16Platform_Boss|H16_Hull). The pylons stand in the bosses and the frame's tubes run into the castings' sleeves and heads; those are one object (H16Platform_Frame), so they are overlaps inside a part, not joins."
+ "joins_note": "Slice 2: the four bosses moulded round the pylons sit on the hulls' decks, their feet 4 mm under the crowned deck all round (H16Platform_Boss|H16_Hull). The pylons stand in the bosses and the frame's tubes run into the castings' sleeves and heads; those are one object (H16Platform_Frame), so they are overlaps inside a part, not joins. Slice 3: the gudgeons' plates stand 2 mm into the transoms (H16Rudder_Gudgeons|H16_Hull). The rudders turn on the gudgeons' eyes, so they touch the gudgeons, not the hull; the tiller crossbar and the arms meet inside the end fittings."
 }
