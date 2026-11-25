@@ -152,5 +152,5 @@ wrapper that imports `bpy` first and sets `sys.argv`.
 
 ## Next: slice 4, the mast and standing rig
 
-The rotating mast (8.07 m) on the step's ball, the spreaders, the shrouds to the side chainplates, the forestay to the
-bridle plate, and the two trapeze wires. The mast's section and the spreaders' length need a photo up the mast.
+The rotating mast (8.07 m) on the step's ball, the shrouds, the forestay to the bridle plate, and the trapeze wires.
+The Hobie 16 has no spreaders. The mast's rake and section need a photo of a rigged boat.
