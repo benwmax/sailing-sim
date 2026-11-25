@@ -29,10 +29,14 @@ CY = H.CARD["game"]["hull_center_y_m"]
 class Part:
     def __init__(self, name):
         self.name, self.v, self.f, self.slot, self.flat = name, [], [], [], []
+        self.uv = {}            # vertex -> (UV0, UV1, UV2) for the sails' cloth (sails_hobie16); others box-project
 
-    def add_verts(self, pts):
+    def add_verts(self, pts, uvs=None):
         i0 = len(self.v)
         self.v.extend([tuple(map(float, p)) for p in pts])
+        if uvs is not None:
+            for k, uv in enumerate(uvs):
+                self.uv[i0 + k] = tuple(map(float, uv))
         return i0
 
     def face(self, idx, slot, flat=False):

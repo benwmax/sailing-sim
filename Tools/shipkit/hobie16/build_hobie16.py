@@ -144,7 +144,23 @@ def part_object(p, name, origin=(0.0, 0.0, 0.0)):
     bm.from_mesh(me)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     box_uvs(bm)
+    if p.uv:
+        # the sails' cloth carries the game's three sail maps (UV0 metres, UV1 planform, UV2 from the leech); the
+        # battens and trim keep the box projection in UV0 and zeros in the others
+        uv0 = bm.loops.layers.uv["UVMap"]
+        lay = [uv0, bm.loops.layers.uv.new("UV1"), bm.loops.layers.uv.new("UV2")]
+        for f in bm.faces:
+            for lp in f.loops:
+                q = p.uv.get(lp.vert.index)
+                if q is None:
+                    lp[lay[1]].uv = lp[lay[2]].uv = (0.0, 0.0)
+                    continue
+                for k, ly in enumerate(lay):
+                    ly_uv = (q[2 * k], q[2 * k + 1])
+                    lp[ly].uv = ly_uv
     bm.to_mesh(me)
+    if p.uv:
+        me.uv_layers["UVMap"].name = "UV0"
     bm.free()
     me.update()
     ob = bpy.data.objects.new(name, me)

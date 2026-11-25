@@ -1,0 +1,54 @@
+{
+ "key": {
+  "topsides": [
+   "L0",
+   "L1",
+   "L3",
+   "L4",
+   "L2"
+  ],
+  "keel": [
+   "L2",
+   "L0",
+   "L4",
+   "L3",
+   "L1"
+  ],
+  "deck": [
+   "L1",
+   "L0",
+   "L4",
+   "L3",
+   "L2"
+  ],
+  "tramp": [
+   "L2",
+   "L1",
+   "L4",
+   "L0",
+   "L3"
+  ],
+  "corner": [
+   "L2",
+   "L3",
+   "L4",
+   "L0",
+   "L1"
+  ],
+  "mast": [
+   "L0",
+   "L3",
+   "L2",
+   "L1",
+   "L4"
+  ],
+  "rudder": [
+   "L0",
+   "L4",
+   "L3",
+   "L1",
+   "L2"
+  ]
+ },
+ "about": "the level shown under each letter A to E of blind/<sheet>.jpg"
+}

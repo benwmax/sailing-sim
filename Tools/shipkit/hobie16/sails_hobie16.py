@@ -221,6 +221,28 @@ def row_frame(sail, spec, a, t):
     return rotate(d, sail["luff_dir"], sgn * tw), rotate(side, sail["luff_dir"], sgn * tw)
 
 
+def cloth_uvs(sail, spec, fine, xs):
+    """The game's sail cloth UVs (M_SailCloth; the Catalina's sails_c22 convention) for each row's points, flat in the
+    sail's plane: UV0 metres (along the row from the luff, up from the foot), UV1 the planform normalized (the share of
+    the row from the luff, the height over the head's: FSailCloth's UVNormal, which places the marks), UV2.x metres along the row to the leech, UV2.y how far in
+    from the leech's straight line (clew to the head's aft corner). Returns (rows x points, 6)."""
+    _, _, l2 = plane(sail)
+    clew = np.array([spec["foot_m"], 0.0])
+    head = sail["luff"] * l2 + np.array([spec["head_chord_m"], 0.0])
+    top = sail["luff"] * l2[1]
+    lean = unit(head - clew)
+    inward = np.array([-lean[1], lean[0]])           # square to the leech line, toward the luff
+    if inward @ (np.zeros(2) - clew) < 0:
+        inward = -inward
+    out = []
+    for a, c, _, t in fine:
+        d = np.array([math.cos(t), math.sin(t)])
+        for x in xs:
+            q = a * l2 + x * c * d
+            out.append((x * c, q[1], x, q[1] / top, (1 - x) * c, (q - clew) @ inward))
+    return np.array(out)
+
+
 def sail_mesh(part, sail, spec, slots):
     """Both faces of the cambered sail, the rows subdivided between battens; each band between battens one slot.
     Camber runs from spec camber at the foot to camber_top at the head, its deepest point from camber_at to
@@ -237,8 +259,9 @@ def sail_mesh(part, sail, spec, slots):
         grid.append([p0 + x * c * d + depth * camber_shape(x, at) * sd for x in xs])
         sides.append(sd)
     grid = np.array(grid)
+    uvs = cloth_uvs(sail, spec, fine, xs)
     for sgn, flip in ((1, False), (-1, True)):
-        base = part.add_verts(np.concatenate([g + sgn * 0.0008 * sd for g, sd in zip(grid, sides)]))
+        base = part.add_verts(np.concatenate([g + sgn * 0.0008 * sd for g, sd in zip(grid, sides)]), uvs)
         idx = lambda r, k: base + r * N_CHORD + k
         for r in range(len(fine) - 1):
             slot = slots[fine[r][2] % len(slots)]
