@@ -12,6 +12,8 @@ over a pale blue-grey sea plane at the game's waterline, so the boot top and her
   head_on         from ahead, low: the two plumb stems and the knuckle
   bow_close       one bow from outboard and ahead: the stem, the forefoot and the knuckle's run forward
   under           from below and aft of her starboard quarter, without the sea: the canoe bodies
+  foredeck        from above and ahead of her starboard bow: the trampolines, crossbeam, centre beam and bowsprit
+  bridge_under    from ahead, just over the water between the bows: the bridge deck's nose and underside
 Cycles on the CPU, as render_set.py. Frame: Blender's (X forward, Y to port, Z up).
 """
 import math
@@ -30,7 +32,8 @@ bpy.ops.wm.open_mainfile(filepath=SRC)
 sc = bpy.context.scene
 
 LOOKS = {"Topsides": ((0.86, 0.86, 0.84), 0.35), "Antifouling": ((0.05, 0.055, 0.07), 0.6),
-         "CabinWindow": ((0.02, 0.025, 0.03), 0.08), "Teak": ((0.45, 0.30, 0.17), 0.7)}
+         "CabinWindow": ((0.02, 0.025, 0.03), 0.08), "Teak": ((0.45, 0.30, 0.17), 0.7),
+         "Trampoline": ((0.05, 0.05, 0.055), 0.8), "Spar": ((0.6, 0.61, 0.63), 0.3)}
 for m in bpy.data.materials:
     if m.name not in LOOKS:
         continue
@@ -121,6 +124,8 @@ VIEWS = {   # name: camera, target, lens (or ortho width), sea shown
     "head_on": ((24.0, 0.0, 1.2), (0.0, 0.0, 0.5), 50, True),
     "bow_close": ((9.5, -6.2, 1.6), (4.6, -2.9, 0.2), 35, True),
     "under": ((-12.0, -9.0, -5.0), (0.0, 0.0, -0.2), 35, False),
+    "foredeck": ((11.0, -4.5, 6.5), (3.5, 0.0, 1.0), 32, True),
+    "bridge_under": ((9.0, -1.2, 0.35), (-2.0, 0.0, 0.9), 30, True),
 }
 for name, (loc, tgt, lens, show_sea) in VIEWS.items():
     if ONLY and name not in ONLY:

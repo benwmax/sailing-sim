@@ -1,0 +1,48 @@
+{
+ "about": "The Lagoon 42's bridge deck and what sits forward of it (docs/lagoon42-3): the platform between the hulls with its rounded nose, the forward crossbeam between the bows, the centre beam from the nose to it, the bowsprit and the two trampolines. Read by eye from the CC BY drone photo (refs.json) and Lagoon's own photos and profile sketch (Bean, Nov 25: 'look, never copy'): nothing traced or measured off a drawing's pixels. Units: metres. Frame: the game's (X forward, Y starboard, Z up), Z 0 on the game's waterline, as lines_lagoon42.json. bridgedeck_lagoon42.py turns these numbers into surfaces against the hulls of hull_lagoon42.py.",
+ "underside": {
+  "z": 0.85,
+  "aft_x": -5.25,
+  "fillet": 0.14,
+  "note": "The bridge deck's underside, flat at the game's 0.85 m over the water (0.97 m over the light boat's: the clearance waves have to reach before they slam it), from the top of the sugar scoops' steps (aft_x, where slice 4's cockpit sole begins) to the nose. It turns up into each hull's inboard topsides through a fillet of this radius."
+ },
+ "nose": {
+  "bottom_x": 3.7,
+  "top_x": 4.25,
+  "top_z_below_sheer": 0.04,
+  "bow": 0.14,
+  "note": "The bridge deck's rounded front under the foredeck: in profile a quarter ellipse from the underside at bottom_x (on the centreline) forward and up to the deck's front edge at top_x, a little under the sheer; in plan it bows forward, its ends bow less aft at the hulls. The trampolines' aft edge is laced to it. Placed by eye from the drone photo: the trampolines run from about 4.1 m forward of amidships at the hulls to the crossbeam, a little shorter than the gap between the hulls is wide."
+ },
+ "foredeck": {
+  "aft_x": 2.8,
+  "camber": 0.03,
+  "note": "The deck between the hulls from the nose aft to the saloon's front (the card's saloon_x), at the hulls' sheer with a little camber. Aft of it slice 3's saloon and slice 4's cockpit stand; until then a flat lid at the sheer covers the bridge deck there (placeholder)."
+ },
+ "crossbeam": {
+  "x": 6.05,
+  "z": 1.4,
+  "chord": 0.2,
+  "depth": 0.22,
+  "radius": 0.08,
+  "note": "The forward crossbeam from bow to bow, about 0.35 m aft of the stems (the drone photo shows it meeting each hull's deck just behind the stem's head), a rounded box section a little under the hulls' deck; the forestay's furler sits on its middle, where the centre beam and the bowsprit meet it (the forestay's socket is slice 6's: today's ForestayTack is at x 5.2)."
+ },
+ "centre_beam": {
+  "width": 0.16,
+  "depth": 0.16,
+  "z": 1.38,
+  "radius": 0.07,
+  "note": "The beam along the centreline from the bridge deck's nose to the crossbeam, between the two trampolines (it carries the anchor chain to the windlass on the real boat)."
+ },
+ "bowsprit": {
+  "tip_x": 6.83,
+  "root_radius": 0.065,
+  "tip_radius": 0.045,
+  "rise": 0.05,
+  "note": "The short bowsprit for the Code 0's tack, from the crossbeam's middle to 0.43 m past the stems (tip_x: Lagoon's 13.22 m overall, the card's game.bowsprit_m), rising a little toward its tip."
+ },
+ "trampoline": {
+  "z": 1.43,
+  "sag": 0.04,
+  "note": "Two nets, one each side of the centre beam, from the nose to the crossbeam and out to the hulls' inboard topsides, sagging a little in the middle."
+ }
+}

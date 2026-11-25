@@ -9,7 +9,8 @@ and sheet.jpg, a 3 x 3 contact sheet with labels: plain-git JPEGs well under doc
 
 With --slice (slice 1 on): <before dir> and <after dir> are render_set.py's output for today's hull and the slice's
 build (the same fixed views, so they line up), <views dir> is render_lagoon42.py's. Writes the nine-view sheet.jpg
-from <after dir>, before_after.jpg (four of the fixed views, today's on the left) and views.jpg (the coloured views).
+from <after dir>, before_after.jpg (four of the fixed views, today's on the left) and views.jpg (the coloured views
+that <views dir> holds).
 """
 import os
 import sys
@@ -74,7 +75,8 @@ def slice_docs(before, after, views, out):
         cells += [(os.path.join(before, v + ".png"), "today: " + v.replace("_", " ")),
                   (os.path.join(after, v + ".png"), "rebuild: " + v.replace("_", " "))]
     labelled_grid(cells, 2, 600, 300, os.path.join(out, "before_after.jpg"))
-    names = ["bow_quarter", "stern_quarter", "profile", "head_on", "bow_close", "under"]
+    names = ["bow_quarter", "stern_quarter", "foredeck", "bridge_under", "profile", "head_on", "bow_close", "under"]
+    names = [n for n in names if os.path.exists(os.path.join(views, n + ".png"))]
     labelled_grid([(os.path.join(views, n + ".png"), n.replace("_", " ")) for n in names], 2, 600, 360,
                   os.path.join(out, "views.jpg"))
 

@@ -13,6 +13,8 @@ says where each target comes from: the shape, the sockets, a later slice ("not y
 How each is measured (the Hobie 16's check, hobie16_check.py, for a cruising cat with keels and a mast on a roof):
   hull length, beam       the hull object's bounds (stats.json 'hull'): both hulls in one object, so the beam is
                           outside to outside, as published; the bowsprit is not part of the hull object
+  length overall          from the transom to the foremost point of any object (the bowsprit's tip), once
+                          something reaches more than 5 cm past the stems
   waterline length        measure.py's cut of the hulls at the game's waterline (z = 0), stem to stern ('lwl')
   draft                   the keels' lowest point less the load's sink: the model floats at the game's waterline
                           with her stores and crew aboard, and Lagoon's 1.26 m is the light boat's. The sink is the
@@ -45,6 +47,9 @@ def measure(stats, sockets, card):
         m["beam_m"] = hull.get("beam")
         if hull.get("lwl"):
             m["length_waterline_m"] = hull["lwl"]
+        fore = max((o["max"][0] for o in stats.get("objects", {}).values()), default=None)
+        if fore is not None and hull.get("x_bow") is not None and fore > hull["x_bow"] + 0.05:
+            m["length_overall_m"] = fore - hull["x_stern"]
     keels = [o for o in stats.get("objects", {}).values() if o.get("section") == "keels"]
     if keels:
         m["draft_m"] = -min(o["min"][2] for o in keels) - sink

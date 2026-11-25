@@ -4,7 +4,7 @@
  "build_args": "blender -b --factory-startup -P build_lagoon42.py -- <out dir>: reads <out>/lagoon42.blend",
  "hull_object": "L42_Hull",
  "report": "lagoon42_report.json",
- "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows), and a flat lid at the sheer (L42_DeckPlaceholder, section 'placeholder', not budgeted) that slice 3's deck replaces; later slices add their parts here (bridgedeck, coachroof, cockpit, keels, rig, sails, fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
+ "note": "The Lagoon 42's rebuild (docs/lagoon42-2 on). Slice 1 builds the two hull shells, their sugar-scoop treads and risers (L42_Hull) and the outboard hull windows (L42_HullWindows), and a flat lid at the sheer (L42_DeckPlaceholder, section 'placeholder', not budgeted) that slice 3's deck replaces; slice 2 (docs/lagoon42-3) the bridge deck with its nose and foredeck (L42_Bridgedeck), the crossbeam and centre beam (L42_Crossbeam), the bowsprit (L42_Bowsprit) and the trampolines (L42_Trampolines), with a flat lid over the bridge deck aft of the foredeck (L42_BridgeLidPlaceholder, 'placeholder') until slices 3 and 4; later slices add their parts here (bridgedeck, coachroof, cockpit, keels, rig, sails, fittings, saloon: the size card's budget_triangles.sections). Rules as in sections_j22.json: an entry ending in '_' or '*' is a name prefix, any other an exact name; unmatched is 'other'.",
  "sections": {
   "hull": {
    "objects": [
@@ -22,7 +22,8 @@
   },
   "placeholder": {
    "objects": [
-    "L42_DeckPlaceholder"
+    "L42_DeckPlaceholder",
+    "L42_BridgeLidPlaceholder"
    ],
    "owns": [
     "build_deck_placeholder"
@@ -30,8 +31,26 @@
    "borders": [
     "hull"
    ]
+  },
+  "bridgedeck": {
+   "objects": [
+    "L42_Bridgedeck",
+    "L42_Crossbeam",
+    "L42_Bowsprit",
+    "L42_Trampolines"
+   ],
+   "owns": [
+    "build_bridgedeck",
+    "bridgedeck_rows",
+    "aft_face",
+    "trampoline_grid",
+    "sweep"
+   ],
+   "borders": [
+    "hull"
+   ]
   }
  },
  "joins": [],
- "joins_note": "Slice 1 has nothing to join: slice 2's bridge deck meets the hulls' inboard topsides, slice 3's deck their sheer."
+ "joins_note": "The bridge deck, the crossbeam and the trampolines end on the hulls' inboard topsides (bridgedeck_lagoon42.span), the bridge deck's foredeck and lid on their inboard sheer: no joins are checked by a tool yet."
 }

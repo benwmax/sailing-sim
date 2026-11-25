@@ -15,6 +15,7 @@
  },
  "targets": {
   "length_hull_m": 12.79,
+  "length_overall_m": 13.22,
   "length_waterline_m": 12.5,
   "beam_m": 7.68,
   "draft_m": 1.26,
@@ -104,6 +105,7 @@
  "measured_by": {
   "note": "How lagoon42_check.py gets each target. 'shape': from measure.py's stats; 'sockets': from the build's sockets file; 'later': not measured by the tool yet (the slice named adds it); 'build': checked by that slice's own build report.",
   "length_hull_m": "shape",
+  "length_overall_m": "shape: from the transom to the foremost point of anything built (the bowsprit's tip, slice 2 on); not measured while nothing reaches past the stems",
   "length_waterline_m": "shape",
   "beam_m": "shape",
   "draft_m": "shape: the keels' lowest point less the load's sink (the build report's load_sink_m from slice 1 on, else game.load_sink_m)",

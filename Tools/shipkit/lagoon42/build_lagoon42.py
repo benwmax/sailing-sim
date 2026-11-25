@@ -1,4 +1,4 @@
-"""The Lagoon 42's rebuild in Blender (docs/lagoon42-2 on): slice 1, the two hulls.
+"""The Lagoon 42's rebuild in Blender (docs/lagoon42-2 on): the hulls (slice 1) and the bridge deck (slice 2).
 
     blender -b --factory-startup -P build_lagoon42.py -- <out dir>
 
@@ -7,6 +7,9 @@ each one shell from its inboard top round the keel to its outboard top: the suga
 aft (L42_Hull, with the swim platforms and steps), the outboard windows are flush dark panes (L42_HullWindows). The
 shell is cut along the boot top's line BOTTOM_Z: Topsides above, Antifouling below. L42_DeckPlaceholder is a flat lid
 at the sheer until slice 3 builds the deck.
+
+Slice 2 (docs/lagoon42-3) adds the bridge deck, its placeholder lid, the crossbeam with the centre beam, the bowsprit
+and the trampolines from bridgedeck_lagoon42.py.
 
 Writes <out>/lagoon42.blend, <out>/lagoon42_report.json (the shape loop's report: the canoe bodies' volume and centre
 of buoyancy beside the game's) and <out>/hydrostatics.json.
@@ -20,10 +23,12 @@ import sys
 
 import bpy
 import bmesh
+from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hull_lagoon42 as H  # noqa: E402
+import bridgedeck_lagoon42 as B  # noqa: E402
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = ARGS[0]
@@ -33,7 +38,7 @@ N_STATIONS, N_GIRTH = 220, 60          # stations along her length; girth steps 
 UV_M = 1.0
 BOTTOM_Z = 0.05                        # the antifouling's top over the game's waterline
 SLOT_RGB = {"Topsides": (0.92, 0.92, 0.9), "Antifouling": (0.16, 0.17, 0.2), "CabinWindow": (0.06, 0.07, 0.08),
-            "Teak": (0.55, 0.38, 0.22)}
+            "Teak": (0.55, 0.38, 0.22), "Trampoline": (0.1, 0.1, 0.11), "Spar": (0.55, 0.56, 0.58)}
 
 
 def clear_scene():
@@ -163,6 +168,95 @@ def build_deck_placeholder(bm, cy):
         bm.faces.new((a[0], a[1], b[1], b[0]))
 
 
+def grid_faces(bm, rows, flip=False):
+    """Quads between consecutive rows of game-frame points (every row the same length); returns the faces."""
+    vrows = [[bm.verts.new(bl(*p)) for p in row] for row in rows]
+    faces = []
+    for a, b in zip(vrows[:-1], vrows[1:]):
+        for j in range(len(a) - 1):
+            q = (a[j], a[j + 1], b[j + 1], b[j])
+            faces.append(bm.faces.new(q[::-1] if flip else q))
+    return faces
+
+
+def face_out(bm, faces, probe, want):
+    """Turn the faces' winding so the one nearest the game-frame point probe faces along want (a game-frame vector)."""
+    p = bl(*probe)
+    near = min(faces, key=lambda f: (f.calc_center_median() - Vector(p)).length)
+    near.normal_update()
+    w = bl(*want)
+    if near.normal.dot(Vector(w)) < 0:
+        bmesh.ops.reverse_faces(bm, faces=faces)
+
+
+def sweep(bm, section, path, closed_ends=True):
+    """A tube: section [(a, b)] placed at each path point by frame(t) -> (origin, a axis, b axis), game frame."""
+    vrows = []
+    for o, ea, eb in path:
+        vrows.append([bm.verts.new(bl(*(o[i] + ea[i] * a + eb[i] * b for i in range(3)))) for a, b in section])
+    faces = []
+    n = len(section)
+    for r0, r1 in zip(vrows[:-1], vrows[1:]):
+        for j in range(n):
+            faces.append(bm.faces.new((r0[j], r0[(j + 1) % n], r1[(j + 1) % n], r1[j])))
+    if closed_ends:
+        faces.append(bm.faces.new(vrows[0][::-1]))
+        faces.append(bm.faces.new(vrows[-1]))
+    return faces
+
+
+def build_bridgedeck():
+    """The bridge deck (underside, nose, foredeck and its aft face), the placeholder lid aft of the foredeck, the
+    crossbeam with the centre beam, the bowsprit and the trampolines: each its own object."""
+    bm = bmesh.new()
+    faces = grid_faces(bm, B.bridgedeck_rows())
+    faces.append(bm.faces.new([bm.verts.new(bl(*p)) for p in B.aft_face()]))
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    face_out(bm, bm.faces[:], (0.0, 0.0, B.US["z"]), (0, 0, -1))
+    for f in bm.faces:
+        f.smooth = len(f.verts) == 4
+    to_object("L42_Bridgedeck", bm, ["Topsides"])
+
+    bm = bmesh.new()
+    grid_faces(bm, B.lid_rows())
+    face_out(bm, bm.faces[:], (0.0, 0.0, 1.6), (0, 0, 1))
+    to_object("L42_BridgeLidPlaceholder", bm, ["Topsides"])
+
+    bm = bmesh.new()
+    sec = B.rounded_rect(B.CB["chord"], B.CB["depth"], B.CB["radius"])
+    e = B.crossbeam_ends()
+    path = [((B.CB["x"], -e + 2 * e * k / 40, B.CB["z"]), (1, 0, 0), (0, 0, 1)) for k in range(41)]
+    sweep(bm, sec, path)
+    sec = B.rounded_rect(B.CBM["width"], B.CBM["depth"], B.CBM["radius"])
+    x0, x1 = B.centre_beam_ends()
+    path = [((x0 + (x1 - x0) * k / 20, 0.0, B.CBM["z"]), (0, 1, 0), (0, 0, 1)) for k in range(21)]
+    sweep(bm, sec, path)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    for f in bm.faces:
+        f.smooth = len(f.verts) == 4
+    to_object("L42_Crossbeam", bm, ["Topsides"])
+
+    bm = bmesh.new()
+    n = 16
+    path = []
+    for k in range(13):
+        x, z, r = B.bowsprit_axis(k / 12)
+        path.append(((x, 0.0, z), (0, r, 0), (0, 0, r)))
+    circle = [(math.cos(2 * math.pi * i / n), math.sin(2 * math.pi * i / n)) for i in range(n)]
+    sweep(bm, circle, path)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    for f in bm.faces:
+        f.smooth = len(f.verts) == 4
+    to_object("L42_Bowsprit", bm, ["Spar"])
+
+    bm = bmesh.new()
+    for side in (1, -1):
+        fs = grid_faces(bm, B.trampoline_grid(side))
+        face_out(bm, fs, (5.0, side * 1.2, B.TR["z"]), (0, 0, 1))
+    to_object("L42_Trampolines", bm, ["Trampoline"])
+
+
 def mesh_volume_below(ob, z=0.0):
     bm = bmesh.new()
     bm.from_mesh(ob.data)
@@ -214,6 +308,7 @@ def main():
         build_deck_placeholder(dm, cy)
     bmesh.ops.remove_doubles(dm, verts=dm.verts[:], dist=1e-6)
     to_object("L42_DeckPlaceholder", dm, ["Topsides"])
+    build_bridgedeck()
 
     h = H.hydrostatics()
     mesh_v = mesh_volume_below(hull)
@@ -227,6 +322,7 @@ def main():
               "beam_wl_one_hull_m": round(h["beam_wl_one_hull"], 3),
               "waterplane_m2": round(H.waterplane(), 2), "waterplane_15cm_down_m2": round(H.waterplane(-0.15), 2),
               "load_sink_m": round(sink, 4), "canoe_depth_light_m": round(depth - sink, 4),
+              "bridgedeck_clearance_m": B.US["z"], "bridgedeck_clearance_light_m": round(B.US["z"] + sink, 4),
               "note": "canoe_volume_m3 is what lagoon42_check.py weighs: both hull meshes' volume under the game's "
                       "waterline (hull_volume_m3) plus the appendages' allowance (two keels and two rudders, a guess "
                       "until slice 5 builds them). design_hull_volume_m3 is the drawing's own integral "
