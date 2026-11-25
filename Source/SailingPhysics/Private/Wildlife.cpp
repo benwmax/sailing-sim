@@ -334,7 +334,7 @@ namespace Sailing
 		FBirdBudget B;
 		switch (Tier)
 		{
-		case 0: B.Far = 100; B.Mid = 0; B.Near = 0; break;
+		case 0: B.Far = 100; B.Mid = 20; B.Near = 4; break;   // (AWildlifeActor draws Low's as quads: no bodies)
 		case 1: B.Far = 200; B.Mid = 40; B.Near = 6; break;
 		case 2: B.Far = 300; B.Mid = 60; B.Near = 12; break;
 		default: B.Far = 500; B.Mid = 100; B.Near = 20; break;

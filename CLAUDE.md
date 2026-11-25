@@ -550,6 +550,12 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   `FCS_W` (the flecks take 1 - it). Lives are decided at their start (`ProbA`/`ProbB`/`SwitchT`, `Born`): never change a
   live cap's probability. Keep the tiles out of ray tracing (dynamic RT geometry cost 0.5-1.5 ms of render thread).
   `-SailingNoFarCaps`, `-SailingDebugFarCaps`, `-SailingSlowMo=<f>` (time dilation for slow-motion recordings).
+- Wildlife (`docs/wildlife-1/`): `FBirdFlocks` and `FWildlifeHabitatMap` (`Wildlife.h`, plain) run each world's
+  `<World>.wildlife.json` (Phase 0, `Tools/wildlife`; never eBird or Birda records) on the sim clock; `AWildlifeActor` draws
+  far birds as camera-facing quads (`M_BirdFar`) and mid ones as `SM_Bird_<Style>` (`M_BirdMid`), both from
+  `scripts/make-birds.sh` (`Tools/blender/build_birds.py`, `scripts/import_birds.py`; keep its per-instance floats in step
+  with `FarFloats`/`MidFloats`). `scripts/wildlife-check.sh [World|all]` runs every world standalone; `-SailingNoWildlife`,
+  `-SailingWildlifeScale=<f>`.
 - Wind on the water (W2, `docs/water-2/`): `AWaterSurface` keeps two wrap-around wind maps (near 256^2 over 3.2 km,
   512^2 on Ultra; far 128^2 over 16 km; texel i at i mod Res, refreshed in strips): RGB = roughness, local direction
   (sRGB), A = slow wind (linear). `W2_WIND` in make_materials.py is the shared HLSL both water materials read (ripples

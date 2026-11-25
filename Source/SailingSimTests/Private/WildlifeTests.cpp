@@ -149,8 +149,9 @@ bool FSailingWildlifeDayTest::RunTest(const FString&)
 	TestTrue(TEXT("a gale thins them"), WeatherFactor(EBirdStyle::HeavyGlider, C) < 0.5);
 	TestTrue(TEXT("no soaring in a gale"), WeatherFactor(EBirdStyle::Soaring, C) < 0.1);
 	const FBirdBudget Low = BirdBudgetForTier(0), Ultra = BirdBudgetForTier(3);
-	TestTrue(TEXT("Low draws far birds only"), Low.Far > 0 && Low.Mid == 0 && Low.Near == 0);
-	TestTrue(TEXT("Ultra draws the most"), Ultra.Far > Low.Far && Ultra.Mid > 0 && Ultra.Near > 0);
+	// (Low keeps a few birds inside 400 m, drawn as quads: with none a bird coming close would vanish.)
+	TestTrue(TEXT("Low draws the fewest"), Low.Far > 0 && Low.Mid > 0 && Low.Mid <= 20 && Low.Near <= 4);
+	TestTrue(TEXT("Ultra draws the most"), Ultra.Far > Low.Far && Ultra.Mid > Low.Mid && Ultra.Near > Low.Near);
 	return true;
 }
 
@@ -204,7 +205,9 @@ bool FSailingWildlifeCountsTest::RunTest(const FString&)
 		}
 		if (Tier == 0)
 		{
-			for (const FBirdDraw& D : Flocks.Draw()) TestTrue(TEXT("Low draws no bird inside the far band"), D.DistanceM >= FBirdFlocks::MidM);
+			int32 Inside = 0;
+			for (const FBirdDraw& D : Flocks.Draw()) Inside += D.DistanceM < FBirdFlocks::MidM;
+			TestTrue(TEXT("Low draws at most its few birds inside the far band"), Inside <= Budget.Mid + Budget.Near);
 		}
 		// nothing when it's out of season or night
 		FWildlifeConditions Night = C;

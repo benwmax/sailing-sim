@@ -43,6 +43,7 @@
 #include "BridgesActor.h"
 #include "LandmarksActor.h"
 #include "NightLightsActor.h"
+#include "WildlifeActor.h"
 #include "Ocean.h"
 #include "TrafficManager.h"
 #include "SailingEnvironment.h"
@@ -1261,6 +1262,11 @@ void ASailingGameMode::StartPlay()
 	if (USailingSettings::Get()->Quality != ESailingQuality::Low)
 	{
 		GetWorld()->SpawnActor<ANightLightsActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
+	}
+	// Wildlife Phase 1 (docs/wildlife-1): the distant birds from the world's table (-SailingNoWildlife compares).
+	if (Lake.IsLoaded() && !FParse::Param(SailingArgs::Dev(), TEXT("SailingNoWildlife")))
+	{
+		GetWorld()->SpawnActor<AWildlifeActor>(SailingFrame::MapAnchor(GetWorld()), FRotator::ZeroRotator);
 	}
 	// Other vessels and races. -SailingTraffic=0|1|2 overrides the setting; -SailingRace=<seconds to the start>.
 	int32 TrafficArg = 0;
