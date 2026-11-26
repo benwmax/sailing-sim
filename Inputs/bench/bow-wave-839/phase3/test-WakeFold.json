@@ -1,0 +1,69 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "C180209A4262CEACBB1D8290751D6A80",
+			"instanceName": "BEN-PC-14380",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.26-05.51.51",
+	"succeeded": 1,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 5.4941272735595703,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "WakeFold",
+			"fullTestPath": "SailingSim.Visual.WakeFold",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"C180209A4262CEACBB1D8290751D6A80"
+			],
+			"duration": 5.4941272735595703,
+			"dateTime": "2026.11.26-05.51.46",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "3.0 kn: fold at her bow 0.957 (on water 0.005 m high), lowest in open water 0.832, crests 0.940 (58 cells), troughs 1.063 (48), mean 1.0000",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-05.51.48"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "6.0 kn: fold at her bow 0.839 (on water 0.027 m high), lowest in open water 0.683, crests 0.959 (1560 cells), troughs 1.040 (1462), mean 0.9999",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-05.51.51"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}

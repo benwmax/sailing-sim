@@ -1,0 +1,81 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "A1B497DE4AC293F0F77B909891495935",
+			"instanceName": "BEN-PC-13128",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.26-05.52.21",
+	"succeeded": 1,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 10.190511703491211,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "BowCrest",
+			"fullTestPath": "SailingSim.Visual.BowCrest",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A1B497DE4AC293F0F77B909891495935"
+			],
+			"duration": 10.190511703491211,
+			"dateTime": "2026.11.26-05.52.10",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "3.0 kn: crest at her bow's side 0.008 m, foam there 0.00, foam 6 m ahead 0.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-05.52.13"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "5.0 kn: crest at her bow's side 0.032 m, foam there 0.11, foam 6 m ahead 0.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-05.52.17"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "6.0 kn: crest at her bow's side 0.041 m, foam there 0.85, foam 6 m ahead 0.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-05.52.21"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
