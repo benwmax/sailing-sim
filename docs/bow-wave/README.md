@@ -58,7 +58,10 @@ No new GPU work and no material changes. Everything is in `Source/`.
   the PC's bow stills of Nov 26; the rate is now three times that.
 
 Cost: the curl does about 360 bilinear lookups a frame per boat on the game thread (a few microseconds). The grid's new
-foam test runs only on cells beside a hull.
+foam test runs only on cells beside a hull. And a saving: the PC's stutter trace (Nov 26) put the wake FFT's column pass
+at 27-32 ms of worker time a frame against 2 ms for its rows, because each column was walked in place at a stride of the
+grid's width. `Fft2` now copies the columns out in blocks of 16, transforms them as contiguous lines and copies them
+back: the same arithmetic, bit-identical results (on a Linux box, single-threaded, 512 grid: 12 ms down to 6.4).
 
 **Switch and compare:** the console's `sailing.BowWave2` (default 1) turns all of phase 2 on or off: the curl, the bow
 spray and the grid's side foam. Its default is one line in `WaterSurface.cpp` (`GBowWave2`), so the release can ship
