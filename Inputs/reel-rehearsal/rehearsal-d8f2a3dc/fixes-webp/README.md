@@ -30,3 +30,11 @@
 - **R10's gust patch:** from 10 m the water shows whitecap flecks and darker breeze, but no distinct dark gust line
   coming in. With these args no visible gust line paints; a front (`-SailingWeather=Thunderstorm`) would be the way to
   paint one.
+
+## R06 sky, decided (Nov 26)
+
+`R06-helm-eye-notips-hour13.webp` and `-hour16.5.webp`, beside the hour-15 frame above.
+- **Hour 13 has the softer sky:** more open blue between separate clouds, and the dense lumpy deck is gone from the top
+  of the frame.
+- Hour 16.5 is warmer, with the same lumpy deck.
+- **The script's R06 now uses `-SailingHour=13`.**
