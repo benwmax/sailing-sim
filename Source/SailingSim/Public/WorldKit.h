@@ -165,6 +165,20 @@ SAILINGSIM_API FName LotBankType(uint32 HouseIndex);
 /** The lots whose bank is a kit piece, with their waterlines (HouseKit.cpp; the same line the tile's riprap follows). */
 SAILINGSIM_API void ShoreEdgeRuns(const FLakeData& Lake, TArray<FShoreEdgeRun>& Out);
 
+/** docs/tide-hitch: on a coast the world kit follows the tide in 2 cm steps (the terrain's kept components, the bridges,
+ *  landmarks and navaids). Each step moved every one of their distance-field instances at once and PrepareDistanceFieldScene
+ *  took 380-520 ms of render thread (Inputs/bench/soak-83aa7652-galveston). Where Lumen traces in hardware (High and Ultra
+ *  with ray tracing) nothing on shore samples the mesh distance fields (the boat's corner grime reads the global field
+ *  within 8 m of her), so there the followers stay out of them. Software Lumen and the lake keep them. -SailingTideDF=1
+ *  keeps them everywhere, to compare. */
+SAILINGSIM_API bool TideFollowersSkipDistanceFields(const UWorld* World, bool bCrown = false);
+/** For a component of a tide follower, before RegisterComponent: conservative instance bounds and no navigation
+ *  (docs/recentre-hitch), and out of the distance fields where TideFollowersSkipDistanceFields says so. One that was in
+ *  them is tagged, so RefreshTideFollowers can follow a quality change. Nothing changes off a tidal world. */
+SAILINGSIM_API void MarkTideFollower(UPrimitiveComponent* Component, const UWorld* World);
+/** After a quality change (ApplyQualitySettings): every tagged follower in or out of the distance fields again. Returns
+ *  how many changed. */
+SAILINGSIM_API int32 RefreshTideFollowers(const UWorld* World);
 /** Adds a component per tile to Owner: the baked Nanite mesh /Game/World/Baked/<TileAssetName(Prefix)> when there is one (and
  *  !bProcedural), else a static procedural mesh with Material(look). Returns the number of baked tiles used. */
 SAILINGSIM_API int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, const FString& Prefix, bool bProcedural,

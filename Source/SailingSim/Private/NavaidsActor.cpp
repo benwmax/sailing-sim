@@ -1,4 +1,5 @@
 #include "NavaidsActor.h"
+#include "WorldKit.h"
 #include "SailingFrame.h"
 #include "FarLightsActor.h"
 #include "BenchRunner.h"
@@ -53,6 +54,7 @@ UInstancedStaticMeshComponent* ANavaidsActor::MakeIsm(UStaticMesh* Mesh, const F
 	Mid->SetVectorParameterValue(TEXT("Color"), Color);
 	if (bEmissive) Mid->SetScalarParameterValue(TEXT("Intensity"), 250.f);
 	Ism->SetMaterial(0, Mid);
+	MarkTideFollower(Ism, GetWorld());   // docs/tide-hitch: the marks follow the tide (fixed) or the waves (floating)
 	Ism->RegisterComponent();
 	Meshes.Add(Ism);
 	return Ism;
@@ -70,6 +72,7 @@ UInstancedStaticMeshComponent* ANavaidsActor::ModelIsm(const TCHAR* Name, bool b
 	Ism->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Ism->SetCullDistances(0, 600000);
 	Ism->NumCustomDataFloats = 3;
+	MarkTideFollower(Ism, GetWorld());   // docs/tide-hitch
 	Ism->RegisterComponent();
 	Meshes.Add(Ism);
 	Models.Add(Key, Ism);
@@ -305,7 +308,7 @@ void ANavaidsActor::Tick(float DeltaSeconds)
 	if (!GM || !bBuilt) return;
 	// Fixed structures stand on the bottom: they move with the tide's offset like the terrain, in its 2 cm steps (perf-2:
 	// moved every frame, every mark in the bay re-rendered its virtual shadow pages every frame).
-	const FVector FixedAt(0.0, 0.0, -FMath::RoundToDouble(GM->GetTideHeight() / 0.02) * 0.02 * CmPerMeter);
+	const FVector FixedAt(0.0, 0.0, GM->GetTideFollowZ());
 	if (!FixedRoot->GetRelativeLocation().Equals(FixedAt, 0.1)) FixedRoot->SetRelativeLocation(FixedAt);
 
 	// Lights come on after sunset (a photocell) or when visibility closes in.

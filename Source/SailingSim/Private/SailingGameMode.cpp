@@ -3,6 +3,7 @@
 #include "SailingFrame.h"
 #include "EasyAssists.h"
 #include "BenchRunner.h"
+#include "WorldKit.h"
 #include "CrashReports.h"
 #include "WindClimate.h"
 #include "CoastMarinasActor.h"
@@ -475,12 +476,23 @@ void ASailingGameMode::UpdateTide()
 		}
 	}
 	TideHeight = Lake.Tides.HeightAt(X, Y, GetUnixTime());
+	static double StepEvery = -1.0;
+	static uint32 StepEveryGen = MAX_uint32;
+	if (StepEveryGen != SailingArgs::Generation())
+	{
+		StepEveryGen = SailingArgs::Generation();
+		StepEvery = 0.0;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTideStepEvery="), StepEvery);
+	}
+	TideHeight += ForcedTideStep(GetWorld()->GetTimeSeconds(), StepEvery);
 	if (FMath::Abs(GetUnixTime() - NextTideUpdate) > 60.0)
 	{
 		NextTideUpdate = GetUnixTime();
 		bHasNextTide = Lake.Tides.NextExtreme(X, Y, GetUnixTime(), NextTide);
 	}
 	Lake.Terrain.SetLevelBelowPool(-TideHeight);
+	TideStepHeld = bTideStepHeld ? TideStepWithDeadBand(TideStepHeld, TideHeight) : TideStepped(TideHeight);
+	bTideStepHeld = true;
 	if (!TerrainActor.IsValid())
 	{
 		for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It) TerrainActor = *It;
@@ -489,9 +501,12 @@ void ASailingGameMode::UpdateTide()
 	{
 		// In 2 cm steps, like the rest of the world kit: moving the actor re-uploads every instance under it (the shore's
 		// reeds, houses and docks, some 300,000 on Galveston Bay), and doing that each frame cost the render thread 20 ms.
-		const double Shown = FMath::RoundToDouble(TideHeight / 0.02) * 0.02;
-		const FVector At = SailingFrame::MapAnchor(GetWorld(), -Shown);   // the map's origin, in the render frame
-		if (!TerrainActor->GetActorLocation().Equals(At, 0.1)) TerrainActor->SetActorLocation(At);
+		const FVector At = SailingFrame::MapAnchor(GetWorld(), -TideStepHeld);   // the map's origin, in the render frame
+		if (!TerrainActor->GetActorLocation().Equals(At, 0.1))
+		{
+			TerrainActor->SetActorLocation(At);
+			SAIL_LOG(Display, TEXT("Tide step: the followers stand at %.0f cm (frame %llu)"), GetTideFollowZ(), uint64(GFrameCounter));
+		}
 	}
 }
 
@@ -972,6 +987,8 @@ void ASailingGameMode::ApplyQualitySettings()
 		const ESailingQuality TreeTier = Row(S->FoliageQuality) >= 0 ? ESailingQuality(Row(S->FoliageQuality)) : Quality;
 		It->SetTreeFraction(TreeTier == ESailingQuality::Low ? 0.35f : (TreeTier == ESailingQuality::Medium ? 0.7f : 1.f));
 	}
+	// docs/tide-hitch: a coast's tide followers are out of the distance fields only under hardware Lumen.
+	if (const int32 Changed = RefreshTideFollowers(GetWorld())) SAIL_LOG(Display, TEXT("Tide followers: %d components in or out of the distance fields"), Changed);
 }
 
 double ASailingGameMode::BlowSeaLift()
