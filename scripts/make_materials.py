@@ -1310,7 +1310,8 @@ rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 // mesh's Grain colour attribute (export.py paint_grain: R 0 says it is there, G 0 along the ship, 0.5 athwartships, 1 up);
 // a mesh without it (white) keeps the part's X, or up with GrainUp (masts). The figure here and the detail maps' U below
 // follow it (gAxis 0 x, 1 z, 2 y: g is LP turned so g.x runs along the timber).
-int gAxis = VC.r < 0.5 ? (VC.g < 0.25 ? 0 : (VC.g < 0.75 ? 2 : 1)) : (GrainUp > 0.5 ? 1 : 0);
+int gAxisVC = (3 - int(step(0.25, VC.g) + step(0.75, VC.g))) % 3;   // G 0 -> 0 (x), 0.5 -> 2 (y), 1 -> 1 (z); no bare-literal conditionals (BoatShaderLiterals)
+int gAxis = VC.r < 0.5 ? gAxisVC : int(step(0.5, GrainUp));
 float3 g = gAxis == 0 ? LP.xyz : (gAxis == 1 ? LP.zxy : LP.yxz);
 float gw = g.y * 0.9 + g.z * 1.3 + 2.5 * sin(g.x * 0.021) + 1.2 * sin(g.x * 0.083 + g.y);
 // J-Class 15: a laid deck's planks are quarter-sawn, so their grain runs nearly straight, and each plank has its own (the
