@@ -1919,9 +1919,17 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 		BowWave->SetCastShadow(false);
 		BowWave->bAffectDistanceFieldLighting = false;
 		BowWave->RegisterComponent();
-		if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_BowWave.M_BowWave"), nullptr, LOAD_NoWarn | LOAD_Quiet)) BowWave->SetMaterial(0, M);
+		if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Materials/M_BowWave.M_BowWave"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			BowWave->SetMaterial(0, UMaterialInstanceDynamic::Create(M, this));
+		}
 	}
 	BowWave->SetVisibility(true);
+	// Bow wave 3 (docs/bow-wave/): M_BowWave's crest breaks white at speed (its Breaking; 0 is the sheet as before).
+	if (UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(BowWave->GetMaterial(0)))
+	{
+		MID->SetScalarParameterValue(TEXT("Breaking"), AWaterSurface::BowWave3On() ? 1.f : 0.f);
+	}
 	const FHullShape& Hull = Boat.GetConfig().Hulls[0];
 	const FWaveField& Waves = GM->GetWaves();
 	// Where and when she is drawn (between her steps for the player's boat, feedback #26), so the sheet stays on her stem.

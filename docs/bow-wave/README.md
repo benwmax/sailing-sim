@@ -114,6 +114,16 @@ water moves by i k/|k| times its height (for h = A cos kx, -A sin kx, toward the
 - **The water material:** `M_WaterV4` steepens the wake's slopes by 1 / fold, so crests catch the light as narrow
   bright lines and troughs go smooth. The fold also multiplies the long waves' (J), so where her crests cross the
   chop's they tip it into whitecaps sooner, and the foam gathers on her crests as it does on the waves'.
+- **The bow's curl breaks.** The PC's bow-facing stills of phase 2 (Nov 26, `Inputs/bench/pr839/fc9a8be/bow-path/`)
+  showed the curl's lip as a line a few centimetres wide, more gap than foam, that hardly read from 7 m. Near her hull
+  speed a J/22 spills a white crest a hand or two wide just aft of the stem, and the broken water tumbles down the
+  wave's outer face in streaks running aft. `M_BowWave` takes `Breaking` (the pawn sets 1 on its material instance
+  while the switch is on): from about 5 kn, growing with the lip to full by 7 kn, the crest holds its white further aft
+  of the stem (its rise had fallen off so fast that the lip's foam seldom passed half), widens and stands a little
+  further out, most of its gaps close, and it is torn into streaks about 3 cm across that drift aft; the face outboard
+  of it carries streaks of the same. Offline (the material's code in numpy on the J/22's sheet) the white past half is
+  a band about 2 cm wide on average over the sheet's length at 6 kn and 7 cm at 7 kn, strongest in the first half metre,
+  against none before. Breaking 0 is the sheet exactly as before. It needs a look on the PC before the label.
 
 Offline, at 6 kn: the water moves up to 9 cm, the fold is 0.84 on the crest beside her bow (about 2.9 m aft of the
 stem, where the crest is 2.7 cm high) and 0.68 at the lowest in her wake. It averages 1, and is 0.96 on crests and 1.04
@@ -126,8 +136,9 @@ centimetres wouldn't show. The sharpening is in the shading, and phase 4's dense
 geometry gets it.
 
 **Switch and compare:** the console's `sailing.BowWave3` (default 1; `GBowWave3` in `WaterSurface.cpp`, one line for
-the release) and `-SailingClassicWakeFold` for one run. Off, the grid makes no fold (1 in the texture's A, and the step
-skips its transform), so the material draws her crests as before; the half-float texture stays.
+the release) and `-SailingClassicBowWave3` for one run. Off, the grid makes no fold (1 in the texture's A, and the step
+skips its transform), so the material draws her crests as before, and the curl's crest doesn't break; the half-float
+texture stays.
 
 **Test:** `SailingSim.Visual.WakeFold` checks the fold at her bow at 6 kn (0.7 to 0.95, on the crest), that it is gentler
 at 3 kn, that crests bunch and troughs spread, that it averages 1, and that her waves never fold in flat water.

@@ -288,13 +288,13 @@ namespace
 	// Bow wave 3 (docs/bow-wave/): the release switch. 0 here ships her waves' crests as they were before it.
 	int32 GBowWave3 = 1;
 	FAutoConsoleVariableRef CVarBowWave3(TEXT("sailing.BowWave3"), GBowWave3,
-		TEXT("Bow wave 3 (1 on, 0 off): her waves' crests sharpened by the water moving toward them, and tipping the chop into caps."));
+		TEXT("Bow wave 3 (1 on, 0 off): her waves' crests sharpened by the water moving toward them, tipping the chop into caps, and the bow's curl breaking white at speed."));
 }
 
 bool AWaterSurface::BowWave3On()
 {
-	static SailingArgs::FCachedFlag ClassicWakeFoldArg(TEXT("SailingClassicWakeFold"));
-	return GBowWave3 != 0 && !ClassicWakeFoldArg.Get();
+	static SailingArgs::FCachedFlag ClassicBowWave3Arg(TEXT("SailingClassicBowWave3"));
+	return GBowWave3 != 0 && !ClassicBowWave3Arg.Get();
 }
 
 bool AWaterSurface::BowWave2On()
