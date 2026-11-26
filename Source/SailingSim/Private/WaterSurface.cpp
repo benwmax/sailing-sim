@@ -158,6 +158,21 @@ namespace
 		});
 	}
 
+	/** As UploadFloats, packed to half floats on the way (the texture is PF_FloatRGBA or PF_R16F by its channels). */
+	void UploadHalfs(UTexture2D* Tex, const TArray<float>& Values, int32 Width, int32 Height, int32 Channels)
+	{
+		if (!CanUpload(Tex)) return;
+		uint8* Copy = new uint8[Values.Num() * sizeof(FFloat16)];
+		FFloat16* Halfs = reinterpret_cast<FFloat16*>(Copy);
+		for (int32 I = 0; I < Values.Num(); ++I) Halfs[I] = FFloat16(Values[I]);
+		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, Width, Height);
+		Tex->UpdateTextureRegions(0, 1, Region, Width * Channels * sizeof(FFloat16), Channels * sizeof(FFloat16), Copy, [](uint8* Data, const FUpdateTextureRegion2D* R)
+		{
+			delete[] Data;
+			delete R;
+		});
+	}
+
 	/** A wrapping RGBA half-float texture with a full mip chain: the pixel shader filters it (trilinear), so distant
 	 *  short waves average out instead of sparkling. Half floats halve what the anisotropic
 	 *  taps fetch; centimetre heights and slopes keep three significant digits. */
@@ -266,6 +281,20 @@ namespace
 	int32 GBowWave2 = 1;
 	FAutoConsoleVariableRef CVarBowWave2(TEXT("sailing.BowWave2"), GBowWave2,
 		TEXT("Bow wave 2 (1 on, 0 off): the bow's curl on the water as drawn, its spray from the curl's lip, foam where her bow wave presses on her side."));
+}
+
+namespace
+{
+	// Bow wave 3 (docs/bow-wave/): the release switch. 0 here ships her waves' crests as they were before it.
+	int32 GBowWave3 = 1;
+	FAutoConsoleVariableRef CVarBowWave3(TEXT("sailing.BowWave3"), GBowWave3,
+		TEXT("Bow wave 3 (1 on, 0 off): her waves' crests sharpened by the water moving toward them, and tipping the chop into caps."));
+}
+
+bool AWaterSurface::BowWave3On()
+{
+	static SailingArgs::FCachedFlag ClassicWakeFoldArg(TEXT("SailingClassicWakeFold"));
+	return GBowWave3 != 0 && !ClassicWakeFoldArg.Get();
 }
 
 bool AWaterSurface::BowWave2On()
@@ -447,7 +476,8 @@ void AWaterSurface::CreateWaterMaterial()
 		{
 			WaitForWorkers();
 			Wake.Init(WakeN, Tier >= 2 ? 0.25f : 0.3f);
-			WakeGridMap = MakeFloatMap(WakeN, WakeN, PF_A32B32G32R32F, false);
+			// Bow wave 3: half floats (heights to a fraction of a millimetre, the fold to 1/2000): half the upload at 30 Hz.
+			WakeGridMap = MakeFloatMap(WakeN, WakeN, PF_FloatRGBA, false);
 		}
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailA"), DetailAMap);
 		WaterMaterial->SetTextureParameterValue(TEXT("DetailB"), DetailBMap);
@@ -1414,7 +1444,7 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 		if (!PendingWake.IsReady()) return;
 		FWakeFrame Done = PendingWake.Consume();
 		bWakePending = false;
-		UploadFloats(WakeGridMap, Done.Pixels, Done.N, Done.N, 4);
+		UploadHalfs(WakeGridMap, Done.Pixels, Done.N, Done.N, 4);
 		// W4: keep its foam channel for the foam grid.
 		WakeFoamN = Done.N;
 		WakeFoamOrigin = Done.Origin;
@@ -1481,6 +1511,7 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 
 	FWakeGrid* Grid = &Wake;
 	Grid->bBowFoam = BowWave2On();
+	Grid->bFold = BowWave3On();
 	const FVector2D Centre = BoatPos;
 	const float Dt = WakeDtPending;
 	WakeDtPending = 0.f;
@@ -1495,14 +1526,15 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 		const TArray<float>& H = Grid->Heights();
 		const TArray<float>& F = Grid->Foam();
 		const TArray<float>& Sl = Grid->Slick();
-		// RGBA: height, foam, the wake's smooth lane (docs/wake-slick/), unused.
+		const TArray<float>& Fo = Grid->Fold();
+		// RGBA: height, foam, the wake's smooth lane (docs/wake-slick/), the fold (bow wave 3: how her waves bunch into crests).
 		Out.Pixels.SetNumUninitialized(Out.N * Out.N * 4);
 		for (int32 I = 0; I < Out.N * Out.N; ++I)
 		{
 			Out.Pixels[4 * I] = H[I];
 			Out.Pixels[4 * I + 1] = F[I];
 			Out.Pixels[4 * I + 2] = Sl[I];
-			Out.Pixels[4 * I + 3] = 0.f;
+			Out.Pixels[4 * I + 3] = Fo[I];
 		}
 		return Out;
 	});

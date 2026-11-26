@@ -206,6 +206,9 @@ public:
 	 *  one line to turn it off for a release), off with -SailingClassicBowWave. Off, the curl, the bow spray and the wake
 	 *  grid's side foam are as before. */
 	static bool BowWave2On();
+	/** Bow wave 3's switch: sailing.BowWave3 (default on, GBowWave3), off with -SailingClassicWakeFold. Off, the wake grid
+	 *  makes no fold (1 in the texture's A), so M_WaterV4 draws her waves' crests as before. */
+	static bool BowWave3On();
 
 	UPROPERTY(EditAnywhere, Category = "Water")
 	float FarPlaneSizeMeters = 40000.f;

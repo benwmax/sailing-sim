@@ -3681,12 +3681,20 @@ float wakeSlick = 0.0;
 {
     float e = 1.0 / WakeGridRect.w;
     float2 uv = float2(wg.y, wg.x);
-    float3 c = WakeGrid.SampleLevel(WakeGridSampler, uv, 0).rgb;
+    float4 c = WakeGrid.SampleLevel(WakeGridSampler, uv, 0);
     wakeSlick = c.b;
     float hx = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(0.0, e), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(0.0, e), 0).r;
     float hy = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(e, 0.0), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(e, 0.0), 0).r;
     float cell = WakeGridRect.z / WakeGridRect.w;
-    sx += hx / (2.0 * cell); sy += hy / (2.0 * cell);
+    // Bow wave 3 (docs/bow-wave/): her waves' water moves toward their crests (FWakeGrid::Fold, A: the Jacobian of that
+    // displacement, under 1 on a crest), so a crest is steeper than the height alone says, by 1 / fold along it, and a
+    // trough flatter: sharp crests and rounded troughs, as a real wake has. The fold also joins the long waves' (J), so
+    // where her crests cross the chop's they tip it into whitecaps sooner (Jt, the cap table's threshold, the foam's
+    // gathering); in flat water her own never fold (0.68 at the lowest at 6 kn).
+    float wakeFold = clamp(c.a, 0.05, 2.0);
+    float wakeSharp = 1.0 / max(wakeFold, 0.5);
+    sx += hx / (2.0 * cell) * wakeSharp; sy += hy / (2.0 * cell) * wakeSharp;
+    J *= wakeFold;
     wakeFoam = c.g;
 }
 float om = 0.0;
