@@ -76,6 +76,25 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
   deck does: one figure across the seams, foreshortened along the deck, drew a zigzag moire over the whole orlop floor at
   4K (`Inputs/bench/pr823-2fb7bc35/orlop/`). `GrainScale` 3 coarsens her figure for a ship's timbers; `Age` 2 and `Care`
   0.8 wear her paint.
+- Polish (Bean, Nov 26: "can you work those polish items now?", after the PC's #840 stills
+  `Inputs/bench/pr840/32ceee90/`): (1) The turned pillars read as fluted and the beams' faces as sand ripples: the small
+  boats' figure has a 6 cm ripple across the part and evenly spaced sine rings, which at `GrainScale` 3 ran round a
+  cylinder in even bands. Her timbers with the attribute now wander slowly along the timber only, and their rings are
+  drawn as wood has them: a pale earlywood band closed by a narrow latewood line, the years unevenly wide (the ring count
+  warped by 1D noise) and of uneven weight (a hash per year); her colour no longer brightens and her roughness swings
+  less across a ring. Previewed offline in numpy (pillar, beam underside and side, before and after) before the shader.
+  (2) Her paint has no clear coat, so `M_BoatSurface`'s gelcoat chalking (`gel`) never touched it: it looked new. A new
+  parameter, `PaintWear` (0 on every other boat), wears kinds 1 and 5 by `ageK`: the paint rubbed thin in soft 5-20 cm
+  patches (the timber's brown through it, flatter) and grime run down the upright faces in 3 cm streaks. Her painted
+  slots (HullBlack, HullOchre, HullRed, Carriage, FigurePaint) and her iron are a working ship six years in commission
+  (`Age` 6, `Care` 0.5); the wood stays at `Age` 2, `Care` 0.8 (the varnish's failure at that dirt reads as neglect).
+  (3) Cast iron, blacked, is a new kind, 19 (Blacking, Iron, Pin; it was kind 5, painted aluminium): a satin near-black
+  whose cast skin mottles the roughness at 4 cm, worn thin on the highs to a dark grey sheen with the years, rust brown
+  in the lows with dirt; close up (High, Ultra) it reads the J-Class's sand-cast map as its own detail pair
+  (`OwnDetailN`/`OwnDetailM` = `T_JClass_CastBronze_N`/`_M`, set by `import_frigate.py`) for rust in the pits.
+  (4) Career: the Club Racer certificate opens her, with the ILCA 7 and Bluebonnet (`Content/Career/career.json`,
+  `SailingSim.Career.*`). To apply: `MATERIALS_ONLY=build_boat_library` (make_materials.py), then `import_frigate.py`
+  (the instances' new values and maps); no export or mesh change.
 - Not yet: the
   twin by distance rather than tier, and the boat card and boat cycle guards. The decks' planking (seams, butts, plugs,
   the nibbed margin) from the `Planking` and `Margin` UVs the export keeps, as Bluebonnet's laid deck (kind 18), and the

@@ -175,7 +175,7 @@ in `FCareerProgress` (`IsCheckrideReady`, `RecordCheckrideQuiz`), not the UI.
 With the current data: Day Sailor's first three lessons open Club Racer and the Sunfish; the certificate opens Club Racer and Coastal Cruiser, so the Sunfish, Galveston Bay and the Catalina 22
 and 30, and outright the Texas coast (`texas-coast`, world streaming's one-piece bay and Gulf: Bean, Oct 20 2026, "Career
 unlocks the Texas coast after the lake"; `SailingSim.Career.TexasCoastUnlock`); Marseille is not in the career yet (Free
-Sail); Club Racer opens the ILCA 7 and *Bluebonnet*, the club's J-Class (Bean, Nov 17 2026, "plus Career": `docs/jclass-14/`); Coastal Cruiser opens Passage Maker, so the Gulf (the Passage mode). A world or boat that no certificate opens says
+Sail); Club Racer opens the ILCA 7, *Bluebonnet*, the club's J-Class (Bean, Nov 17 2026, "plus Career": `docs/jclass-14/`), and the frigate *Commonwealth* (`docs/frigate-import/`); Coastal Cruiser opens Passage Maker, so the Gulf (the Passage mode). A world or boat that no certificate opens says
 "Not in the career yet". Locks are applied by the menus only (World, Boat and Mode screens grey the card and say which
 certificate opens it); command-line runs, benches and Continue are not locked.
 

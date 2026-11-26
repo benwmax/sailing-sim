@@ -1341,8 +1341,32 @@ else if (abs(Surface - 7.0) < 0.5 && VC.r < 0.5)
     float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
     gw = g.y * 0.9 + 40.0 * gwH + 0.4 * sin(g.x * 0.021 + 6.3 * gwH) + 0.15 * sin(g.x * 0.083 + 3.0 * gwH);
 }
+else if (VC.r < 0.5)
+{
+    // Frigate polish: her other timbers (pillars, beams, knees). The small boats' figure has a 6 cm ripple across the part
+    // (sin(g.x * 0.083 + g.y)), and at GrainScale 3 its evenly spaced rings ran round a turned pillar as flutes and across a
+    // beam's face as sand ripples (the PC's #840 stills, gun-4k-after and berth-90-4k-after); the wander is slow here, along
+    // the timber only, and the rings themselves are made uneven below.
+    gw = g.y * 0.9 + g.z * 1.3 + 4.0 * sin(g.x * 0.011 + 0.05 * g.z) + 1.5 * sin(g.x * 0.037 + 0.03 * g.y + 2.1);
+}
 gw /= max(GrainScale, 0.1);   // Frigate: a ship's timbers read from further off, so her figure is coarser (GrainScale 3)
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
+float frigWood = 1.0 - step(0.5, VC.r);   // the frigate's timbers (the Grain attribute present)
+if (VC.r < 0.5)
+{
+    // Frigate polish: growth rings as wood has them, not a sine: each year a pale band of earlywood closed by a narrow dark
+    // line of latewood, the years unevenly wide (the ring count warped by two octaves of 1D noise, still increasing) and
+    // their latewood of uneven weight (a hash per year); docs/frigate-import/ (polish).
+    float rt = (gw * 6.0 + 4.0 * vn) / 6.2832;
+    float rq = rt * 0.31, rqi = floor(rq), rqf = smoothstep(0.0, 1.0, frac(rq));
+    float rq2 = rt * 1.7 + 5.0, rqi2 = floor(rq2), rqf2 = smoothstep(0.0, 1.0, frac(rq2));
+    rt += 0.9 * (lerp(frac(sin(rqi * 12.9898 + 1.3) * 43758.5453), frac(sin((rqi + 1.0) * 12.9898 + 1.3) * 43758.5453), rqf) - 0.5)
+        + 0.35 * (lerp(frac(sin(rqi2 * 12.9898 + 1.3) * 43758.5453), frac(sin((rqi2 + 1.0) * 12.9898 + 1.3) * 43758.5453), rqf2) - 0.5);
+    float ryi = floor(rt), ryf = frac(rt);
+    float ryH = frac(sin(ryi * 78.233 + 1.7) * 43758.5453);
+    float late = smoothstep(0.45 + 0.3 * ryH, 0.88, ryf) * (1.0 - smoothstep(0.92, 1.0, ryf));
+    ring = 1.0 - late * (0.35 + 0.65 * ryH);
+}
 // The rings are about a centimetre apart: where a pixel covers more than half a ring they alias into a basket weave (J-Class 15:
 // Bluebonnet's whole deck read as woven past a few metres), so they fade to their mean from 0.75 to 2 radians of phase a pixel (gone well before Nyquist's pi).
 // (A ray-traced hit or Lumen's card capture has no derivatives and keeps them; wood_port.py's swatches are sharp, so it has no term.)
@@ -1353,8 +1377,10 @@ float fleck = saturate(vn * 3.0 - 1.9);
 // Texture loop, wood: close up on High the varnish's detail map carries the fine grain, so this broad figure steps back
 // there (the grain then measures 3.4 mm across, as ash and sapele do: Tools/texloop/refs/wood.json).
 float fig = (DetailOn > 0.5 && abs(Surface - 6.0) < 0.5) ? lerp(1.0, 0.5, 1.0 - saturate((Depth - 150.0) / 450.0)) : 1.0;
-col = lerp(col, col * lerp(1.0 - 0.28 * fig, 1.0 + 0.12 * fig, ring) * (1.0 - 0.25 * fleck), Grain);
-rough = lerp(rough, rough * lerp(0.85, 1.25, ring), Grain);
+// (The frigate's rings are pale most of the way: her bright end stays at the wood's colour and her roughness swings less,
+// or the whole timber would brighten and the latewood lines read as grooves.)
+col = lerp(col, col * lerp(1.0 - 0.28 * fig, 1.0 + 0.12 * fig * (1.0 - frigWood), ring) * (1.0 - 0.25 * fleck), Grain);
+rough = lerp(rough, rough * lerp(lerp(0.85, 1.12, frigWood), lerp(1.25, 1.0, frigWood), ring), Grain);
 // Texture loop, waterline (Tools/texloop/waterline/waterline.py, the same table as the hero J/22 bake and the swatches):
 // the lake's scum line, slime and bottom film, from Dirt only (care scrubs it off). Measured on TX 7295 EC at Rush Creek:
 // a thin ragged grey line about 1.75 cm high, 89% as bright as the gelcoat beside it; a neglected boat's is a 5-8 cm
@@ -1487,7 +1513,8 @@ grad += LX * (0.018 * gel * (1.0 - up) * fair);
 // part, or up it with GrainUp: masts), fading out between 1.5 and 6 m.
 int surf = (int)(Surface + 0.5);
 float woodFail = 0.0;   // texture loop, wood: the varnish's failed share here (the detail map darkens its pores)
-float bzVerd = 0.0, bzDark = 0.0, maFuzz = 0.0;   // J-Class: the bronze's verdigris and its recesses' patina, the manila's hairs (for their detail maps)
+float bzVerd = 0.0, bzDark = 0.0, maFuzz = 0.0;   // (ciDirt: the frigate's cast iron, how far rust has got into its pits)
+float ciDirt = 0.0;   // J-Class: the bronze's verdigris and its recesses' patina, the manila's hairs (for their detail maps)
 // J-Class 15 (docs/jclass-15/): a laid deck (kind 18, MI_Boat_LaidTeak, the LaidDeck switch on). The deck isn't planked in
 // the mesh: like her Blender deck (Tools/shipkit/jclass/deck.py planking_terms, ported line for line; keep them in step) the
 // pattern comes from three UV maps the export keeps on these faces: UV2 Planking (U along the planks, Ys athwartships, m),
@@ -1827,6 +1854,26 @@ else if (surf == 16)    // J-Class 15: sand-cast bronze (Bluebonnet's winches, b
     metalOut *= 1.0 - bzBloom;
     rough = lerp(rough, 0.9, bzBloom);
 }
+else if (surf == 19)    // Frigate polish: cast iron, blacked (her guns, the carriages' ironwork, the galley stove; import_frigate.py). The
+{                       // blacking (lamp black in oil) is a satin near-black over a sand-cast skin that undulates a few centimetres
+                        // across; handling and the years wear it thin on the highs to a dark grey sheen of the metal, and rust browns
+                        // the lows in soft patches. Close up the slot's own maps (the cast bronze's sand pits, OwnDetailN/M) hold
+                        // rust in the pits (below). Age unset: time and dirt are the livery's oxidation channel, as everywhere.
+    float2 ciQ = hwP / 4.0 + 2.3, ciI = floor(ciQ), ciF = smoothstep(0.0, 1.0, frac(ciQ));
+    float ciN = lerp(lerp(frac(sin(dot(ciI, float2(31.7, 57.1))) * 4375.5), frac(sin(dot(ciI + float2(1, 0), float2(31.7, 57.1))) * 4375.5), ciF.x),
+                     lerp(frac(sin(dot(ciI + float2(0, 1), float2(31.7, 57.1))) * 4375.5), frac(sin(dot(ciI + float2(1, 1), float2(31.7, 57.1))) * 4375.5), ciF.x), ciF.y);
+    ciN = lerp(ciN, 0.5, smoothstep(0.6, 1.5, 0.25 * hwPx));      // past a few metres the skin's mottle fades to its mean
+    rough = saturate(rough * (0.85 + 0.3 * ciN));                 // satin and matt by turns: the cast skin read from a few metres
+    float ciWorn = saturate(timeK * 1.5) * (1.0 - 0.6 * saturate(care)) * saturate(ciN * 1.8 - 0.6) * (0.6 + 0.4 * vn);
+    col = lerp(col, float3(0.085, 0.082, 0.078), 0.6 * ciWorn);   // the blacking thin on the highs: dark grey iron
+    metalOut = lerp(metalOut, 0.65, ciWorn);
+    rough = lerp(rough, 0.42, 0.5 * ciWorn);
+    float ciRust = saturate(dirtK * 1.2) * saturate((0.42 - ciN) * 3.0 + (0.45 - vn) * 2.0);
+    col = lerp(col, float3(0.15, 0.058, 0.024), 0.45 * ciRust);  // in the lows, soft brown
+    metalOut *= 1.0 - 0.8 * ciRust;
+    rough = lerp(rough, 0.85, 0.7 * ciRust);
+    ciDirt = saturate(0.25 + dirtK);
+}
 else if (surf == 17)    // J-Class 15: three-strand manila (Bluebonnet's sheets, guys, tails and coils; weathering.py manila). New,
 {                       // straw-gold with a little sheen; the sun and the years grey it, dirt darkens it and raises its hairs
                         // (maFuzz: they fill the lay's grooves, the rope reads paler and duller), a left rope mildews. Kept yachts
@@ -2104,13 +2151,42 @@ float wbMil = saturate((dirtK - 0.45) / 0.35) * (1.0 - saturate(care)) * step(0.
 col = lerp(col, float3(0.018, 0.022, 0.014), 0.85 * wbMil);
 // WEBBING_WEAR <<<
 }
+// Frigate polish: a man-of-war's oil paint has no clear coat, so the gelcoat's chalking (gel, above) passes it by and at
+// Age 2 her paint looked new in the PC's #840 stills. PaintWear (import_frigate.py sets 1 on her painted slots; 0, the
+// default, on every other boat) wears it at the scale it reads from a few metres, by ageK (so Age and Care steer it): the
+// paint rubbed thin in soft 5-20 cm patches (flatter, the timber's brown showing through) and grime run down the upright
+// faces in streaks a few centimetres wide.
+if (PaintWear > 0.0 && (surf == 1 || surf == 5))
+{
+    float pwK = saturate(PaintWear) * saturate(ageK * 3.0);
+    float2 pwQ = hwP / 14.0 + 7.1;
+    float pwN = 0.0;
+    for (int pwO = 0; pwO < 2; ++pwO)
+    {
+        float2 pwI = floor(pwQ), pwF = smoothstep(0.0, 1.0, frac(pwQ));
+        pwN += (0.65f - 0.3f * pwO) * lerp(lerp(frac(sin(dot(pwI, float2(23.3, 71.9))) * 4375.5), frac(sin(dot(pwI + float2(1, 0), float2(23.3, 71.9))) * 4375.5), pwF.x),
+                                          lerp(frac(sin(dot(pwI + float2(0, 1), float2(23.3, 71.9))) * 4375.5), frac(sin(dot(pwI + float2(1, 1), float2(23.3, 71.9))) * 4375.5), pwF.x), pwF.y);
+        pwQ = float2(pwQ.x * 0.8 - pwQ.y * 0.6, pwQ.x * 0.6 + pwQ.y * 0.8) * 2.7 + 3.1;
+    }
+    float pwThin = pwK * smoothstep(0.56, 0.70, pwN + 0.25 * (vn - 0.5));
+    col = lerp(col, lerp(float3(0.20, 0.13, 0.07), col, 0.35), 0.5 * pwThin);
+    rough = lerp(rough, min(rough + 0.15, 0.9), pwThin);
+    // run-down grime on the upright faces (hwP.y is up there): 3 cm across, about 80 cm long
+    float2 rdQ = float2(hwP.x / 3.0, hwP.y / 80.0) + 1.9, rdI = floor(rdQ), rdF = smoothstep(0.0, 1.0, frac(rdQ));
+    float rdN = lerp(lerp(frac(sin(dot(rdI, float2(17.9, 43.3))) * 4375.5), frac(sin(dot(rdI + float2(1, 0), float2(17.9, 43.3))) * 4375.5), rdF.x),
+                     lerp(frac(sin(dot(rdI + float2(0, 1), float2(17.9, 43.3))) * 4375.5), frac(sin(dot(rdI + float2(1, 1), float2(17.9, 43.3))) * 4375.5), rdF.x), rdF.y);
+    rdN = lerp(rdN, 0.5, smoothstep(1.0, 2.5, hwPx / 3.0));          // under a pixel: their mean, not shimmer
+    float rdK = pwK * (1.0 - smoothstep(0.5, 0.8, abs(n.z))) * smoothstep(0.55, 0.85, rdN);
+    col *= 1.0 - 0.25 * rdK;
+    rough = lerp(rough, min(rough + 0.1, 0.9), rdK);
+}
 float cav = 0.0;        // the detail's cavities: grime and standing water collect there
 if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
 {
     // (J-Class 15: her own maps fade nearer, as her slice 11 card has them: bronze 0.8-3 m, manila 0.6-2.5 m.)
-    float fadeN = surf == 16 ? 80.0f : surf == 17 ? 60.0f : 150.0f, fadeF = surf == 16 ? 300.0f : surf == 17 ? 250.0f : 600.0f;
+    float fadeN = (surf == 16 || surf == 19) ? 80.0f : surf == 17 ? 60.0f : 150.0f, fadeF = (surf == 16 || surf == 19) ? 300.0f : surf == 17 ? 250.0f : 600.0f;
     float fadeD = 1.0 - saturate((Depth - fadeN) / (fadeF - fadeN));
-    float2 tile = surf == 16 ? float2(0.1f, 0.1f) : surf == 17 ? float2(0.06f, 0.03f) : (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
+    float2 tile = (surf == 16 || surf == 19) ? float2(0.1f, 0.1f) : surf == 17 ? float2(0.06f, 0.03f) : (surf == 2 || surf == 3 || surf == 12) ? float2(0.1, 0.1) : surf == 4 ? float2(0.2, 0.2) : (surf == 6 || surf == 7) ? float2(0.25, 0.125)
         : surf == 8 ? float2(0.08, 0.08) : surf == 9 ? float2(0.02, 0.02) : surf == 10 ? float2(0.04, 0.04) : surf == 11 ? float2(0.05, 0.05) : surf == 14 ? float2(0.02, 0.02) : float2(0.25, 0.25);
     // (Typed: docs/lee-topside-patch/, a conditional between bare literals is a double in DXC, and Metal's ray-tracing hit
     // shaders refuse FP64: the material had fallen back to the default on High.)
@@ -2135,7 +2211,7 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     else if (surf == 9) { BOAT_TRI(TBraidN, n0, n1, n2); }
     else if (surf == 10) { BOAT_TRI(TSailclothN, n0, n1, n2); }
     else if (surf == 11 || surf == 14) { BOAT_TRI(TCanvasN, n0, n1, n2); }   // webbing: the canvas weave at 2 cm (no new map)
-    else if (surf == 16 || surf == 17) { BOAT_TRI(TOwnN, n0, n1, n2); BOAT_TRI(TOwnM, m0, m1, m2); }   // the J-Class slot's own maps
+    else if (surf == 16 || surf == 17 || surf == 19) { BOAT_TRI(TOwnN, n0, n1, n2); BOAT_TRI(TOwnM, m0, m1, m2); }   // the slot's own maps (J-Class; the frigate's iron)
     else { BOAT_TRI(TGelcoatN, n0, n1, n2); BOAT_TRI(TGelcoatM, m0, m1, m2); }
 #undef BOAT_TRI
     float4 m = m0 * bw.x + m1 * bw.y + m2 * bw.z;
@@ -2194,6 +2270,13 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
         col = lerp(col, float3(0.117, 0.305, 0.216), pitV);
         metalOut *= 1.0 - max(0.3 * pitP, pitV);
         rough = lerp(rough, 0.9, pitV);
+    }
+    else if (surf == 19)                 // the frigate's cast iron over the cast bronze's sand map (R 0 in a pit, G roughness): rust in the
+    {                                    // pits, a matt brown, more of it the dirtier she is
+        cav = (1.0 - m.r) * fadeD;
+        rough = saturate(rough + fadeD * (m.g - 0.5) * 0.25);
+        col = lerp(col, float3(0.10, 0.042, 0.018), cav * ciDirt);
+        metalOut *= 1.0 - 0.6 * cav;
     }
     else if (surf == 17)                 // manila (T_JClass_Manila: R the fibres' tone, G hairs, B height): light and dark fibres along
     {                                    // the strand, broken hairs catching the light within 2 m (more on an old rope), dirt in the lay
@@ -2495,6 +2578,8 @@ def build_boat_surface(name, bend, packed=False):
     # Frigate: the figure's scale (1: a small boat's centimetre rings, gone past 2 m; her timbers are seen from 2 to 6 m,
     # so import_frigate.py sets 3).
     grain_scale = scalar(mat, "GrainScale", 1.0, -1600, 900)
+    # Frigate polish: her paint's wear (BOAT_CODE; 0 on every other boat, import_frigate.py sets 1 on her painted slots).
+    paint_wear = scalar(mat, "PaintWear", 0.0, -1600, 925)
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1600, 950)
     detail_tex = {}
     for i, (pin, asset) in enumerate(BOAT_DETAIL_MAPS):
@@ -2533,7 +2618,7 @@ def build_boat_surface(name, bend, packed=False):
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
                + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS]
                + [pin for pin, _ in BOAT_OWN_PINS] + ["PUV", "LUV2", "LUV3"] + [pin for pin, _ in BOAT_LAID_PARAMS]
-               + ["NameTex", "NameRect", "NameColour", "NameSpan", "VC", "GrainScale"],
+               + ["NameTex", "NameRect", "NameColour", "NameSpan", "VC", "GrainScale", "PaintWear"],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
     # Frigate: the grain's axis from the mesh's Grain colour attribute (white, the default without one, keeps the part's X).
@@ -2541,7 +2626,7 @@ def build_boat_surface(name, bend, packed=False):
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
     # docs/gelcoat-cost); this node, wired into an unused pin, is what makes the material include it.
     connect(node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300), "", c, "GDF")
-    for src, pin in ((grain_up, "GrainUp"), (grain_scale, "GrainScale"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
+    for src, pin in ((grain_up, "GrainUp"), (grain_scale, "GrainScale"), (paint_wear, "PaintWear"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
                      (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time"),
                      (params["Wash"], "Wash"), (params["WashSide"], "WashSide")):
         connect(src, "", c, pin)
