@@ -32,3 +32,27 @@
   southerly, so use the demo at TWA about 160), with the tripod placed to frame the raft at 150-250 m.
 - Check each pass's flush count and species in the log, then record about 20 s.
 - **Fallback:** the cormorant lines in the same view. Frame wider, since their flush range is 50 m.
+
+## Passes A and B (evening, Nov 26): still no flush
+
+**Setup:** from the 3 km start she sails at heading 20 (demo TWA 160) toward the rafts seen ahead, under the scout's
+seeded conditions (16:30, 6 kn, `-SailingWildlifeScale=1.5`). At 6 kn she makes about 1.3 m/s.
+
+**Pass A** (260 s, chase and from 160 m up): **0 flushes.** At 260 s a dark raft (cormorants by the look) is about
+100-150 m ahead of her (`scout/passA-end-260s.webp`).
+
+**Pass B1** (420 s from 160 m up): **still 0 flushes.**
+- At 420 s a raft is again about 150 m ahead (`scout/passB1-end-420s.webp`), after she's covered about 550 m.
+- The rafts ahead keep their distance as she sails. My guess is the flocks are kept round the camera (spawned and retired
+  to hold the expected count in the bands), so there's always a raft "ahead" but she never reaches one.
+
+**Not filmed:** the B2 take was set to time itself from B1's first flush. There wasn't one, and the script stopped there
+(a parse error on the missing flush, also mine).
+
+## What would get the take
+
+- A raft that stays put while she closes on it. That means finding a resting flock that's fixed in place (a roost or
+  point habitat) rather than one the bands keep re-spawning.
+- Or an approach fast enough to reach it before it's retired, such as more wind or a powerboat.
+- The wildlife thread knows which; it may need a debug aid that places a raft, which would be a code change, so not mine
+  to make.
