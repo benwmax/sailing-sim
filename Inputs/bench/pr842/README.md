@@ -55,3 +55,23 @@ gun row.
 **Paint wear:**
 - The carriages' red reads darker and uneven, with worn, darker patches toward the edges and wheels.
 - The gunport linings stay a clean red.
+
+## r2: #842 at fdbe9684 (BOAT_CODE only: rust kept to the skin's lows and duller, less fine noise on the ring lines)
+
+**Steps:** in the same worktree, moved from 617a930a to fdbe9684, keeping the local reimport.
+- **The diff:** G0 617a930a..fdbe9684 changes: scripts/make_materials.py / G0 worktree at fdbe96849 Frigate polish: fainter, finer rust on her iron; steadier ring lines; local Content changes kept: 1084.
+- **MSVC:** succeeded, 0 project warnings.
+- **Material:** `make_materials.py -Only build_boat_library`, exit 0, with `M_BoatSurface` rebuilt. There's no
+  import; the MI values are unchanged.
+- **Package:** a new Development package `Packaged\Windows-pr842-fdbe9684`, 2 min, complete.
+- **Content:** still local only. Nothing is committed or pushed.
+
+**`SailingSim.Visual`:** **109 tests, 0 failed** (4 with warnings: ChaseCamera.Pawn, J22HeroMesh, TreeSpecies, WakeGridShip).
+
+**Stills (`*-r2.webp`):** Ultra 4K, at Gun,-19,0,0 and the two close-ups (Gun,-19,2.2,45 and Gun,-19,-2.2,-45), with
+1:1 crops. `compare-gun-close-e-crop-r1-r2.webp` puts 617a930a on the left and fdbe9684 on the right.
+- **Rust:** in r1 the near barrel had bright orange-brown blotches all along it. In r2 it reads as **nearly even dark
+  cast iron**, with only a faint, dull brown in the lows. It's much more restrained; if anything, now close to plain
+  iron at this distance.
+- **Ring lines:** the beam faces in the gun-deck still look a little calmer, with less fine noise along the lines. The
+  difference is small at this distance.
