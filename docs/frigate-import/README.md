@@ -71,7 +71,7 @@ returning. Then commit `Content/Boats/Frigate/**` (LFS) and the two json files; 
   G 0 along the ship, 0.5 athwartships, 1 up; from the piece's bounds in the ship's frame, pieces found by label
   propagation over the mesh's edges), `M_BoatSurface` reads it (`VC` pin: the figure `gw` and the detail maps' U follow
   `gAxis`; a mesh without the attribute keeps the part's X or `GrainUp`), and `import_frigate.py` sets `Grain` 1 on wood
-  again. It needs the export regenerated on the PC (REGENERATE.md) and `M_BoatSurface` rebuilt on the Mac
+  again. It needs the export regenerated on the PC (the frigate export thread's notes, `/mnt/project-files/tall-ship/export-tiller/REGENERATE.md`, with `export.py` as the branch has it) and `M_BoatSurface` rebuilt on the Mac
   (`MATERIALS_ONLY=build_boat_library`). The cannons' carriages are painted red (kind 1) by the export's table, as built. The decks (teak, kind 7) with the attribute take a near-straight figure per 10 in plank, as the laid
   deck does: one figure across the seams, foreshortened along the deck, drew a zigzag moire over the whole orlop floor at
   4K (`Inputs/bench/pr823-2fb7bc35/orlop/`). `GrainScale` 3 coarsens her figure for a ship's timbers; `Age` 2 and `Care`
