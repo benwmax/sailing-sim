@@ -50,7 +50,7 @@ foreach ($name in $jobs.Keys) {
 	if ($j.nopath) { $args2.NoPath = $true }; if ($j.hud) { $args2.Hud = $true }; if ($j.interval) { $args2.Interval = $j.interval }; if ($j.timeout) { $args2.Timeout = $j.timeout } elseif ($Res -eq '4k') { $args2.Timeout = 3600 }   # 4K: ~1.2 s a recorded frame (rehearsal d8f2a3dc), so 600 s cut P1 short; if ($j.warm) { $args2.Warmup = $j.warm }; if ($j.seed) { $args2.SeedProfile = $j.seed }
 	# A clean logbook (coordinator, Nov 25): the package's own Saved\Logbook held aside, the four seeded Lake Ray Hubbard sails in its place, put back after.
 	$pkgLog = "D:\dev\ss-fix\Packaged\$P\SailingSim\Saved\Logbook"; $logHold = $null
-	if ($j.cleanlog) { if (Test-Path $pkgLog) { $logHold = "$pkgLog.reel-hold-$(Get-Date -Format HHmmss)"; Rename-Item $pkgLog (Split-Path $logHold -Leaf) }; New-Item -ItemType Directory -Force $pkgLog | Out-Null; Copy-Item "$B\seed\logbook-clean\*.json" $pkgLog }
+	if ($j.cleanlog) { if (Test-Path $pkgLog) { $logHold = "$pkgLog.reel-hold-$(Get-Date -Format HHmmss)"; Rename-Item $pkgLog (Split-Path $logHold -Leaf) }; New-Item -ItemType Directory -Force $pkgLog | Out-Null; Copy-Item "$B\seed\logbook-local\*.json" $pkgLog }
 	try { $runOut = & $r @args2; Note "$name : $($runOut -join ' | ')" } catch { Note "$name FAILED: $_" } finally { if ($j.cleanlog) { $keep = "D:\dev\reel\$RD\$name-logbook"; if (Test-Path $keep) { Remove-Item $keep -Recurse -Force }; Move-Item $pkgLog $keep; if ($logHold) { Rename-Item $logHold 'Logbook' }; Note "$name logbook: seeded book kept at $keep, package logbook restored $(Test-Path $pkgLog)" } }
 	if ($name -eq 'P2-storm') {
 		# P2: the full take as an mp4; the 300-frame WebP scrub from 70 s to 295 s of the take (frames 93..392 at 0.75 s), so the front (~205 s) is ~60% in.
