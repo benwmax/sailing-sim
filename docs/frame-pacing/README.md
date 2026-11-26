@@ -18,6 +18,10 @@ chase-camera lake sailing (inputs branch `Inputs/bench/stutter-main/` and `follo
   sailing, so frame work now goes first and they finish a little later.
 - Every game `ParallelFor` body is named for traces: `Sailing_WakeGridRows`, `Sailing_ShoreDepthRows`,
   `Sailing_WindMapRows`, `Sailing_SailClothRender`, `Sailing_StreamTileRead`, `Sailing_TrafficBoatStep`.
+- #839 (bow wave): `Fft2`'s column pass copies the columns out 16 at a time and transforms them as contiguous lines (each
+  column walked in place at a stride of the grid's width missed the cache: 27-32 ms of worker time a frame against 2 ms
+  for the rows). Bit-identical. PC trace on f186aa47 (Nov 26): background worker time in the slow
+  frames 11.4 ms against 40.0 without it, p99 29.9 ms against 33.9.
 
 ## Proof (to do)
 
