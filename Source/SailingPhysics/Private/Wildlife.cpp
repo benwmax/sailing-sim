@@ -16,7 +16,10 @@ namespace Sailing
 		constexpr double kFadeSeconds = 3.0;
 		constexpr double kRefreshSeconds = 5.0;  // how often the expected counts are worked out again
 		constexpr double kCatchUpSeconds = 25.0; // a shortfall in a bird's flocks is made up over about this long
-		constexpr double kPassShare = 0.25;      // share of travelling flocks whose first goal is beside the player's boat
+		constexpr double kPassShare = 0.35;      // share of travelling flocks whose first goal is beside the player's boat
+		constexpr double kPassMinM = 40.0;       // how far off her side they pass
+		constexpr double kPassMaxM = 120.0;
+		constexpr double kRefPixel = 1.0 / 960.0;   // BirdSeenScale's reference pixel: 2 tan(45 deg) / 1920 (rad)
 		constexpr double kRestLife = 600.0, kCircleLife = 240.0, kTravelLife = 180.0;   // mean stays (s), by what they start doing
 
 		double WrapPi(double A)
@@ -327,6 +330,13 @@ namespace Sailing
 		default: break;
 		}
 		return L;
+	}
+
+	double BirdSeenScale(double DistanceM, double PixelAngleRad)
+	{
+		// (Drawn size goes as the scale over the distance: the ramp below is gentle enough that it still grows as a bird nears.)
+		const double D = std::max(0.0, DistanceM) * std::max(PixelAngleRad, 1e-6) / kRefPixel;
+		return 1.0 + Smooth(100.0, 600.0, D);
 	}
 
 	FBirdBudget BirdBudgetForTier(int Tier)
@@ -675,14 +685,27 @@ namespace Sailing
 		F.Fade = bFilled ? 0.0 : 1.0;
 		F.bFirstFill = !bFilled;
 		NewGoal(F, Map, F.Rng.Uniform(800.0, 2500.0));
-		// some travellers come by the boat: their first goal is beside her, 50 to 150 m off (met, not only seen far off)
+		// some travellers come by the boat: their first goal is beside her, 40 to 120 m off (met, not only seen far off)
 		const FBirdObservers::FBoat* Player = PlayerBoat(Obs);
 		if (!bRest && !F.bCircling && Player && F.Rng.Uniform01() < kPassShare)
 		{
 			const double ToBoat = std::atan2(Player->East - F.E, Player->North - F.N);
-			const double Side = (F.Rng.Uniform01() < 0.5 ? -1.0 : 1.0) * F.Rng.Uniform(50.0, 150.0);
+			const double Side = (F.Rng.Uniform01() < 0.5 ? -1.0 : 1.0) * F.Rng.Uniform(kPassMinM, kPassMaxM);
 			const double PN = Player->North + Side * -std::sin(ToBoat), PE = Player->East + Side * std::cos(ToBoat);
 			if (Map.BitsAt(PN, PE) & B.Habitats) { F.GoalN = PN; F.GoalE = PE; F.bPassing = true; }
+			// Placed as the camera arrived: already partway in, 80 m to 1 km short of her (a flock from the band's edge
+			// takes 2 to 3 minutes to come by, and the first minutes on the water would have no bird near).
+			const double Len = std::hypot(F.GoalN - F.N, F.GoalE - F.E);
+			if (F.bPassing && F.bFirstFill && Len > 80.0)
+			{
+				const double Back = std::min(Len, F.Rng.Uniform(80.0, 1000.0));
+				const double NN = F.GoalN - (F.GoalN - F.N) / Len * Back, NE = F.GoalE - (F.GoalE - F.E) / Len * Back;
+				if (Map.BitsAt(NN, NE) & B.Habitats)
+				{
+					F.N = NN; F.E = NE;
+					F.Up = F.TargetUp + Map.TopAt(NN, NE);
+				}
+			}
 		}
 		F.Heading = std::atan2(F.GoalE - F.E, F.GoalN - F.N);
 		const int Count = GroupSize(B, F.Rng);

@@ -555,7 +555,8 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
   far birds as camera-facing quads (`M_BirdFar`) and mid ones as `SM_Bird_<Style>` (`M_BirdMid`), both from
   `scripts/make-birds.sh` (`Tools/blender/build_birds.py`, `scripts/import_birds.py`; keep its per-instance floats in step
   with `FarFloats`/`MidFloats`). The budget goes to birds in the camera's view first (`FBirdObservers::bHasView`); bodies only
-  at 12 px and up (`BodyMinPixels`), the rest quads. `scripts/wildlife-check.sh [World|all]` runs every world standalone;
+  at 12 px and up (`BodyMinPixels`), the rest quads; far birds drawn up to 2x life (`Sailing::BirdSeenScale`, screen pixels
+  vs the eye). `scripts/wildlife-check.sh [World|all]` runs every world standalone;
   `-SailingNoWildlife`, `-SailingWildlifeScale=<f>`, `-SailingDebugBirds[=<k>]` (every bird k times its size, three quads and three bodies pinned in view, and a `Wildlife debug:` log line), `-SailingDebugBirdsPlain` (the engine's default material on every bird).
 - Wind on the water (W2, `docs/water-2/`): `AWaterSurface` keeps two wrap-around wind maps (near 256^2 over 3.2 km,
   512^2 on Ultra; far 128^2 over 16 km; texel i at i mod Res, refreshed in strips): RGB = roughness, local direction

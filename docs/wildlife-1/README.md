@@ -11,8 +11,10 @@ right birds for the month, more at dawn and dusk for the ones that feed then, fe
 night. Each flies its style: pelicans in lines just over the waves, gulls hanging in the wind and resting on the water,
 terns and gannets circling and plunging, cormorants fast and low, shearwaters banking over the wave tops, vultures and
 raptors circling high, herons standing in the shallows, swallows and swifts zigzagging low, ducks and coots in rafts.
-Resting birds take off when a boat comes inside their flush distance and land again 200 to 400 m on. About a quarter of
-the flocks fly past within 50 to 150 m of your boat (the games players praise for wildlife put it near the player).
+Resting birds take off when a boat comes inside their flush distance and land again 200 to 400 m on. About a third of
+the travelling flocks fly past within 40 to 120 m of your boat (the games players praise for wildlife put it near the
+player); when you arrive, the ones on their way are already partway in, 80 m to 1 km out, so the first comes by within
+seconds at most spots, not after the two or three minutes a flock from 2 km takes.
 
 ## How it works
 
@@ -32,7 +34,13 @@ the flocks fly past within 50 to 150 m of your boat (the games players praise fo
     span as the camera sees it, `M_BirdFar` drawing the silhouette (body, wings bent at the wrist, the style's dihedral
     and crank, the wingbeat), every stroke held half a pixel fatter so a far gull's wing doesn't average away. A bird
     under two pixels keeps a two-pixel quad (both ways: a bird crossing the view is drawn in the middle of a widened
-    quad) and thins its dithered cover by the same share.
+    quad) and thins its dithered cover by the same share. Far birds are drawn bigger than life
+    (`Sailing::BirdSeenScale`): a pixel of a 1920-wide view at 90 degrees spans about 3.6 arcmin where the eye resolves
+    about 1, so a gull 500 m off that a sailor sees plainly would draw under 2 pixels. The scale runs from life size
+    under about 100 m to twice past about 600 m (the distances scale with the pixel: less on a finer screen), as flight
+    sims enlarge far aircraft; bodies take it too, so a bird keeps its size as it turns from a quad into a body, and its
+    size on screen never shrinks as it comes closer (Mac stills of Nov 26: unscaled, the nearest birds in view at 180 to
+    330 m were 1 to 2 pixel specks at 1440 x 1080).
   - bodies (birds inside 400 m within the bodies' budget and 12 pixels or more across): `SM_Bird_<Style>`, 136 to 152
     triangles (`Tools/blender/build_birds.py`),
     `M_BirdMid` beating the wings about the shoulder in the vertex shader, folding them along the back when resting,
@@ -48,7 +56,10 @@ and drip pools do), unshadowed, out of the distance-field, Lumen and ray-tracing
 
 - `scripts/wildlife-check.sh [World|all] [--months 1,4,7,10] [--hour 10] [--sail] [--tier 2] [--spot N] [--species]`
   builds the physics standalone and runs every launch spot on the real terrain: counts against the tables, birds drawn
-  per band against the budget, flushes, birds under the ground (fails), update time. All five worlds pass.
+  per band against the budget, flushes, birds under the ground (fails), update time, and `close`: when a flying bird
+  first came within 150 m (s), the share of the time one was within 250 m, and the passes (back within 150 m after
+  none inside 250 m). All five worlds pass. Ray Hubbard in November at 9 am, moored: first close bird at 0 to 12 s
+  (was 0 to 372 s before the passing flocks were placed partway in), one within 250 m 48 to 72% of the time.
   `WILDLIFE_DEBUG=1` prints each bird found under the ground.
 - `scripts/make-birds.sh` (Mac, after `build.sh` and `make-content.sh`): Blender builds the bodies, the editor builds
   `M_BirdFar` and `M_BirdMid` and imports the bodies to `/Game/Wildlife/Birds` (`scripts/import_birds.py`).
@@ -56,7 +67,8 @@ and drip pools do), unshadowed, out of the distance-field, Lumen and ray-tracing
   `blender -b --factory-startup -noaudio -P Tools/blender/build_birds.py -- <out>` (or `python build_birds.py <out>`
   with bpy), then `UnrealEditor-Cmd.exe <SailingSim.uproject> -run=pythonscript -script="scripts/import_birds.py <out>"
   -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`.
-- Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.View`, `.Sprites`.
+- Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.View`, `.Passes`,
+  `.Sprites`.
 - Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density;
   `-SailingDebugBirds[=<k>]` draws every bird k times its size (10) and whole, to find them in a still, and pins three
   quads (30, 60, 120 m ahead, 3 deg up) and three bodies (40, 80, 160 m, just over the horizon) in the view whatever the

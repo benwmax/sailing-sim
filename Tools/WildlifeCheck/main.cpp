@@ -1,7 +1,8 @@
 // Wildlife Phase 1 (docs/wildlife-1/README.md): the distant birds standalone (no Unreal). For each world's launch spots and
 // a few months it builds the habitat map on the real terrain, runs FBirdFlocks for some minutes of sim time with the
 // camera on a boat (moored, or sailing with --sail) and prints how many flocks each bird has against the count the table
-// expects, the birds drawn per band against the tier's budget, the flushes, and the time an update takes. It fails when a
+// expects, the birds drawn per band against the tier's budget, the flushes, how soon and how often a flying bird comes
+// within 150 m ("close": first, share of time within 250 m, passes), and the time an update takes. It fails when a
 // count drifts far from its expectation, a band overflows its budget, or a flying bird is below the ground.
 // Usage: scripts/wildlife-check.sh [World|all] [--months 1,4,7,10] [--hour 10] [--minutes 10] [--sail] [--tier 2] [--spot N]
 //        [--species] [--scale <density>]
@@ -140,6 +141,11 @@ namespace
 		int MaxFar = 0, MaxMid = 0, MaxNear = 0, Flushes = 0, Spawned = 0, Retired = 0, Underground = 0, NotFinite = 0;
 		double MeanMs = 0.0, MaxMs = 0.0, P99Ms = 0.0, MapMs = 0.0;
 		int MapBuilds = 0, Timed = 0;
+		// birds met, not only seen far off: when a flying bird first came within 150 m of the camera (s, -1 never), the
+		// share of the time one was within 250 m, and the passes (within 150 m again after none inside 250 m)
+		double FirstCloseS = -1.0;
+		int CloseSamples = 0, AllSamples = 0, Passes = 0;
+		bool bAway = false;
 		std::vector<double> PerBirdMean, PerBirdExpected;
 		bool bBudgetOk = true;
 	};
@@ -289,6 +295,20 @@ int main(int Argc, char** Argv)
 							++R.Underground;
 						}
 					}
+					if (K % 15 == 0)
+					{
+						double Nearest = 1e9;
+						for (const FBirdDraw& D : Flocks.Draw())
+						{
+							const bool bFlying = D.State != EBirdState::OnWater && D.State != EBirdState::Standing && D.State != EBirdState::Diving;
+							if (bFlying) Nearest = std::min(Nearest, double(D.DistanceM));
+						}
+						if (Nearest < 150.0 && R.FirstCloseS < 0.0) R.FirstCloseS = K * Dt;
+						++R.AllSamples;
+						R.CloseSamples += Nearest < 250.0;
+						if (Nearest > 250.0) R.bAway = true;
+						if (Nearest < 150.0 && R.bAway) { ++R.Passes; R.bAway = false; }
+					}
 					if (K < Warm || K % 15) continue;
 					++Samples;
 					R.MeanFar += St.Far; R.MeanMid += St.Mid; R.MeanNear += St.Near;
@@ -316,9 +336,10 @@ int main(int Argc, char** Argv)
 				const bool bOk = bCountOk && R.bBudgetOk && R.Underground == 0 && R.NotFinite == 0;
 				if (!bOk) ++Failures;
 				std::printf("  %-38.38s m%02d sun %4.0f  flocks %5.1f (expect %5.1f)  birds %5.0f  drawn quads %5.1f/%-3d bodies mid %4.1f/%-3d near %3.1f/%-2d"
-					"  flushes %3d  update %.3f ms (p99 %.2f, max %.2f)  map %.0f ms x%d%s%s%s%s\n",
+					"  flushes %3d  close: first %3.0f s, %3.0f%% <250 m, %2d passes  update %.3f ms (p99 %.2f, max %.2f)  map %.0f ms x%d%s%s%s%s\n",
 					Spot.Name.c_str(), Month, C.SunElevationDeg, R.MeanFlocks, R.Expected, R.MeanBirds, R.MeanFar, R.MaxFar, R.MeanMid, R.MaxMid,
-					R.MeanNear, R.MaxNear, R.Flushes, R.MeanMs, R.P99Ms, R.MaxMs, R.MapMs, R.MapBuilds,
+					R.MeanNear, R.MaxNear, R.Flushes, R.FirstCloseS, 100.0 * R.CloseSamples / std::max(1, R.AllSamples), R.Passes,
+					R.MeanMs, R.P99Ms, R.MaxMs, R.MapMs, R.MapBuilds,
 					bCountOk ? "" : "  COUNT OFF", R.bBudgetOk ? "" : "  OVER BUDGET", R.Underground ? "  UNDERGROUND" : "", R.NotFinite ? "  NAN" : "");
 				if (R.Underground) std::printf("    %d bird-frames below the ground\n", R.Underground);
 				if (bSpecies)

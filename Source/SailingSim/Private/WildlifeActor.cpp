@@ -427,7 +427,9 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 	{
 		const Sailing::FBirdLook& L = Looks.IsValidIndex(D.Bird) ? Looks[D.Bird] : Sailing::FBirdLook();
 		const FVector At(D.North * 100.0, D.East * 100.0, D.Up * 100.0);
-		const double SizeM = D.SizeM * SizeScale;
+		// Far birds drawn bigger than life by the screen's coarse pixels (Sailing::BirdSeenScale; none close by), so a gull
+		// 500 m off reads as a bird and not a speck; bodies and quads alike, so a bird keeps its size as it turns into a body.
+		const double SizeM = D.SizeM * SizeScale * Sailing::BirdSeenScale(D.DistanceM, PixelAngle);
 		const int32 S = int32(D.Style);
 		// A body: within the near and mid budgets, with a mesh for its style, and big enough on screen for its wings to show.
 		const bool bBody = D.bBody && StyleIsms.IsValidIndex(S) && StyleIsms[S] && BodyCount[S] < StylePool[S] - Markers &&

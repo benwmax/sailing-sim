@@ -397,4 +397,64 @@ bool FSailingWildlifeViewTest::RunTest(const FString&)
 	return true;
 }
 
+// Some flocks come by the boat: the first within a minute of arriving (placed partway in), then every few minutes; and far
+// birds are drawn bigger than life by the screen's coarse pixels, never shrinking as they near.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWildlifePassesTest, "SailingSim.Wildlife.Passes", WildlifeTestsLocal::Flags)
+bool FSailingWildlifePassesTest::RunTest(const FString&)
+{
+	using namespace WildlifeTestsLocal;
+	FWildlifeTable T;
+	if (!LoadTable(TableJson({ Bird(TEXT("gull"), TEXT("flap_hang"), TEXT("\"open_water\""), 6, 30),
+		Bird(TEXT("cormorant"), TEXT("fast_low"), TEXT("\"open_water\""), 5, 20) }), T, *this)) return false;
+	FWildlifeHabitatMap Map;
+	Map.Build(RoundLake(), 0.0, 0.0);
+	const FBirdObservers Obs = At(0.0, 0.0);
+	const FWildlifeConditions C = Noon();
+	int32 Runs = 0, Early = 0, Passes = 0;
+	double FirstSum = 0.0;
+	for (const int32 Seed : { 3, 4, 5, 6, 7, 8 })
+	{
+		FBirdFlocks Flocks;
+		Flocks.Reset(T, static_cast<uint64_t>(Seed));
+		Flocks.SetBudget(BirdBudgetForTier(2));
+		double First = -1.0;
+		bool bAway = false;
+		const double Dt = 1.0 / 30.0;
+		for (int32 K = 0; K < 30 * 60 * 10; ++K)
+		{
+			Flocks.Update(Dt, C, Obs, Map);
+			if (K % 15) continue;
+			double Nearest = 1e9;
+			for (const FBirdDraw& D : Flocks.Draw()) if (Airborne(D)) Nearest = FMath::Min(Nearest, double(D.DistanceM));
+			if (Nearest < 150.0 && First < 0.0) First = K * Dt;
+			if (Nearest > 250.0) bAway = true;
+			if (Nearest < 150.0 && bAway) { ++Passes; bAway = false; }
+		}
+		++Runs;
+		Early += First >= 0.0 && First <= 60.0;
+		FirstSum += First >= 0.0 ? First : 600.0;
+	}
+	TestTrue(FString::Printf(TEXT("a flying bird within 150 m in the first minute (%d of %d runs, mean %.0f s)"), Early, Runs, FirstSum / Runs),
+		Early * 3 >= Runs * 2);
+	TestTrue(FString::Printf(TEXT("and more come by (%d passes in %d runs of 10 min)"), Passes, Runs), Passes >= Runs * 2);
+
+	const double Pixels[] = { 1.0 / 720.0, 1.0 / 960.0, 1.0 / 1920.0 };
+	TestEqual(TEXT("life size close by"), BirdSeenScale(50.0, 1.0 / 960.0), 1.0);
+	TestEqual(TEXT("twice far off"), BirdSeenScale(2000.0, 1.0 / 960.0), 2.0);
+	TestTrue(TEXT("less on a finer screen"), BirdSeenScale(400.0, 1.0 / 1920.0) < BirdSeenScale(400.0, 1.0 / 960.0));
+	int32 Shrinks = 0;
+	for (const double Px : Pixels)
+	{
+		double Last = 0.0;
+		for (double D = 3000.0; D >= 10.0; D -= 5.0)
+		{
+			const double OnScreen = BirdSeenScale(D, Px) / D;   // (a bird's size on screen goes as this)
+			Shrinks += OnScreen <= Last;
+			Last = OnScreen;
+		}
+	}
+	TestEqual(TEXT("a bird's size on screen never shrinks as it comes closer"), Shrinks, 0);
+	return true;
+}
+
 #endif

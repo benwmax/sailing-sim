@@ -184,6 +184,14 @@ namespace Sailing
 	};
 	SAILINGPHYSICS_API FBirdBudget BirdBudgetForTier(int Tier);   // 0 Low .. 3 Ultra
 
+	/** How much bigger than life a bird is drawn, at DistanceM from the camera with PixelAngleRad the angle one screen pixel
+	 *  spans (2 tan(fov / 2) / width). A pixel on a 1920-wide screen at 90 degrees spans about 3.6 arcmin of the view where
+	 *  the eye resolves about 1, so a gull 500 m off that the eye sees plainly draws under 2 pixels: far birds are drawn up
+	 *  to twice their size (as flight sims draw far aircraft), from 1 close by (no change under about 100 m) to 2 past about
+	 *  600 m at that screen; a finer screen (more pixels across, a narrower view) needs less, so the distances scale with the
+	 *  pixel. A bird's size on screen never shrinks as it comes closer. */
+	SAILINGPHYSICS_API double BirdSeenScale(double DistanceM, double PixelAngleRad);
+
 	/** How a bird is coloured when drawn: its back and upper wing, its underside, and how dark its wingtips are (0 none,
 	 *  1 black). Linear colour (the renderer's). From field-guide plumage, by species id, else the style's usual look. */
 	struct FBirdLook
