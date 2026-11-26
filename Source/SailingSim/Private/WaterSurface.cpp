@@ -134,8 +134,19 @@ namespace
 		return Tex;
 	}
 
+	/** Whether an upload can reach the texture. UpdateTextureRegions on a texture without a resource drops the update without
+	 *  calling its cleanup, so the caller's copy was never freed: every upload under -nullrhi, where FApp::CanEverRender is
+	 *  false and UpdateResource makes none (the automation runs). On the PC a full SailingSim.Visual run ran out of commit in
+	 *  SheetClearance (Nov 26): the editor grew 1.3 GB a boat on main and about twice that with bow wave 2, likely because
+	 *  the wake grid's faster FFT finished, and so uploaded, more of its 1-4 MB frames. */
+	bool CanUpload(const UTexture2D* Tex)
+	{
+		return Tex && Tex->GetResource();
+	}
+
 	void UploadFloats(UTexture2D* Tex, const TArray<float>& Values, int32 Width, int32 Height, int32 Channels)
 	{
+		if (!CanUpload(Tex)) return;
 		const int32 Bytes = Values.Num() * sizeof(float);
 		uint8* Copy = new uint8[Bytes];
 		FMemory::Memcpy(Copy, Values.GetData(), Bytes);
@@ -209,6 +220,12 @@ namespace
 	/** Enqueues the packed mips' upload (the render thread frees each block when done). */
 	void UploadPackedMips(UTexture2D* Tex, TArray<uint8*>& Mips, int32 Size)
 	{
+		if (!CanUpload(Tex))
+		{
+			for (uint8* Block : Mips) delete[] Block;
+			Mips.Reset();
+			return;
+		}
 		for (int32 Mip = 0, S = Size; Mip < Mips.Num(); ++Mip, S = FMath::Max(1, S / 2))
 		{
 			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, S, S);
@@ -223,6 +240,7 @@ namespace
 
 	void Upload(UTexture2D* Tex, const TArray<uint8>& Pixels, int32 Size)
 	{
+		if (!CanUpload(Tex)) return;
 		// Copy the pixels for the render thread; it frees them when the upload is done.
 		uint8* Copy = new uint8[Pixels.Num()];
 		FMemory::Memcpy(Copy, Pixels.GetData(), Pixels.Num());
@@ -2374,16 +2392,19 @@ void AWaterSurface::UpdateSeaMap()
 		{
 			SeaAtlas = MakeFloatMap(P->Width, P->Rows, PF_FloatRGBA, false);
 		}
-		const int32 Bytes = P->Pixels.Num() * int32(sizeof(FFloat16));
-		uint8* Copy = new uint8[Bytes];
-		FMemory::Memcpy(Copy, P->Pixels.GetData(), Bytes);
-		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, P->Width, P->Rows);
-		SeaAtlas->UpdateTextureRegions(0, 1, Region, P->Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Copy,
-			[](uint8* Data, const FUpdateTextureRegion2D* Rg)
-			{
-				delete[] Data;
-				delete Rg;
-			});
+		if (CanUpload(SeaAtlas))
+		{
+			const int32 Bytes = P->Pixels.Num() * int32(sizeof(FFloat16));
+			uint8* Copy = new uint8[Bytes];
+			FMemory::Memcpy(Copy, P->Pixels.GetData(), Bytes);
+			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, P->Width, P->Rows);
+			SeaAtlas->UpdateTextureRegions(0, 1, Region, P->Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Copy,
+				[](uint8* Data, const FUpdateTextureRegion2D* Rg)
+				{
+					delete[] Data;
+					delete Rg;
+				});
+		}
 		WaterMaterial->SetTextureParameterValue(TEXT("SeaMap"), SeaAtlas);
 		WaterMaterial->SetVectorParameterValue(TEXT("SeaRect"), FLinearColor(float(P->OriginX), float(P->OriginY), float(P->Cell), float(P->Rows)));
 		WaterMaterial->SetVectorParameterValue(TEXT("SeaParams"), FLinearColor(float(P->Cols), float(P->Width), float(P->Rows), 1.f));
