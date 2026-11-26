@@ -76,8 +76,9 @@ public:
 	 *  doesn't flip the followers back and forth every few frames (each flip re-sends them: 70-90 ms frames on the PC). */
 	static double TideStepWithDeadBand(double Held, double TideM) { return FMath::Abs(TideM - Held) > 0.012 ? TideStepped(TideM) : Held; }
 	/** -SailingTideStepEvery=<s> (measuring the tide step's hitch without a 2 h soak): the extra height (m) that forces a
-	 *  2 cm step every <s> seconds of play, 0 and 0.02 in turn; 0 without the argument (Every <= 0). */
-	static double ForcedTideStep(double Seconds, double Every) { return Every > 0.0 && FMath::FloorToInt64(Seconds / Every) % 2 == 1 ? 0.02 : 0.0; }
+	 *  step every <s> seconds of play, 0 and 0.03 in turn; 0 without the argument (Every <= 0). 3 cm, not 2: past the dead
+	 *  band from anywhere inside it (a tide 1.1 cm under its held step plus 2 cm is only 0.9 cm over, and nothing moved). */
+	static double ForcedTideStep(double Seconds, double Every) { return Every > 0.0 && FMath::FloorToInt64(Seconds / Every) % 2 == 1 ? 0.03 : 0.0; }
 	/** Tidal current at a point (m/s, map frame). */
 	Sailing::Vec3 GetCurrentAt(double X, double Y) const { return Lake.IsTidal() ? Lake.Tides.CurrentAt(X, Y, GetUnixTime()) : Sailing::Vec3(); }
 

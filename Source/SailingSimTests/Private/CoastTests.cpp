@@ -719,7 +719,7 @@ bool FSailingCoastTideStepTest::RunTest(const FString&)
 	TestEqual(TEXT("10 cm of tide is five steps"), Steps, 5);
 	TestEqual(TEXT("No argument: nothing forced"), ASailingGameMode::ForcedTideStep(37.0, 0.0), 0.0, 1e-12);
 	TestEqual(TEXT("First period: nothing"), ASailingGameMode::ForcedTideStep(5.0, 10.0), 0.0, 1e-12);
-	TestEqual(TEXT("Second period: one step up"), ASailingGameMode::ForcedTideStep(15.0, 10.0), 0.02, 1e-12);
+	TestEqual(TEXT("Second period: forced up"), ASailingGameMode::ForcedTideStep(15.0, 10.0), 0.03, 1e-12);
 	TestEqual(TEXT("Third: back"), ASailingGameMode::ForcedTideStep(25.0, 10.0), 0.0, 1e-12);
 	// Forced on top of a tide sitting mid-step, it still moves the followers once each period.
 	int32 Forced = 0;
@@ -731,6 +731,23 @@ bool FSailingCoastTideStepTest::RunTest(const FString&)
 		Last = Now;
 	}
 	TestEqual(TEXT("A step every 10 s for a minute"), Forced, 5);
+	// ... and through the dead band, wherever in its step the tide sits (main 412440c8 forced 2 cm and, with the tide 1 cm
+	// under its held step, moved nothing).
+	int32 Swallowed = 0;
+	for (int32 K = -11; K <= 11; ++K)
+	{
+		const double Base = 0.30 + 0.001 * K;
+		double HeldStep = ASailingGameMode::TideStepped(Base);
+		int32 Moves = 0;
+		for (double T = 0.0; T < 60.0; T += 0.25)
+		{
+			const double Now = ASailingGameMode::TideStepWithDeadBand(HeldStep, Base + ASailingGameMode::ForcedTideStep(T, 10.0));
+			if (Now != HeldStep) ++Moves;
+			HeldStep = Now;
+		}
+		if (Moves != 5) ++Swallowed;
+	}
+	TestEqual(TEXT("Forced steps cross the dead band from anywhere in a step"), Swallowed, 0);
 	// The dead band: a tide wobbling about the boundary between two steps (here 0.31 m, +-1 mm as the boat moves) moves the
 	// followers once, not on every wobble; past the band they step, and a big jump (a new date) lands on its step at once.
 	double Held = 0.30;
