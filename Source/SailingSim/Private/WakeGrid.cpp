@@ -43,28 +43,7 @@ namespace
 	void Fft2(TArray<std::complex<float>>& A, int32 N, float Sign)
 	{
 		ParallelFor(N, [&](int32 R) { Fft(A.GetData() + R * N, N, 1, Sign); });
-		// The columns in blocks of 16, copied out to contiguous lines, transformed and copied back. Walked in place at a
-		// stride of N, every butterfly of every pass missed the cache (on Ultra's 512 grid the stride is 4 KB, so a column
-		// sits in one cache set): the PC's stutter trace (Nov 26) put the column pass at 27-32 ms of worker time a frame
-		// against 2 ms for the rows. The same arithmetic in the same order, so the result is bit-identical.
-		constexpr int32 kBlock = 16;
-		ParallelFor(FMath::DivideAndRoundUp(N, kBlock), [&](int32 B)
-		{
-			const int32 C0 = B * kBlock, Width = FMath::Min(kBlock, N - C0);
-			TArray<std::complex<float>> Lines;
-			Lines.SetNumUninitialized(Width * N);
-			for (int32 R = 0; R < N; ++R)
-			{
-				const std::complex<float>* Src = A.GetData() + R * N + C0;
-				for (int32 K = 0; K < Width; ++K) Lines[K * N + R] = Src[K];
-			}
-			for (int32 K = 0; K < Width; ++K) Fft(Lines.GetData() + K * N, N, 1, Sign);
-			for (int32 R = 0; R < N; ++R)
-			{
-				std::complex<float>* Dst = A.GetData() + R * N + C0;
-				for (int32 K = 0; K < Width; ++K) Dst[K] = Lines[K * N + R];
-			}
-		});
+		ParallelFor(N, [&](int32 C) { Fft(A.GetData() + C, N, N, Sign); });
 	}
 }
 
