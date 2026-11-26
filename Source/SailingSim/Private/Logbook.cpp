@@ -7,17 +7,16 @@
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
 
-void FLogbook::Begin(const FString& InArea, const FString& InBoat, double UnixTime, const FString& Clock)
+void FLogbook::Begin(const FString& InArea, const FString& InBoat, double UnixTime, double UtcOffsetHours)
 {
 	Entries.Reset();
 	Area = InArea;
 	Boat = InBoat;
 	MaxSpeedKnots = 0.0;
 	SessionStartUnix = UnixTime;
-	const FDateTime Start = FDateTime::FromUnixTimestamp(int64(UnixTime));
 	FString SafeArea = Area;
 	for (TCHAR& C : SafeArea.GetCharArray()) if (!FChar::IsAlnum(C) && C != 0) C = TEXT('_');
-	FilePath = FPaths::ProjectSavedDir() / TEXT("Logbook") / FString::Printf(TEXT("%s %s.json"), *Start.ToString(TEXT("%Y-%m-%d %H%M")), *SafeArea.Left(40));
+	FilePath = FPaths::ProjectSavedDir() / TEXT("Logbook") / FString::Printf(TEXT("%s %s.json"), *LocalStamp(UnixTime, UtcOffsetHours), *SafeArea.Left(40));
 	IFileManager::Get().MakeDirectory(*FPaths::GetPath(FilePath), true);
 }
 
@@ -27,6 +26,28 @@ void FLogbook::Add(const FLogEntry& Entry)
 	MaxSpeedKnots = FMath::Max(MaxSpeedKnots, Entry.SpeedKnots);
 	if (Entries.Num() > 2000) Entries.RemoveAt(0);
 	Save();
+}
+
+FString FLogbook::LocalStamp(double UnixTime, double UtcOffsetHours)
+{
+	// The name was the UTC time once (a 14:00 sail on Ray Hubbard listed as 20:00); the list reads it as the local clock.
+	const FDateTime Local = FDateTime::FromUnixTimestamp(int64(FMath::FloorToDouble(UnixTime + UtcOffsetHours * 3600.0)));
+	return Local.ToString(TEXT("%Y-%m-%d %H%M"));
+}
+
+void FLogbook::ListLabel(const FString& BaseName, FString& When, FString& Where)
+{
+	// The file name's water has underscores for everything but letters and digits: "Lake_Ray_Hubbard__Rush_Creek_YC_"
+	// reads "Lake Ray Hubbard, Rush Creek YC".
+	When = BaseName.Left(15);
+	Where = BaseName.Mid(16).Replace(TEXT("__"), TEXT(", ")).Replace(TEXT("_"), TEXT(" ")).TrimStartAndEnd();
+	Where.RemoveFromEnd(TEXT(","));
+	FDateTime Date;
+	if (BaseName.Len() >= 15 && FDateTime::Parse(BaseName.Left(10) + TEXT(" ") + BaseName.Mid(11, 2) + TEXT(":") + BaseName.Mid(13, 2) + TEXT(":00"), Date))
+	{
+		static const TCHAR* Months[] = { TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"), TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec") };
+		When = FString::Printf(TEXT("%d %s %d, %02d:%02d"), Date.GetDay(), Months[FMath::Clamp(Date.GetMonth() - 1, 0, 11)], Date.GetYear(), Date.GetHour(), Date.GetMinute());
+	}
 }
 
 FString FLogbook::FormatPosition(double Latitude, double Longitude)

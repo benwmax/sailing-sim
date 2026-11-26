@@ -17,6 +17,7 @@
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include <memory>
@@ -309,7 +310,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLogbookTest, "SailingSim.Smoke.LogbookWritesEn
 bool FLogbookTest::RunTest(const FString& Parameters)
 {
 	FLogbook Log;
-	Log.Begin(TEXT("Test water"), TEXT("J/22"), 1792000000.0, TEXT("10:00"));
+	Log.Begin(TEXT("Test water"), TEXT("J/22"), 1792000000.0, 0.0);
 	for (int32 I = 0; I < 3; ++I)
 	{
 		FLogEntry E;
@@ -330,6 +331,31 @@ bool FLogbookTest::RunTest(const FString& Parameters)
 	AddInfo(Pos);
 	TestTrue(TEXT("Position written in degrees and minutes"), Pos.Contains(TEXT("29")) && Pos.Contains(TEXT("32.68'N")) && Pos.Contains(TEXT("01.16'W")));
 	IFileManager::Get().Delete(*Log.GetFilePath());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLogbookLocalTimeTest, "SailingSim.Smoke.LogbookListsLocalTime", Flags)
+bool FLogbookLocalTimeTest::RunTest(const FString& Parameters)
+{
+	// A checkride sailed at 14:00 on Ray Hubbard (CDT, UTC-5: 19:00 UTC on 10 Oct 2026) lists at 14:00, not 19:00.
+	const double Sailed = 1791658800.0;
+	TestEqual(TEXT("Stamp is the local clock"), FLogbook::LocalStamp(Sailed, -5.0), FString(TEXT("2026-10-10 1400")));
+	TestEqual(TEXT("UTC with no offset"), FLogbook::LocalStamp(Sailed, 0.0), FString(TEXT("2026-10-10 1900")));
+	// The local date can be the day before UTC's: 02:30 UTC on 25 Nov is 20:30 on 24 Nov in CST (UTC-6).
+	TestEqual(TEXT("Local date rolls back"), FLogbook::LocalStamp(1795573800.0, -6.0), FString(TEXT("2026-11-24 2030")));
+	TestEqual(TEXT("Marseille in summer (UTC+2)"), FLogbook::LocalStamp(Sailed, 2.0), FString(TEXT("2026-10-10 2100")));
+
+	FLogbook Log;
+	Log.Begin(TEXT("Lake Ray Hubbard (Rush Creek YC)"), TEXT("J/22"), Sailed, -5.0);
+	const FString Base = FPaths::GetBaseFilename(Log.GetFilePath());
+	AddInfo(Base);
+	TestTrue(TEXT("The file is named by the local clock"), Base.StartsWith(TEXT("2026-10-10 1400 ")));
+	FString When, Where;
+	FLogbook::ListLabel(Base, When, Where);
+	TestEqual(TEXT("The list shows the game's 14:00"), When, FString(TEXT("10 Oct 2026, 14:00")));
+	TestEqual(TEXT("The list shows the water"), Where, FString(TEXT("Lake Ray Hubbard, Rush Creek YC")));
+	FLogbook::ListLabel(TEXT("notes"), When, Where);
+	TestEqual(TEXT("A name without a stamp is shown as it is"), When, FString(TEXT("notes")));
 	return true;
 }
 
