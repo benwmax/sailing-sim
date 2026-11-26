@@ -98,6 +98,12 @@ private:
 	int32 FarPool = 0;
 	TArray<int32> StylePool;
 	int32 DrawnQuads = 0, DrawnBodies = 0, DrawnInView = 0;
+	// What DrawBirds last sent (it sends only the drawn instances and, after a move, the parked ones again).
+	int32 SentQuads = 0;
+	TArray<int32> SentBodies;
+	bool bParkedSent = false;
+	FVector ParkedAtCm = FVector::ZeroVector;
+	FVector ParkedOriginCm = FVector::ZeroVector;
 	FString NearestInView;                   // the nearest drawn bird on screen, for the log line
 	double DebugSize = 0.0;                  // -SailingDebugBirds: every bird this many times its size (0 off)
 	int32 Markers = 0;                       // -SailingDebugBirds: birds pinned in the view (the pools' last slots)

@@ -48,8 +48,10 @@ seconds at most spots, not after the two or three minutes a flock from 2 km take
   - plumage per species: `Sailing::BirdLookFor` (back, underside, wingtips; field-guide tones).
 
 Budgets (far / mid / near): Low 100 / 20 / 4 (all quads), Medium 200 / 40 / 6, High 300 / 60 / 12, Ultra 500 / 100 / 20.
-Instanced (components at an identity transform, every instance placed in the render's world each frame, as the spray
-and drip pools do), unshadowed, out of the distance-field, Lumen and ray-tracing scenes. Plan budget 0.5 ms GPU and
+Instanced (components at an identity transform, instances placed in the render's world, as the spray and drip pools
+do: each frame only the ones drawn this frame or the last, the parked rest again after a 500 m move), unshadowed, out of
+the distance-field, Lumen and ray-tracing scenes. Sending every instance of every pool each frame cost the PC up to
+0.85 ms of game thread at Ultra 4K on the lake (540 quads; Nov 26, 50cc95bc), GPU +0.12 to 0.23 ms. Plan budget 0.5 ms GPU and
 0.3 ms game thread on High; the logic's update is 0.05 to 0.25 ms at the 99th percentile in `scripts/wildlife-check.sh`.
 
 ## Running it
@@ -66,7 +68,8 @@ and drip pools do), unshadowed, out of the distance-field, Lumen and ray-tracing
   `BLENDER=<a python with the bpy module>` works in place of Blender. On the PC the same two steps run by hand:
   `blender -b --factory-startup -noaudio -P Tools/blender/build_birds.py -- <out>` (or `python build_birds.py <out>`
   with bpy), then `UnrealEditor-Cmd.exe <SailingSim.uproject> -run=pythonscript -script="scripts/import_birds.py <out>"
-  -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`.
+  -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`. `/Game/Wildlife` is in
+  `Config/DefaultGame.ini`'s `DirectoriesToAlwaysCook` (loaded by path: without it a package draws no birds).
 - Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.View`, `.Passes`,
   `.Sprites`.
 - Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density;

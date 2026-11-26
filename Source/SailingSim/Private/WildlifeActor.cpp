@@ -514,11 +514,31 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		}
 	}
 
-	// Into the render's world (its origin follows the boat on a streamed world), and sent.
-	FarIsm->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), FarXf), true, true, true);
+	// Into the render's world (its origin follows the boat on a streamed world), and sent: only the instances drawn this
+	// frame or the last (a style with no body either frame is left alone), every parked one again once the camera has
+	// moved 500 m or the origin has. Sending every instance of every pool each frame cost up to 0.85 ms of game thread on
+	// the PC at Ultra (Nov 26, 540 quads on the lake), the logic only 0.04 to 0.25 of it.
+	const FVector RenderOrigin = SailingFrame::OriginCm(GetWorld());
+	const bool bFullSend = Markers > 0 || !bParkedSent || FVector::Dist(CameraMapCm, ParkedAtCm) > 50000.0 || !RenderOrigin.Equals(ParkedOriginCm);
+	if (bFullSend)
+	{
+		bParkedSent = true;
+		ParkedAtCm = CameraMapCm;
+		ParkedOriginCm = RenderOrigin;
+	}
+	SentBodies.SetNum(StyleIsms.Num());
+	auto SendDrawn = [this, bFullSend](UInstancedStaticMeshComponent* Target, TArray<FTransform>& Out, int32 DrawnNow, int32& SentBefore)
+	{
+		const int32 Count = bFullSend ? Out.Num() : FMath::Min(Out.Num(), FMath::Max(DrawnNow, SentBefore));
+		SentBefore = DrawnNow;
+		if (Count <= 0) return;
+		Out.SetNum(Count, EAllowShrinking::No);
+		Target->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), Out), true, true, true);
+	};
+	SendDrawn(FarIsm, FarXf, Quads, SentQuads);
 	for (int32 S = 0; S < StyleIsms.Num(); ++S)
 	{
-		if (StyleIsms[S]) StyleIsms[S]->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), BodyXf[S]), true, true, true);
+		if (StyleIsms[S]) SendDrawn(StyleIsms[S], BodyXf[S], BodyCount[S], SentBodies[S]);
 	}
 }
 
