@@ -165,6 +165,10 @@ namespace Sailing
 		/** Decks to have loaded (bit per deck): his, any a ladder within NearM leads to, both ends of his ladder, and the
 		 *  decks his deck's AlsoLoad names. */
 		uint32_t DecksWanted(const FWalkMap& Map, double NearM = 6.0) const;
+		/** The deck over each deck DecksWanted names (bit per deck; a map's decks run top to bottom): its planks are
+		 *  their overhead, so it is shown with them, but it is not lived on, so its lamps stay unlit (unshadowed, they
+		 *  would light down through its planks). */
+		uint32_t DecksOverhead(const FWalkMap& Map, double NearM = 6.0) const;
 
 	private:
 		bool TryMove(const FWalkDeck& D, double Dx, double Dy);

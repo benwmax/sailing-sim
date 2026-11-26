@@ -196,8 +196,10 @@ bool FShipWalkLadderTest::RunTest(const FString& Parameters)
 	// Away from the ladder only his deck (and what it names) is wanted.
 	W.Reset(M, 1, 8.5, 0.0, 0.0);
 	TestTrue(TEXT("far from the ladder: the gun deck alone"), W.DecksWanted(M) == 2u);
+	TestTrue(TEXT("the spar deck is his overhead there (shown, unlit)"), W.DecksOverhead(M) == 1u);
 	W.Reset(M, 0, 8.0, 0.0, 0.0);
 	TestTrue(TEXT("the spar deck keeps the gun deck (AlsoLoad)"), W.DecksWanted(M) == 3u);
+	TestTrue(TEXT("from the spar deck, the gun deck it keeps lies under the spar deck itself"), W.DecksOverhead(M) == 1u);
 	return true;
 }
 
