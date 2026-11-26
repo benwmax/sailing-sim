@@ -1,0 +1,89 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "0AB0F742406B07DF061BF28264FF34FF",
+			"instanceName": "BEN-PC-19208",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.26-01.59.34",
+	"succeeded": 4,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.086335301399230957,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "Commonwealth",
+			"fullTestPath": "SailingSim.ShipOutside.Commonwealth",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"0AB0F742406B07DF061BF28264FF34FF"
+			],
+			"duration": 0.062209401279687881,
+			"dateTime": "2026.11.26-01.59.34",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Decks",
+			"fullTestPath": "SailingSim.ShipOutside.Decks",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"0AB0F742406B07DF061BF28264FF34FF"
+			],
+			"duration": 0.0080760009586811066,
+			"dateTime": "2026.11.26-01.59.34",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Groups",
+			"fullTestPath": "SailingSim.ShipOutside.Groups",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"0AB0F742406B07DF061BF28264FF34FF"
+			],
+			"duration": 0.0081719011068344116,
+			"dateTime": "2026.11.26-01.59.34",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Table",
+			"fullTestPath": "SailingSim.ShipOutside.Table",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"0AB0F742406B07DF061BF28264FF34FF"
+			],
+			"duration": 0.0078780017793178558,
+			"dateTime": "2026.11.26-01.59.34",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
