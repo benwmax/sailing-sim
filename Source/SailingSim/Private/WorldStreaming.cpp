@@ -3,6 +3,7 @@
 #include "SailingSim.h"
 #include "Async/Async.h"
 #include "Async/ParallelFor.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "HAL/PlatformFileManager.h"
 #include "HAL/PlatformTime.h"
 #include "Misc/Compression.h"
@@ -138,7 +139,7 @@ void FWorldStreamer::LoadAround(double X, double Y, double RadiusM)
 		if (!ResidentFlags[K] && Index.DistanceTo(Entries[K], X, Y) <= RadiusM) Want.Add(K);
 	TArray<FLoaded> Read;
 	Read.SetNum(Want.Num());
-	ParallelFor(Want.Num(), [&](int32 I) { Read[I] = ReadTile(Path, Index, Want[I]); });
+	ParallelFor(Want.Num(), [&](int32 I) { TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_StreamTileRead); Read[I] = ReadTile(Path, Index, Want[I]); }); // named for traces (docs/frame-pacing/)
 	for (FLoaded& L : Read) Install(MoveTemp(L));
 	Publish();
 	PlannedX = PlannedY = 1e300;   // plan again from here

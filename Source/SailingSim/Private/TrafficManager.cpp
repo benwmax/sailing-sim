@@ -22,6 +22,7 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "Async/ParallelFor.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 
 using namespace Sailing;
 
@@ -70,7 +71,7 @@ void ATrafficManager::BeginPlay()
 	// for the whole frame's steps: the player's boat, whose time it is, has already stepped).
 	Sim.SetWorld(&GM->GetWind(), &GM->GetWaves(), Lake.IsLoaded() ? &Lake.Terrain : nullptr,
 		[this, GM](double X, double Y) { const FLakeData& L = GM->GetLake(); return L.IsTidal() ? L.Tides.CurrentAt(X, Y, UnixNow) : Sailing::Vec3(); });
-	Sim.ParallelFor = [](int Count, const std::function<void(int)>& Body) { ::ParallelFor(Count, [&Body](int32 I) { Body(I); }); };
+	Sim.ParallelFor = [](int Count, const std::function<void(int)>& Body) { ::ParallelFor(Count, [&Body](int32 I) { TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_TrafficBoatStep); Body(I); }); };
 	Sim.SetTime(GM->GetSimTime());
 }
 
