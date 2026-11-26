@@ -38,3 +38,20 @@ unlock"), one commit on main a3f81854.
     clips. Those stills will be added here.
 
 Bean's Saved was held aside and restored for every run (7B5CA7BE).
+
+## Gun close-ups (retake)
+
+**The shots:** `Gun,-19,2.2,45`, `Gun,-19,2.2,135` and `Gun,-19,-2.2,-45`, 2.2 m off the centreline and looking along the
+gun row.
+- **Files:** `p842-gun-close-c/d/e.webp` are full frames at 1920; `*-crop.webp` are the 4K frame's middle at 1:1.
+- **The nearest barrel is about 1.5 m off** in c and e.
+
+**Cast iron:** yes.
+- The barrels are dark iron with an uneven skin: rust-brown blotches and mottling along the barrel, stronger on the near
+  one.
+- At 1:1 the blotches are fairly soft-edged and fairly large, closer to staining than to fine casting pits. That's worth a
+  look against the reference by eye.
+
+**Paint wear:**
+- The carriages' red reads darker and uneven, with worn, darker patches toward the edges and wheels.
+- The gunport linings stay a clean red.
