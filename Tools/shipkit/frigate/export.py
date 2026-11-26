@@ -43,6 +43,7 @@ import sys
 import time
 
 import bpy
+import numpy as np
 from mathutils import Matrix
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -101,6 +102,56 @@ def slot_name(m):
 
 
 # ------------------------------------------------------------------------------------------------ writing a file
+GRAIN_ATTR = "Grain"   # the game's M_BoatSurface reads it (make_materials.py BOAT_CODE, "Frigate: the grain's axis")
+
+
+def paint_grain(me):
+    """Each timber's long axis, written for the game into a colour attribute (R 0: data present; G 0 along the ship,
+    0.5 athwartships, 1 up): M_BoatSurface draws the wood's figure and its fine grain along it. A timber is a connected
+    piece of the mesh (the parts are joined per kind: all a deck's beams in one object, so the object's bounds say nothing);
+    its axis is the longest side of its bounds in the ship's frame (the mesh is already transformed). Beams across, clamps,
+    planks and the hull along, stanchions and masts up; a knee takes its longer arm. (The first import drew the figure
+    along the ship on every part: wavy bands across the beams and pillars.)"""
+    nv = len(me.vertices)
+    if nv == 0 or len(me.loops) == 0:
+        return
+    co = np.empty(nv * 3)
+    me.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    ne = len(me.edges)
+    ev = np.empty(ne * 2, dtype=np.int64)
+    me.edges.foreach_get("vertices", ev)
+    ev = ev.reshape(-1, 2)
+    lab = np.arange(nv, dtype=np.int64)
+    for _ in range(10000):   # label propagation with pointer jumping: a few rounds even on a long plank
+        m = np.minimum(lab[ev[:, 0]], lab[ev[:, 1]])
+        np.minimum.at(lab, ev[:, 0], m)
+        np.minimum.at(lab, ev[:, 1], m)
+        before = lab
+        lab = lab[lab]
+        if np.array_equal(lab, before) and np.array_equal(np.minimum(lab[ev[:, 0]], lab[ev[:, 1]]), lab[ev[:, 0]]) \
+                and np.array_equal(lab[ev[:, 0]], lab[ev[:, 1]]):
+            break
+    lo = np.full((nv, 3), np.inf)
+    hi = np.full((nv, 3), -np.inf)
+    for k in range(3):
+        np.minimum.at(lo[:, k], lab, co[:, k])
+        np.maximum.at(hi[:, k], lab, co[:, k])
+    ext = hi - lo
+    axis = np.argmax(ext, axis=1)            # per label: 0 x, 1 y, 2 z
+    g = np.array([0.0, 0.5, 1.0])[axis[lab]]  # per vertex
+    nl = len(me.loops)
+    lv = np.empty(nl, dtype=np.int64)
+    me.loops.foreach_get("vertex_index", lv)
+    col = np.zeros((nl, 4))
+    col[:, 1] = g[lv]
+    col[:, 3] = 1.0
+    attr = me.color_attributes.get(GRAIN_ATTR) or me.color_attributes.new(name=GRAIN_ATTR, type="BYTE_COLOR", domain="CORNER")
+    attr.data.foreach_set("color", col.ravel())
+    me.color_attributes.active_color = attr
+    me.color_attributes.render_color_index = me.color_attributes.find(GRAIN_ATTR)
+
+
 def _temp(name, meshes_and_matrices):
     """A temporary object whose mesh is the given meshes, each moved by its matrix, joined (slots merged by material)."""
     objs = []
@@ -109,6 +160,7 @@ def _temp(name, meshes_and_matrices):
         c.transform(mx)
         if mx.determinant() < 0:
             c.flip_normals()
+        paint_grain(c)
         ob = bpy.data.objects.new("_x_" + name, c)
         bpy.context.scene.collection.objects.link(ob)
         objs.append(ob)
@@ -145,7 +197,7 @@ def write(path, meshes_and_matrices, dry=False):
             bpy.ops.export_scene.fbx(filepath=path, use_selection=True, axis_forward="X", axis_up="Z",
                                      apply_unit_scale=True, apply_scale_options="FBX_SCALE_UNITS",
                                      mesh_smooth_type="FACE", use_mesh_modifiers=True, add_leaf_bones=False,
-                                     bake_space_transform=True)
+                                     bake_space_transform=True, colors_type="LINEAR")   # the Grain attribute's values as written
     finally:
         for m, n in renamed:
             m.name = n
