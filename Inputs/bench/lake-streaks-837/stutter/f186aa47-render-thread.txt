@@ -1,0 +1,48 @@
+frames 275: slow (> 22.5 ms) 94, fast (< 19.0 ms) 23
+mean frame: slow 24.13 ms, fast 18.41 ms
+timer                                                                     slow    fast    diff
+SceneRenderBuilder_Render                                                15.59   12.62   +2.96
+SceneRender                                                              15.57   12.62   +2.96
+FRHIBreadcrumbScope_GameThread_Begin                                      7.22    4.86   +2.35
+RenderViewFamily                                                         12.36   10.01   +2.34
+FDeferredShadingSceneRenderer_Render                                     12.36   10.01   +2.34
+Scene                                                                     9.45    7.57   +1.89
+FProcMeshSectionUpdate                                                    3.96    2.55   +1.42
+UpdateSection RT                                                          3.96    2.54   +1.41
+RenderGraphExecute                                                        3.58    2.86   +0.72
+FlushDeferredResourceUpdateCommand                                        1.10    0.68   +0.42
+DispatchCanvasRenderCommands                                              1.08    0.67   +0.41
+VisibilityCommands                                                        0.70    0.29   +0.41
+FDeferredShadingSceneRenderer_InitViews                                   0.70    0.29   +0.41
+InitViews                                                                 0.70    0.29   +0.41
+View Visibility                                                           0.46    0.07   +0.39
+ProcessVisibilityTasks                                                    0.46    0.07   +0.39
+WaitForVisibilityTasks                                                    0.43    0.05   +0.38
+WaitUntilTasksComplete                                                    0.43    0.05   +0.38
+Collect Resources                                                         1.82    1.48   +0.34
+FRDGBuilder::CollectResources                                             1.82    1.48   +0.34
+UpdateTextureRegionsData                                                  1.18    0.86   +0.31
+%s                                                                        0.72    0.44   +0.28
+UpdatePrimitive                                                           1.51    1.23   +0.28
+CanvasDrawTiles                                                           0.68    0.42   +0.27
+STAT_CanvasDrawTiles                                                      0.68    0.42   +0.26
+UpdateAllPrimitiveSceneInfos                                              1.41    1.16   +0.25
+FTaskBase::WaitImpl_StateChangeEvent_WaitFor                              0.93    0.72   +0.21
+Nanite::DrawGeometry                                                      1.54    1.33   +0.21
+FRDGBuilder::AllocateTransientResources                                   1.11    0.91   +0.19
+Tasks::Wait                                                               0.78    0.61   +0.17
+DiffuseIndirectAndAO                                                      1.05    0.88   +0.17
+FSceneRenderer_RenderShadowDepthMaps                                      1.08    0.92   +0.15
+FSceneRenderer::RenderShadowDepthMaps                                     1.08    0.92   +0.15
+ShadowDepths                                                              1.07    0.92   +0.15
+FDeferredShadingSceneRenderer::UpdateLumenScene                           0.76    0.61   +0.15
+UpdateLumenScene                                                          0.75    0.61   +0.15
+UpdateLumenSceneBuffers                                                   0.75    0.61   +0.15
+LumenSceneUpdate:                                                         0.75    0.60   +0.14
+PostProcessing                                                            0.68    0.55   +0.13
+DispatchAsyncLumenIndirectLightingWork                                    0.75    0.62   +0.13
+D3D12RHI::CreateRHIBuffer                                                 0.38    0.25   +0.13
+CreateBuffer time                                                         0.37    0.25   +0.12
+LumenScreenProbeGather                                                    0.71    0.59   +0.12
+STAT_PostProcessing_Process                                               0.64    0.52   +0.12
+ExecuteCommandList                                                        0.64    0.52   +0.12
