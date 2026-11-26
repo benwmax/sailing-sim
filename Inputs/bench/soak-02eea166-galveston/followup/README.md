@@ -32,3 +32,45 @@
 
 **Reading:** the bursts look tied to a long process, not to the place. The 60 min run held in one spot (part 2) is next
 and logs memory and fps every minute.
+
+## 2. Drift: 60 min held in one spot
+
+**Run:**
+```
+-SailingWorld=1 "-SailingStartAt=-20707,20215,320" -SailingKeepStart -SailingHour=16.17 -SailingBench=3600
+```
+- **No demo.** The start is the soak's minute-70 position, and the clock is the soak's clock then.
+- **Where she ended up:** without the autopilot she drifted about 750 m south-west in the first few minutes to about
+  -21,429 N, 19,961 E. She stayed there (0.5 m per minute) for the rest of the hour, so the view and the place held still
+  after that.
+- **Logging:** memory every minute (`held-60min-memory.csv`), and fps, p99 and game thread per minute from the frames
+  (`held-60min-per-minute.csv`).
+
+**Result: nothing drifts when she stays put.**
+- **Whole run:** 49.9 fps, p99 24.8 ms, game thread 12.3 ms, render thread 20.0 ms, GPU 19.5 ms. Exit 0, one crash folder
+  (the frame-0 PSO ensure).
+
+| Minute | 1 | 10 | 20 | 30 | 40 | 50 | 55 |
+|---|---|---|---|---|---|---|---|
+| fps | 49.1 | 49.3 | 49.3 | 49.3 | 49.4 | 49.5 | 49.7 |
+| Working set (MB) | 3,845 | 3,720 | 3,756 | 3,751 | 3,742 | 3,780 | 3,818 |
+| Private (MB) | 14,766 | 14,618 | 14,720 | 14,732 | 14,774 | 14,879 | 14,984 |
+
+- **fps is flat** at 49.1-49.7 from minute 1 to 55.
+- **The working set is flat:** -0.7% from minute 1 to 55.
+- **Private bytes are up 1.5%** over the hour.
+- **In the soak, sailing the bay:**
+  - fps fell from about 53 to about 48 after minute 70;
+  - working set +7.6%, private +5.4% over 106 minutes.
+- **Frames over 50 ms:**
+  - the five tide steps (-32 to -42 cm), one frame each, 50-64 ms, render-bound;
+  - one 155 ms frame at 3486 s with game 12 ms and render 20 ms, so a GPU or present stall; it didn't repeat;
+  - no game-thread bursts.
+
+**Reading:** the soak's fps drift and most of its memory growth follow the route, not time:
+- held in one place, the process stays flat for an hour;
+- the burst hunt (part 1) didn't reproduce the last minute's game-thread bursts either.
+- **What's left unexplained:** the soak's last-minute bursts after 2 h. They need a long run that's both sailing and
+  traced.
+- **A candidate for the memory:** what grows along the route, such as terrain chunks, tiles, crowns and houses near the
+  boat. The soak's bench.json shows 76 chunks dropped and 4,347 made.
