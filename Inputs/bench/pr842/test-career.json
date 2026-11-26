@@ -1,0 +1,305 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "BFAE8EEE4A5E802FAB2BC9806B961121",
+			"instanceName": "BEN-PC-10264",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.26-20.16.05",
+	"succeeded": 15,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.20614670217037201,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "Checkride",
+			"fullTestPath": "SailingSim.Career.Checkride",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0072435997426509857,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Earn silver or better in 6 more lessons",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-20.16.05"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Club Racer: Earn silver or better in 4 more lessons",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-20.16.05"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Content",
+			"fullTestPath": "SailingSim.Career.Content",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0081038996577262878,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Broken file: t: unknown boat Dragon; t.a: quiz Nope has no quiz in Content/Learning; t.a: gold asks less than silver; t unlocks: unknown tier nowhere",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-20.16.05"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "DaySailorPlaythrough",
+			"fullTestPath": "SailingSim.Career.DaySailorPlaythrough",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.092170596122741699,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Heave to: Gold in 27 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-20.16.05"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "DrillFinish",
+			"fullTestPath": "SailingSim.Career.DrillFinish",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0077927969396114349,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "EasyMedal",
+			"fullTestPath": "SailingSim.Career.EasyMedal",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0084417015314102173,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "FreeSail",
+			"fullTestPath": "SailingSim.Career.FreeSail",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0085602030158042908,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Grading",
+			"fullTestPath": "SailingSim.Career.Grading",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0078509002923965454,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Jobs",
+			"fullTestPath": "SailingSim.Career.Jobs",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0082141011953353882,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MedalLines",
+			"fullTestPath": "SailingSim.Career.MedalLines",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.007872898131608963,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MedalWords",
+			"fullTestPath": "SailingSim.Career.MedalWords",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0085301995277404785,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ReturnStartHeading",
+			"fullTestPath": "SailingSim.Career.ReturnStartHeading",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0081865005195140839,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SaveRoundTrip",
+			"fullTestPath": "SailingSim.Career.SaveRoundTrip",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0079939998686313629,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ScriptStepsGate",
+			"fullTestPath": "SailingSim.Career.ScriptStepsGate",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0083438009023666382,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "TexasCoastUnlock",
+			"fullTestPath": "SailingSim.Career.TexasCoastUnlock",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0083607994019985199,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Unlocks",
+			"fullTestPath": "SailingSim.Career.Unlocks",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"BFAE8EEE4A5E802FAB2BC9806B961121"
+			],
+			"duration": 0.0084806978702545166,
+			"dateTime": "2026.11.26-20.16.05",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
