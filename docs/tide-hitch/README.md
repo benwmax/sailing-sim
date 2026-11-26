@@ -37,8 +37,8 @@ frame. With them out of the distance fields the step still cost 210-240 ms: `Sce
 
 ## Numbers (PC, RTX 4090, 4K Ultra, Galveston, 2 min runs with `-SailingTideStepEvery=20`)
 
-`-SailingTideStepEvery=<s>` forces a 2 cm step every `<s>` s, so the hitch can be measured without a 2 h soak; every step logs
-`Tide step: the followers stand at N cm`. The forced 2 cm also raises the water and the physics level (measuring only). Peak render-thread ms in each step's window (`Inputs/bench/tide-df-fix/`):
+`-SailingTideStepEvery=<s>` forces a step every `<s>` s (a 3 cm swing of the tide, so it always crosses the dead band), so the hitch can be measured without a 2 h soak; every step logs
+`Tide step: the followers stand at N cm`. The forced 3 cm also raises the water and the physics level (measuring only). Peak render-thread ms in each step's window (`Inputs/bench/tide-df-fix/`):
 
 | Build | Peak render ms per step | DF instances |
 | --- | --- | --- |
