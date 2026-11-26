@@ -29,7 +29,7 @@ reel-saturday.ps1 -Package Windows-<freeze sha> [-Res 4k|1080p] [-Only 'P2-storm
 | P5 | The rehearsed P5 (`p5-then-now.json`). With `-ViewModeArg` it adds `-SailingNoHullClip` (#828). |
 | R01 | Hour **7.4**. |
 | R05 | **`-SailingBenchWarmup=11.5`**: the demo tacks at 12.6 s, so the take starts 1.1 s before the tack. |
-| R06 | **`-SailingUiMode=helpful`**, HUD on. |
+| R06 | Capture-mode helm-eye take (`-SailingCapture=HelmEye -SailingCaptureHud`, #838 on main 02eea166), **`-SailingUiMode=helpful`**, HUD on, learning tips hidden (`L` in the UI script). |
 | R08 | The Career screen on a **throwaway profile with the Day Sailor certificate earned**. It's copied fresh to `Artifacts\bench\seed\run-profile.json` each run and named with `-SailingSave=<that path>`. A measuring run ignores the profile unless `-SailingSave` names one, so it never reads or writes Bean's. **Test: the Day Sailor card shows "Certified, certificate earned", and Club Racer is open** (`R08-career-test-1080p.jpg`). The certificate *document* only appears right after passing the checkride quiz, which a script can't answer, so it isn't filmed. |
 | R12 | The Sunfish tacks at 14.2 s, about 4 s into the 8 s take. |
 | R13 | **Reshot underway:** a reach at 10 kn, TWA 90 held, shot file `s13b-jibclew-underway.json` (boat frame, 30 deg, 2.7 s slow push).<br>**Test:** the jib clew with its bowline and the loaded sheets, close in (`R13-jibclew-test-1080p.jpg`).<br>The shot format has no socket to lock a mount to the clew. A `mount` frame near the clew sat inside the eased jib, so I used the boat frame from just outside the leeward rail. That's the jib clew, not the main. |
