@@ -79,7 +79,7 @@ rotates. Two of them are "before" stills with `-SailingClassicBowWave`. Wind and
 SCENES=docs/bow-wave/bow-scenes.csv OUT=docs/bow-wave/captures scripts/capture-scenes.sh 25
 ```
 
-Give each run about 25 s so she is up to speed and the grid has filled in. The captures' `.telemetry.csv` files give
+Give each run about 25 s so she is up to speed and the grid has filled in. Every row carries `-SailingDemo`: `-SailingHoldTWA` only steers with the demo autopilot, and unsteered she rounded up from 90 to 49 degrees and sailed past the camera, so the bow views showed her stern (the PC's first pass, Nov 26). The captures' `.telemetry.csv` files give
 the speed she actually sailed.
 
 ## Reference footage
