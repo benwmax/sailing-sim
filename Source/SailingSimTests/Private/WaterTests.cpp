@@ -211,7 +211,8 @@ bool FWaterBowCrestTest::RunTest(const FString&)
 	const FResult Slow = SailAt(1.54f), Mid = SailAt(2.57f), Fast = SailAt(3.09f);
 	TestTrue(TEXT("Her bow wave's crest grows with her speed"), Mid.Crest > Slow.Crest && Fast.Crest > 2.f * Slow.Crest);
 	TestTrue(TEXT("At 6 kn the crest at her side is a few centimetres"), Fast.Crest > 0.02f && Fast.Crest < 0.25f);
-	TestTrue(TEXT("At 6 kn it breaks white along her side"), Fast.Foam > 0.1f);
+	// Enough to be drawn: M_WaterV4 shows wake foam from about 0.4 (offline 0.85; the first rate's 0.28 didn't show).
+	TestTrue(TEXT("At 6 kn it breaks white along her side"), Fast.Foam > 0.5f);
 	TestTrue(TEXT("At 3 kn her side stays mostly clear"), Slow.Foam < 0.5f * Fast.Foam);
 	TestTrue(TEXT("No foam ahead of her"), Fast.FoamAhead >= 0.f && Fast.FoamAhead < 0.05f);
 	return true;

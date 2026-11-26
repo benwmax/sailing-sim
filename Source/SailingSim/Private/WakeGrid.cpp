@@ -269,13 +269,15 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			// Bow wave 2 (docs/bow-wave/): her bow wave's crest standing against her side spills white once she is fast for her
 			// length: open water beside a cell under her, raised past 1.5 cm, from a length Froude number of 0.30 (a J/22 at
 			// about 4.5 kn) to full by 0.42 (6 kn, her hull speed). The grid's crest at her side is a few centimetres (4 cm at
-			// 6 kn on High: the curl, UpdateBowWave, draws the rest), so the rate is scaled to it: about 0.5 foam over the half
-			// second a cell spends beside her bow at 6 kn, a narrow white band that she leaves along her track.
+			// 6 kn on High: the curl, UpdateBowWave, draws the rest), so the rate is scaled to it: up to 0.85 foam on the crest
+			// beside her bow at 6 kn (0.1 at 5 kn), a narrow white band that she leaves along her track. M_WaterV4 draws wake
+			// foam only past about 0.4 (wakeBreak, over the bubbles' mean): the first rate (25, 0.28 at the most) showed
+			// nothing in the PC's bow stills (Nov 26).
 			if (bBowFoam && Depth[I] < 0.005f && NearFroude[I] > 0.3f && Kept > 0.015f)
 			{
 				const int32 Ru = FMath::Max(R - 1, 0), Rd = FMath::Min(R + 1, N - 1), Cl = FMath::Max(C - 1, 0), Cr = FMath::Min(C + 1, N - 1);
 				const float Beside = FMath::Max(FMath::Max(Depth[Ru * N + C], Depth[Rd * N + C]), FMath::Max(Depth[R * N + Cl], Depth[R * N + Cr]));
-				if (Beside > 0.02f) Churn += 25.f * (Kept - 0.015f) * FMath::SmoothStep(0.3f, 0.42f, NearFroude[I]);
+				if (Beside > 0.02f) Churn += 75.f * (Kept - 0.015f) * FMath::SmoothStep(0.3f, 0.42f, NearFroude[I]);
 			}
 			float Foam = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
 			// sailing-feedback #9: the water a moving hull has just left (astern of her, never ahead) is stirred full of

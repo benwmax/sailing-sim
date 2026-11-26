@@ -52,8 +52,10 @@ No new GPU work and no material changes. Everything is in `Source/`.
   the spray leaves where the wave is highest. With no curl (Low, far AI boats) it uses the old deck-edge spot.
 - **White along her side at speed.** In the wake grid, open water right beside her hull that is pushed up past 1.5 cm
   makes foam once she is fast for her length. That starts at a length Froude number of 0.30 (about 4.5 kn for a J/22)
-  and is full by 0.42 (her hull speed, about 6 kn). The offline copy gives no side foam at 3 kn, 0.05 at 5 kn and 0.28
-  at 6 kn, with none ahead of her. It leaves a narrow white band along her track.
+  and is full by 0.42 (her hull speed, about 6 kn). The offline copy gives no side foam at 3 kn, 0.11 at 5 kn and 0.85
+  at 6 kn at the most, with none ahead of her. It leaves a narrow white band along her track. `M_WaterV4` draws wake
+  foam only past about 0.4, so the first rate (0.28 at 6 kn, matched exactly in the engine on the PC) drew nothing in
+  the PC's bow stills of Nov 26; the rate is now three times that.
 
 Cost: the curl does about 360 bilinear lookups a frame per boat on the game thread (a few microseconds). The grid's new
 foam test runs only on cells beside a hull.
