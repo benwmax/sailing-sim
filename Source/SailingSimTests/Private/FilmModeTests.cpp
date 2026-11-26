@@ -143,6 +143,33 @@ bool FFilmSwitchesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The capture HUD (-SailingCaptureHud): opt-in, so captures and film takes stay the picture alone without it.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFilmCaptureHudTest, "SailingSim.Smoke.FilmMode.CaptureHud", FilmModeTestsLocal::FilmFlags)
+bool FFilmCaptureHudTest::RunTest(const FString& Parameters)
+{
+	TestFalse(TEXT("a capture without the switch keeps no HUD"), CaptureShowsHud(TEXT("-SailingCapture=HelmEye -SailingBench=10")));
+	TestTrue(TEXT("-SailingCaptureHud asks for it"), CaptureShowsHud(TEXT("-SailingCapture=HelmEye -SailingCaptureHud -SailingBench=10")));
+	TestFalse(TEXT("-SailingCaptureHudX is not the switch"), CaptureShowsHud(TEXT("-SailingCapture=HelmEye -SailingCaptureHudX")));
+	TestFalse(TEXT("no command line, no HUD"), CaptureShowsHud(nullptr));
+	TestFalse(TEXT("the automation run has no switch"), CaptureShowsHud());
+
+	// The default is unchanged: capture mode hides the HUD; only the switch keeps it. Outside capture nothing changes.
+	TestTrue(TEXT("capture hides the HUD by default"), CaptureHidesHud(true, false));
+	TestFalse(TEXT("capture with the switch keeps it"), CaptureHidesHud(true, true));
+	TestFalse(TEXT("outside capture the switch hides nothing"), CaptureHidesHud(false, true));
+	TestFalse(TEXT("outside capture, nothing hidden"), CaptureHidesHud(false, false));
+
+	// The starting HUD mode: measuring runs keep the full HUD (0) as before; with the switch, the chosen mode.
+	for (int32 Chosen = 0; Chosen <= 2; ++Chosen)
+	{
+		TestEqual(FString::Printf(TEXT("measuring, no switch: full HUD (chosen %d)"), Chosen), StartingHudMode(true, false, Chosen), 0);
+		TestEqual(FString::Printf(TEXT("measuring with the switch: chosen %d"), Chosen), StartingHudMode(true, true, Chosen), Chosen);
+		TestEqual(FString::Printf(TEXT("a player's run: chosen %d"), Chosen), StartingHudMode(false, false, Chosen), Chosen);
+	}
+	TestEqual(TEXT("an out-of-range mode is held to Off"), StartingHudMode(true, true, 7), 2);
+	return true;
+}
+
 // Film mode 5: shot files.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFilmShotParseTest, "SailingSim.Smoke.FilmMode.ShotParse", FilmModeTestsLocal::FilmFlags)
 bool FFilmShotParseTest::RunTest(const FString& Parameters)

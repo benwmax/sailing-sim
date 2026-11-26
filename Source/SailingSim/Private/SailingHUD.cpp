@@ -16,6 +16,7 @@
 #include "SailboatPawn.h"
 #include "FreeCamera.h"
 #include "GalleryStage.h"
+#include "FilmMode.h"
 #include "UI/SailUIStyle.h"
 #include "SailingSettings.h"
 #include "SailingBindings.h"
@@ -109,8 +110,9 @@ void ASailingHUD::BeginPlay()
 	if (PlayerOwner && GEngine && GEngine->GameViewport && !IsRunningCommandlet())
 	{
 		// UI overhaul: the HUD starts in the player's saved interface mode (Helpful, Natural, Off); a measuring run keeps
-		// the full HUD, as it ignores the player's other display choices.
-		SSailHud::Mode = USailingSettings::IsMeasuring() ? 0 : int32(SailUI::UiMode());
+		// the full HUD, as it ignores the player's other display choices, unless it asked for the capture HUD
+		// (-SailingCaptureHud, docs/film-mode/): then the chosen mode, as a player would see it.
+		SSailHud::Mode = StartingHudMode(USailingSettings::IsMeasuring(), CaptureShowsHud(), int32(SailUI::UiMode()));
 		SlateHud = SNew(SSailHud).Player(PlayerOwner);
 		GEngine->GameViewport->AddViewportWidgetContent(SlateHud.ToSharedRef(), 5);
 		PhotoPanel = SNew(SSailPhotoPanel).Player(PlayerOwner);
@@ -494,7 +496,7 @@ void ASailingHUD::DrawHUD()
 	UIScale = FMath::Clamp(Canvas->ClipY / 1080.f, 0.7f, 2.f);
 
 	const USailingSettings* Settings = USailingSettings::Get();
-	if (Boat->IsCaptureMode()) return; // reference captures: the picture only
+	if (CaptureHidesHud(Boat->IsCaptureMode(), CaptureShowsHud())) return; // reference captures: the picture only (-SailingCaptureHud keeps the HUD)
 	if (Boat->IsPhotoMode())
 	{
 		// Nothing over the picture but a moment's hint and the camera's speed (H hides both). The shot is the scene and
