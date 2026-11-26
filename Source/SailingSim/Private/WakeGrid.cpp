@@ -1,5 +1,6 @@
 #include "WakeGrid.h"
 #include "Async/ParallelFor.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 
 namespace
 {
@@ -11,6 +12,17 @@ namespace
 	// every step, a flat white sheet wider than her beam (docs/frigate-import/).
 	constexpr float kMaxDepth = 2.3f;
 	constexpr int32 kSponge = 8;       // cells of absorbing border
+
+	/** docs/frame-pacing/ (PC Insights, Nov 26 2026): the wake's solve runs on a worker and fans every pass out over all the
+	 *  workers. At normal priority a burst filled them just as the render thread's visibility tasks were queued, and those
+	 *  frames waited 3-5 ms longer (InitViews -> WaitForVisibilityTasks): the uneven frame pacing Bean saw as a stutter.
+	 *  The wake is polled (AWaterSurface takes a step only when it is ready), so it runs at background priority: frame work
+	 *  goes first. Named, so a trace shows it. */
+	template <typename FBody>
+	void WakeParallel(int32 Num, FBody&& Body)
+	{
+		ParallelFor(Num, [&Body](int32 I) { TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WakeGridRows); Body(I); }, EParallelForFlags::BackgroundPriority);
+	}
 
 	/** In-place radix-2 complex FFT of one line (Sign +1 inverse sense, -1 forward; unnormalized). */
 	void Fft(std::complex<float>* A, int32 Count, int32 Stride, float Sign)
@@ -42,13 +54,13 @@ namespace
 
 	void Fft2(TArray<std::complex<float>>& A, int32 N, float Sign)
 	{
-		ParallelFor(N, [&](int32 R) { Fft(A.GetData() + R * N, N, 1, Sign); });
+		WakeParallel(N, [&](int32 R) { Fft(A.GetData() + R * N, N, 1, Sign); });
 		// The columns in blocks of 16, copied out to contiguous lines, transformed and copied back. Walked in place at a
 		// stride of N, every butterfly of every pass missed the cache (on Ultra's 512 grid the stride is 4 KB, so a column
 		// sits in one cache set): the PC's stutter trace (Nov 26) put the column pass at 27-32 ms of worker time a frame
 		// against 2 ms for the rows. The same arithmetic in the same order, so the result is bit-identical.
 		constexpr int32 kBlock = 16;
-		ParallelFor(FMath::DivideAndRoundUp(N, kBlock), [&](int32 B)
+		WakeParallel(FMath::DivideAndRoundUp(N, kBlock), [&](int32 B)
 		{
 			const int32 C0 = B * kBlock, Width = FMath::Min(kBlock, N - C0);
 			TArray<std::complex<float>> Lines;
@@ -168,7 +180,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 	Swap(Depth, PrevDepth);
 	Swap(Stir, PrevStir);
 	Swap(StirMid, PrevStirMid);
-	ParallelFor(N, [&](int32 R)
+	WakeParallel(N, [&](int32 R)
 	{
 		for (int32 C = 0; C < N; ++C)
 		{
@@ -204,7 +216,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 	});
 	if (!bHasDepth) { PrevDepth = Depth; bHasDepth = true; }
 	// Pressure head, softened over a cell so the hull's sharp outline doesn't ring at the grid scale.
-	ParallelFor(N, [&](int32 R)
+	WakeParallel(N, [&](int32 R)
 	{
 		for (int32 C = 0; C < N; ++C)
 		{
@@ -233,7 +245,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 	const float Norm = 1.f / float(NN);
 	TArray<std::complex<float>> Out;
 	Out.SetNumUninitialized(NN);
-	ParallelFor(N, [&](int32 R)
+	WakeParallel(N, [&](int32 R)
 	{
 		const int32 Rm = (N - R) % N;
 		for (int32 C = 0; C < N; ++C)
@@ -261,7 +273,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 	});
 	Fft2(Out, N, 1.f);
 
-	ParallelFor(N, [&](int32 R)
+	WakeParallel(N, [&](int32 R)
 	{
 		for (int32 C = 0; C < N; ++C)
 		{
@@ -327,7 +339,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 	constexpr float kSlickDiffusion = 0.3f; // m^2/s
 	const float SlickDecay = FMath::Exp(-Dt / kSlickSeconds);
 	const float Mix = FMath::Min(kSlickDiffusion * Dt / (Cell * Cell), 0.2f);
-	ParallelFor(N, [&](int32 R)
+	WakeParallel(N, [&](int32 R)
 	{
 		for (int32 C = 0; C < N; ++C)
 		{

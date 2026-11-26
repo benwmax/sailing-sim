@@ -24,8 +24,25 @@ namespace ShipOutsideTestsLocal
 		"SM_Frigate_GunDeck": {"triangles": 405685, "slots": ["MI_Frigate_GunDeckPlanks"], "file": "Decks/SM_Frigate_GunDeck.fbx", "group": "Decks",
 			"asset": "/Game/Boats/Frigate/Decks/SM_Frigate_GunDeck", "part": "GunDeck", "states": null, "frame": "ship", "deck": "GunDeck"},
 		"SM_Frigate_Gun24_Barrel": {"triangles": 3000, "slots": ["MI_Frigate_Iron"], "file": "Guns/SM_Frigate_Gun24_Barrel.fbx", "group": "Guns",
-			"asset": "/Game/Boats/Frigate/Guns/SM_Frigate_Gun24_Barrel", "part": "Gun24_Barrel", "states": null, "frame": "own (guns.json meshes)"}
-	}
+			"asset": "/Game/Boats/Frigate/Guns/SM_Frigate_Gun24_Barrel", "part": "Gun24_Barrel", "states": null, "frame": "own (guns.json meshes)"},
+		"SM_Frigate_BerthHammock": {"triangles": 2632, "slots": ["MI_Frigate_Canvas"], "file": "Decks/SM_Frigate_BerthHammock.fbx", "group": "Decks",
+			"asset": "/Game/Boats/Frigate/Decks/SM_Frigate_BerthHammock", "part": "BerthHammock", "states": null, "frame": "ship"}
+	},
+	"placed": {
+		"Wheel": {"mesh": "SM_Frigate_Wheel", "location_cm": [-2225.0, 0.0, 549.57], "rotation_xyzw": [0, 0, 0, 1], "scale": [1, 1, 1], "collection": null, "owner": "ship"},
+		"Hammock_01": {"mesh": "SM_Frigate_BerthHammock", "location_cm": [-1200.0, 300.0, 250.0], "rotation_xyzw": [0, 0, 0.7071068, 0.7071068], "scale": [1, 1, 1],
+			"collection": "BerthDeck_Hammocks", "owner": "ship"},
+		"Hammock_02": {"mesh": "SM_Frigate_BerthHammock", "location_cm": [-1100.0, 300.0, 250.0], "rotation_xyzw": [0, 0, 0, 1], "scale": [1, 1, 1],
+			"collection": "BerthDeck_Hammocks", "owner": "ship"},
+		"Gun_01_Barrel": {"mesh": "SM_Frigate_Gun24_Barrel", "location_cm": [100.0, 300.0, 400.0], "rotation_xyzw": [0, 0, 0, 1], "scale": [1, 1, 1],
+			"collection": "Guns_RunOut", "owner": "battery"}
+	},
+	"lights": [
+		{"name": "Lantern_01_02_S", "zone": "gun_deck", "colour_rgb": [1.0, 0.62, 0.3], "kelvin": 2200, "lumens": 180.0, "cast_shadows": false,
+			"deck": "GunDeck", "location_cm": [-1959.67, 338.1, 375.58], "radius_cm": 307.2},
+		{"name": "Lantern_LightRoomAft", "colour_rgb": [1.0, 0.62, 0.3], "cast_shadows": true, "deck": "Orlop", "zone": "orlop",
+			"location_cm": [-2042.1, 0.0, -51.0], "radius_cm": 0.0}
+	]
 })json";
 }
 
@@ -56,6 +73,44 @@ bool FShipOutsideTableTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("state bits"), int32(StateBit(TEXT("underway")) | StateBit(TEXT("action")) | StateBit(TEXT("clewed")) | StateBit(TEXT("anchored"))), int32(AllStates));
 	TestEqual(TEXT("an unknown state"), int32(StateBit(TEXT("sinking"))), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FShipOutsideDecksTest, "SailingSim.ShipOutside.Decks", ShipOutsideTestsLocal::TestFlags)
+bool FShipOutsideDecksTest::RunTest(const FString& Parameters)
+{
+	using namespace ShipOutside;
+	FDeckTable Table;
+	FString Error;
+	TestTrue(TEXT("the sample parses"), ParseDecks(ShipOutsideTestsLocal::Sample, Table, &Error));
+	// The two hammocks on the berth deck: not the wheel (no deck's collection), not the battery's gun.
+	TestEqual(TEXT("two placed copies"), Table.Copies.Num(), 2);
+	if (Table.Copies.Num() == 2)
+	{
+		TestEqual(TEXT("the hammock"), Table.Copies[0].Part, FString(TEXT("BerthHammock")));
+		TestEqual(TEXT("on the berth deck"), Table.Copies[0].Deck, FString(TEXT("Berth")));
+		TestEqual(TEXT("its object path"), Table.Copies[0].Asset, FString(TEXT("/Game/Boats/Frigate/Decks/SM_Frigate_BerthHammock.SM_Frigate_BerthHammock")));
+		TestTrue(TEXT("where it hangs"), Table.Copies[0].Transform.GetLocation().Equals(FVector(-1200.0, 300.0, 250.0), 1e-3));
+		// A quarter turn about Z: the copy's X points to starboard (+Y), as the export's frame and the game's agree.
+		const FVector X = Table.Copies[0].Transform.GetRotation().RotateVector(FVector::ForwardVector);
+		TestTrue(TEXT("its quarter turn is to starboard"), X.Equals(FVector::RightVector, 1e-3));
+	}
+	TestEqual(TEXT("two lanterns"), Table.Lanterns.Num(), 2);
+	if (Table.Lanterns.Num() == 2)
+	{
+		TestEqual(TEXT("on the gun deck"), Table.Lanterns[0].Deck, FString(TEXT("Gun")));
+		TestEqual(TEXT("its lumens"), Table.Lanterns[0].Lumens, 180.f);
+		TestEqual(TEXT("its reach"), Table.Lanterns[0].RadiusCm, 307.2f);
+		TestFalse(TEXT("no shadows"), Table.Lanterns[0].bCastShadows);
+		TestEqual(TEXT("the light room's, on the orlop"), Table.Lanterns[1].Deck, FString(TEXT("Orlop")));
+		TestEqual(TEXT("no reach given: 0, the deck lamps' default"), Table.Lanterns[1].RadiusCm, 0.f);
+		TestTrue(TEXT("shadowed"), Table.Lanterns[1].bCastShadows);
+	}
+	TestEqual(TEXT("the berth deck's collections"), WalkDeckOf(TEXT("BerthDeck_Messes")), FString(TEXT("Berth")));
+	TestEqual(TEXT("the gun deck"), WalkDeckOf(TEXT("GunDeck")), FString(TEXT("Gun")));
+	TestEqual(TEXT("the lids are no deck's"), WalkDeckOf(TEXT("Scene Collection")), FString());
+	TestTrue(TEXT("a table without placed copies or lights parses to none"), ParseDecks(TEXT("{\"meshes\": {}}"), Table, &Error) && Table.Copies.Num() == 0 && Table.Lanterns.Num() == 0);
+	TestFalse(TEXT("no meshes"), ParseDecks(TEXT("{\"root\": \"x\"}"), Table, &Error));
 	return true;
 }
 
@@ -115,5 +170,32 @@ bool FShipOutsideCommonwealthTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("144 parts in every state"), Always, 144);
 	TestTrue(TEXT("the hull's skin"), bSkin);
 	TestFalse(TEXT("the wheel is the frames' (its own pivot)"), bWheel);
+	// Her decks: the berth deck's 406 copies (236 hammock hooks, 112 hammocks, the messes' 24 benches, 12 tables, 12 kids
+	// and 10 sea chests) and 29 lanterns (15 on the gun deck with the great cabin's, 12 on the berth deck with the sick
+	// bay's and the wardroom's, 2 on the orlop), every copy on a deck whose mesh is in the Decks folder.
+	FDeckTable Decks;
+	TestTrue(FString::Printf(TEXT("her decks parse: %s"), *Error), ParseDecks(Text, Decks, &Error));
+	int32 Berth = 0, Hooks = 0, Hammocks = 0;
+	for (const FDeckCopy& C : Decks.Copies)
+	{
+		if (C.Deck == TEXT("Berth")) ++Berth;
+		if (C.Part == TEXT("HammockHook")) ++Hooks;
+		if (C.Part == TEXT("BerthHammock")) ++Hammocks;
+		TestTrue(FString::Printf(TEXT("%s is under Decks/"), *C.Part), C.Asset.StartsWith(TEXT("/Game/Boats/Frigate/Decks/SM_Frigate_")));
+	}
+	TestEqual(TEXT("406 copies on the berth deck"), Berth, 406);
+	TestEqual(TEXT("236 hammock hooks"), Hooks, 236);
+	TestEqual(TEXT("112 hammocks"), Hammocks, 112);
+	int32 Gun = 0, BerthLights = 0, Orlop = 0;
+	for (const FLantern& L : Decks.Lanterns)
+	{
+		if (L.Deck == TEXT("Gun")) ++Gun;
+		if (L.Deck == TEXT("Berth")) ++BerthLights;
+		if (L.Deck == TEXT("Orlop")) ++Orlop;
+	}
+	TestEqual(TEXT("29 lanterns"), Decks.Lanterns.Num(), 29);
+	TestEqual(TEXT("15 on the gun deck"), Gun, 15);
+	TestEqual(TEXT("12 on the berth deck"), BerthLights, 12);
+	TestEqual(TEXT("2 on the orlop"), Orlop, 2);
 	return true;
 }

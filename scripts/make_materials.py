@@ -259,8 +259,12 @@ float om = 0.0;
 // world position over their size). Each fades into the coarser one towards its edge, the far one into the sea's mean
 // wind (WindP) beyond. R: the roughness the water shows (x 2.5 = local wind / 8 m/s); G, B: the local downwind direction;
 // A: the slow wind (x 20 m/s), for slicks and windrows.
-float4 wNear = Gust.SampleLevel(GustSampler, p.xy / GustRect.z, 0);
-float4 wFar = WindFar.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0);
+// docs/lake-streaks/: each map is refreshed a strip at a time, a whole pass every 0.8 s (1.6 s on Ultra); drawn as it
+// was written, puffs, lulls and the ripples' direction moved in ticks. AWaterSurface now keeps the last two whole passes
+// and WindBlend (x near, y far) slides from the older to the newer on the render clock. Both read through their map's
+// own sampler (no extra sampler slots).
+float4 wNear = lerp(GustPrev.SampleLevel(GustSampler, p.xy / GustRect.z, 0), Gust.SampleLevel(GustSampler, p.xy / GustRect.z, 0), WindBlend.x);
+float4 wFar = lerp(WindFarPrev.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0), WindFar.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0), WindBlend.y);
 float2 eN = abs(p.xy - GustRect.xy) / (0.5 * GustRect.z);
 float2 eF = abs(p.xy - WindFarRect.xy) / (0.5 * WindFarRect.z);
 float4 wMean = float4(WindP.z / 20.0, 0.5 + 0.5 * WindP.x, 0.5 + 0.5 * WindP.y, WindP.z / 20.0);
@@ -364,12 +368,18 @@ def build_water():
     debug = scalar(mat, "DebugGust", 0.0, -1600, 1200)
     far_tex = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 1950, parameter_name="WindFar", texture=white)
     far_rect = vector(mat, "WindFarRect", (0, 0, 16000, 0), -1600, 2050)
-    shade = custom(mat, SHADE_CODE, common + ["Gust", "Wake", "GustRect", "WakeRect", "WindP", "Rain", "DebugGust", "WindFar", "WindFarRect"],
+    gust_prev = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 2150, parameter_name="GustPrev", texture=white)
+    far_prev = node(mat, unreal.MaterialExpressionTextureObjectParameter, -1600, 2250, parameter_name="WindFarPrev", texture=white)
+    wind_blend = vector(mat, "WindBlend", (1, 1, 0, 0), -1600, 2350)
+    shade = custom(mat, SHADE_CODE, common + ["Gust", "Wake", "GustRect", "WakeRect", "WindP", "Rain", "DebugGust", "WindFar", "WindFarRect", "GustPrev", "WindFarPrev", "WindBlend"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -600, 400,
                    extra_outputs=[("Foam", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1),
                                   ("Dark", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("OceanShare", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
+    connect(gust_prev, "", shade, "GustPrev")
+    connect(far_prev, "", shade, "WindFarPrev")
+    connect(wind_blend, "RGBA", shade, "WindBlend")
 
     for c in (wpo, shade):
         connect(pos, "", c, "P")
@@ -1306,7 +1316,14 @@ col = lerp(col, nsDirt, saturate((0.3 + 0.45 * dirt) * nsBlot) * nsK);
 col = lerp(col, nsDirt, 0.55 * sqrt(saturate(dirt)) * 0.35 * (DetailOn > 0.5 ? 0.0f : 1.0f) * nsK);
 rough = lerp(rough, min(rough + 0.1, 0.9), nsBlot * nsK);
 // Wood (Grain 1): straight grain along the part's length with slow wander, a varnished tiller's or a weathered toe rail's.
-float gw = LP.y * 0.9 + LP.z * 1.3 + 2.5 * sin(LP.x * 0.021) + 1.2 * sin(LP.x * 0.083 + LP.y);
+// Frigate: the grain's axis. Her timbers all sit in the ship's frame, so the export paints each one's long axis into the
+// mesh's Grain colour attribute (export.py paint_grain: R 0 says it is there, G 0 along the ship, 0.5 athwartships, 1 up);
+// a mesh without it (white) keeps the part's X, or up with GrainUp (masts). The figure here and the detail maps' U below
+// follow it (gAxis 0 x, 1 z, 2 y: g is LP turned so g.x runs along the timber).
+int gAxisVC = (3 - int(step(0.25, VC.g) + step(0.75, VC.g))) % 3;   // G 0 -> 0 (x), 0.5 -> 2 (y), 1 -> 1 (z); no bare-literal conditionals (BoatShaderLiterals)
+int gAxis = VC.r < 0.5 ? gAxisVC : int(step(0.5, GrainUp));
+float3 g = gAxis == 0 ? LP.xyz : (gAxis == 1 ? LP.zxy : LP.yxz);
+float gw = g.y * 0.9 + g.z * 1.3 + 2.5 * sin(g.x * 0.021) + 1.2 * sin(g.x * 0.083 + g.y);
 // J-Class 15: a laid deck's planks are quarter-sawn, so their grain runs nearly straight, and each plank has its own (the
 // part's wandering figure ran across the seams and, foreshortened along the deck, drew chevrons: the Mac's 1e96e56d helm still).
 if (Surface > 17.5)
@@ -1315,6 +1332,16 @@ if (Surface > 17.5)
     float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
     gw = LP.y * 0.9 + 40.0 * gwH + 0.4 * sin(LP.x * 0.021 + 6.3 * gwH) + 0.15 * sin(LP.x * 0.083 + 3.0 * gwH);
 }
+else if (abs(Surface - 7.0) < 0.5 && VC.r < 0.5)
+{
+    // Frigate decks (teak with the Grain attribute): each plank its own near-straight grain, as the laid deck above, by its
+    // place across the deck (10 in planks), so one figure doesn't run across the seams and foreshorten into chevrons
+    // (the PC's orlop stills at 2fb7bc35: a zigzag moire over the whole floor at 4K).
+    float gwP = floor(g.y / 25.4);
+    float gwH = frac(sin(gwP * 12.9898f + 3.7f) * 43758.5453f);
+    gw = g.y * 0.9 + 40.0 * gwH + 0.4 * sin(g.x * 0.021 + 6.3 * gwH) + 0.15 * sin(g.x * 0.083 + 3.0 * gwH);
+}
+gw /= max(GrainScale, 0.1);   // Frigate: a ship's timbers read from further off, so her figure is coarser (GrainScale 3)
 float ring = 0.5 + 0.5 * sin(gw * 6.0 + 4.0 * vn);
 // The rings are about a centimetre apart: where a pixel covers more than half a ring they alias into a basket weave (J-Class 15:
 // Bluebonnet's whole deck read as woven past a few metres), so they fade to their mean from 0.75 to 2 radians of phase a pixel (gone well before Nyquist's pi).
@@ -2092,10 +2119,10 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
     float3 bw = pow(abs(float3(dot(n, LX), dot(n, LY), dot(n, LZ))), 4.0);
     bw /= bw.x + bw.y + bw.z + 1e-5;
     float3 lpm = LP / 100.0;
-    bool upG = GrainUp > 0.5;
-    float2 uv0 = (upG ? lpm.zy : lpm.yz) / tile, uv1 = (upG ? lpm.zx : lpm.xz) / tile, uv2 = lpm.xy / tile;
+    bool upG = gAxis == 1, acrossG = gAxis == 2;   // the grain up the part (masts), or athwartships (the frigate's beams)
+    float2 uv0 = (upG ? lpm.zy : lpm.yz) / tile, uv1 = (upG ? lpm.zx : lpm.xz) / tile, uv2 = (acrossG ? lpm.yx : lpm.xy) / tile;
     if (Surface > 17.5) uv2 = (LUV2 + ldOfs) / tile;    // a laid deck: the teak's grain along each plank, from its own place
-    float3 a0 = upG ? LZ : LY, b0 = upG ? LY : LZ, a1 = upG ? LZ : LX, b1 = upG ? LX : LZ;
+    float3 a0 = upG ? LZ : LY, b0 = upG ? LY : LZ, a1 = upG ? LZ : LX, b1 = upG ? LX : LZ, a2 = acrossG ? LY : LX, b2 = acrossG ? LX : LY;
     float4 n0 = float4(0.5, 0.5, 1.0, 1.0), n1 = n0, n2 = n0, m0 = float4(0.5, 0.5, 0.5, 0.5), m1 = m0, m2 = m0;
     SamplerState DS = View.MaterialTextureBilinearWrapedSampler;
 #define BOAT_TRI(T, o0, o1, o2) o0 = Texture2DSample(T, DS, uv0); o1 = Texture2DSample(T, DS, uv1); o2 = Texture2DSample(T, DS, uv2)
@@ -2113,7 +2140,7 @@ if (DetailOn > 0.5 && surf > 0 && surf != 13 && surf != 15)
 #undef BOAT_TRI
     float4 m = m0 * bw.x + m1 * bw.y + m2 * bw.z;
     float2 d0 = (n0.xy * 2.0 - 1.0) * strength, d1 = (n1.xy * 2.0 - 1.0) * strength, d2 = (n2.xy * 2.0 - 1.0) * strength;
-    grad -= bw.x * (d0.x * a0 + d0.y * b0) + bw.y * (d1.x * a1 + d1.y * b1) + bw.z * (d2.x * LX + d2.y * LY);
+    grad -= bw.x * (d0.x * a0 + d0.y * b0) + bw.y * (d1.x * a1 + d1.y * b1) + bw.z * (d2.x * a2 + d2.y * b2);
     if (surf == 2)                       // non-skid (texture loop): dust packed in the grooves, grit, mildew; the years polish the tops
     {
         cav = (1.0 - m.r) * fadeD;
@@ -2465,6 +2492,9 @@ def build_boat_surface(name, bend, packed=False):
     # camera distance, and the detail maps themselves (scripts/import_boat_detail.py; engine stand-ins before it has run).
     surface = scalar(mat, "Surface", 0.0, -1600, 750)
     grain_up = scalar(mat, "GrainUp", 1.0 if bend else 0.0, -1600, 850)
+    # Frigate: the figure's scale (1: a small boat's centimetre rings, gone past 2 m; her timbers are seen from 2 to 6 m,
+    # so import_frigate.py sets 3).
+    grain_scale = scalar(mat, "GrainScale", 1.0, -1600, 900)
     depth = node(mat, unreal.MaterialExpressionPixelDepth, -1600, 950)
     detail_tex = {}
     for i, (pin, asset) in enumerate(BOAT_DETAIL_MAPS):
@@ -2503,13 +2533,15 @@ def build_boat_surface(name, bend, packed=False):
                                 "Wear", "IsHull", "WearScale"] + [f"CD{k}" for k in list(range(7)) + list(range(10, 16))]
                + ["Surface", "GrainUp", "Depth", "DetailOn", "V", "SprayWet", "Rain", "Puddle", "Time", "GDF", "Wash", "WashSide"] + [pin for pin, _ in BOAT_DETAIL_MAPS]
                + [pin for pin, _ in BOAT_OWN_PINS] + ["PUV", "LUV2", "LUV3"] + [pin for pin, _ in BOAT_LAID_PARAMS]
-               + ["NameTex", "NameRect", "NameColour", "NameSpan"],
+               + ["NameTex", "NameRect", "NameColour", "NameSpan", "VC", "GrainScale"],
                F3, -900, 200, extra_outputs=[("AlbedoOut", F3), ("F0Out", F3), ("RoughOut", F1), ("CoatOut", F1), ("F90Out", F1)])
     view = node(mat, unreal.MaterialExpressionCameraVectorWS, -1600, 1050)
+    # Frigate: the grain's axis from the mesh's Grain colour attribute (white, the default without one, keeps the part's X).
+    connect(node(mat, unreal.MaterialExpressionVertexColor, -1600, 1250), "", c, "VC")
     # Gelcoat (docs/gelcoat): BOAT_CODE samples the global distance field itself for the corner grime (within 8 m,
     # docs/gelcoat-cost); this node, wired into an unused pin, is what makes the material include it.
     connect(node(mat, unreal.MaterialExpressionDistanceToNearestSurface, -1550, 1300), "", c, "GDF")
-    for src, pin in ((grain_up, "GrainUp"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
+    for src, pin in ((grain_up, "GrainUp"), (grain_scale, "GrainScale"), (depth, "Depth"), (params["Detail"], "DetailOn"), (view, "V"), (params["SprayWet"], "SprayWet"),
                      (params["Rain"], "Rain"), (params["Puddle"], "Puddle"), (node(mat, unreal.MaterialExpressionTime, -1600, 1150), "Time"),
                      (params["Wash"], "Wash"), (params["WashSide"], "WashSide")):
         connect(src, "", c, pin)
@@ -3536,8 +3568,12 @@ sx *= 1.0 + STORM_FACE_TILT * StormWater.x; sy *= 1.0 + STORM_FACE_TILT * StormW
 // world position over their size). Each fades into the coarser one towards its edge, the far one into the sea's mean
 // wind (WindP) beyond. R: the roughness the water shows (x 2.5 = local wind / 8 m/s); G, B: the local downwind direction;
 // A: the slow wind (x 20 m/s), for slicks and windrows.
-float4 wNear = Gust.SampleLevel(GustSampler, p.xy / GustRect.z, 0);
-float4 wFar = WindFar.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0);
+// docs/lake-streaks/: each map is refreshed a strip at a time, a whole pass every 0.8 s (1.6 s on Ultra); drawn as it
+// was written, puffs, lulls and the ripples' direction moved in ticks. AWaterSurface now keeps the last two whole passes
+// and WindBlend (x near, y far) slides from the older to the newer on the render clock. Both read through their map's
+// own sampler (no extra sampler slots).
+float4 wNear = lerp(GustPrev.SampleLevel(GustSampler, p.xy / GustRect.z, 0), Gust.SampleLevel(GustSampler, p.xy / GustRect.z, 0), WindBlend.x);
+float4 wFar = lerp(WindFarPrev.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0), WindFar.SampleLevel(WindFarSampler, p.xy / WindFarRect.z, 0), WindBlend.y);
 float2 eN = abs(p.xy - GustRect.xy) / (0.5 * GustRect.z);
 float2 eF = abs(p.xy - WindFarRect.xy) / (0.5 * WindFarRect.z);
 float4 wMean = float4(WindP.z / 20.0, 0.5 + 0.5 * WindP.x, 0.5 + 0.5 * WindP.y, WindP.z / 20.0);
@@ -4041,41 +4077,67 @@ Dark = max(Dark, HULL_NEAR_DARK * hullNear);
 float glass = (1.0 - smoothstep(1.5, 3.0, rough * 8.0)) * (1.0 - Dark);
 // W2: slicks: in light air (the slow wind under about 6 m/s) bands of smooth water lie along the wind where surface films
 // gather: tens of metres across, hundreds long, wandering. They follow the wind's direction over minutes (WindSlow).
-float2 sw = normalize(WindSlow.xy + float2(1e-4, 0.0));
-float2 sn = float2(-sw.y, sw.x);
-float across = dot(p.xy, sn), along = dot(p.xy, sw);
-// W2 follow-up (Mac gate still, 7 kn from 300 m; PC pre-screen): slicks as they look from the air: long filaments along
-// the wind that meander, part and rejoin, a few to tens of metres across, a hundred or more apart, patchy. Bands cut from
-// a lattice read as ruled lines in perspective however they are hashed, so: the ridge of a value noise stretched along
-// the wind (900 m along, 160 m across), its domain warped by a coarser one so the filaments bend; the ridge's threshold
-// wanders (wider and thinner filaments) and a third, slower noise leaves about half the water without any. Faded out
-// where a filament would be under a few pixels.
+// docs/lake-streaks/ (Bean, Nov 25: white streaks passing across the lake, too regular, stuttering): slicks and windrows
+// were laid along one direction measured from the map origin (the club), so each small turn of the slow wind swung the
+// whole pattern about the club, rows a kilometre out sliding sideways metres at a time in 10 Hz steps. Now they lie in two
+// fixed frames, WindSlow.xy (the older direction) and WindSlow.zw (the newer), and cross-fade between them
+// (WindRowFade.x, 0 older .. 1 newer, over most of a minute) when the wind turns: nothing slides across the water.
+// WindRowFade.y is the surface drift (m along the wind, on the render clock) that carries the windrows' dashes downwind.
+// The footprint fades use the position derivatives taken above (fdx, fdy): no gradients inside the branch.
 #define SLK_H(c) frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453)
 #define SLK_VN(q_) lerp(lerp(SLK_H(floor(q_)), SLK_H(floor(q_) + float2(1, 0)), smoothstep(0.0, 1.0, frac(q_).x)), lerp(SLK_H(floor(q_) + float2(0, 1)), SLK_H(floor(q_) + float2(1, 1)), smoothstep(0.0, 1.0, frac(q_).x)), smoothstep(0.0, 1.0, frac(q_).y))
-float2 sq0 = float2(along / 900.0, across / 160.0);
-float2 sw1 = sq0 * float2(0.6, 0.45) + 11.3, sw2 = sq0 * float2(0.5, 0.4) + 3.7;
-float2 sq = sq0 + float2(0.35, 0.9) * (float2(SLK_VN(sw1), SLK_VN(sw2)) - 0.5);
-float2 sq2 = sq * float2(2.1, 1.9) + 5.1, sq3 = sq * 0.7 + 21.0, sq4 = sq * float2(0.25, 0.3) + 7.9;
-float sN = 0.65 * SLK_VN(sq) + 0.35 * SLK_VN(sq2);
-float ridge = 1.0 - abs(2.0 * sN - 1.0);
-float sEdge = lerp(0.8, 0.93, SLK_VN(sq3));
-float band = smoothstep(sEdge, sEdge + 0.05, ridge) * smoothstep(0.38, 0.62, SLK_VN(sq4));
-float slick = band * (1.0 - smoothstep(3.5, 6.0, slowMs)) * (1.0 - glass) * saturate(1.0 - fwidth(sq.y) * 10.0);
-// W2: windrows (Langmuir circulation) from about 3 m/s: thin lines of foam and smoother water along the wind, a few to
-// 20 m apart (here about 14 m: each row's spacing jittered, the rows bending), broken into dashes, some rows faint or
-// missing; faded out before they alias.
-float wx = across / 14.0 + 0.35 * sin(along / 90.0) + 0.2 * sin(across / 47.0) + 0.5 * sin(along / 230.0 + across / 170.0);
-float wk = floor(wx);
-float wh = frac(sin(wk * 12.9898 + 3.7) * 43758.5453), wh2 = frac(sin(wk * 78.233 + 1.9) * 24634.6345);
-float wdash = 0.5 + 0.5 * sin(along / lerp(3.5, 6.5, wh) + wk * 2.3 + 1.7 * sin(along / 17.0 + wk));
-float ww = lerp(0.6, 1.8, wh2);   // each row its own width
-float wline = (1.0 - smoothstep(0.008 * ww, 0.025 * ww, abs(frac(wx) - (0.35 + 0.3 * wh)))) * smoothstep(0.35, 0.8, wdash) * lerp(0.3, 1.0, step(0.25, wh));
-float wrow = wline * smoothstep(3.0, 4.5, slowMs) * saturate(1.0 - dist / 260.0) * saturate(1.0 - fwidth(wx) * 8.0);
+float slick = 0.0, wrow = 0.0;
+[unroll] for (int fr = 0; fr < 2; ++fr)
+{
+    float frW = fr == 0 ? 1.0 - WindRowFade.x : WindRowFade.x;
+    [branch] if (frW > 0.001)
+    {
+        float2 sw = normalize((fr == 0 ? WindSlow.xy : WindSlow.zw) + float2(1e-4, 0.0));
+        float2 sn = float2(-sw.y, sw.x);
+        float across = dot(p.xy, sn), along = dot(p.xy, sw);
+        float fwA = abs(dot(fdx, sn)) + abs(dot(fdy, sn));   // fwidth(across), m per pixel
+        // W2 follow-up (Mac gate still, 7 kn from 300 m; PC pre-screen): slicks as they look from the air: long filaments
+        // along the wind that meander, part and rejoin, a few to tens of metres across, a hundred or more apart, patchy.
+        // Bands cut from a lattice read as ruled lines in perspective however they are hashed, so: the ridge of a value
+        // noise stretched along the wind (900 m along, 160 m across), its domain warped by a coarser one so the filaments
+        // bend; the ridge's threshold wanders (wider and thinner filaments) and a third, slower noise leaves about half the
+        // water without any. Faded out where a filament would be under a few pixels.
+        float2 sq0 = float2(along / 900.0, across / 160.0);
+        float2 sw1 = sq0 * float2(0.6, 0.45) + 11.3, sw2 = sq0 * float2(0.5, 0.4) + 3.7;
+        float2 sq = sq0 + float2(0.35, 0.9) * (float2(SLK_VN(sw1), SLK_VN(sw2)) - 0.5);
+        float2 sq2 = sq * float2(2.1, 1.9) + 5.1, sq3 = sq * 0.7 + 21.0, sq4 = sq * float2(0.25, 0.3) + 7.9;
+        float sN = 0.65 * SLK_VN(sq) + 0.35 * SLK_VN(sq2);
+        float ridge = 1.0 - abs(2.0 * sN - 1.0);
+        float sEdge = lerp(0.8, 0.93, SLK_VN(sq3));
+        float band = smoothstep(sEdge, sEdge + 0.05, ridge) * smoothstep(0.38, 0.62, SLK_VN(sq4));
+        slick += frW * band * (1.0 - smoothstep(3.5, 6.0, slowMs)) * (1.0 - glass) * saturate(1.0 - fwA / 160.0 * 10.0);
+        // W2: windrows (Langmuir circulation) from about 3 m/s: thin lines of foam and smoother water along the wind, a
+        // few to 20 m apart. docs/lake-streaks/: the rows were sines (a fixed 14 m spacing, sine bends and sine dashes,
+        // three rows in four on), and their smoothed water mirrors the sky, so the lake carried a ruled field of white
+        // lines. Now the spacing (about 14 m) bends by value noise, under half the rows exist and each only in stretches
+        // a hundred or two metres long, the dashes are value noise, and they fade out by 150 m.
+        float alongR = along - WindRowFade.y;
+        float2 wv = float2(alongR / 260.0, across / 120.0);
+        float wx = across / 14.0 + 0.9 * (SLK_VN(wv + 31.7) - 0.5) + 0.45 * (SLK_VN(wv * 3.1 + 17.3) - 0.5);
+        float wk = floor(wx);
+        float wh = SLK_H(float2(wk, 3.7)), wh2 = SLK_H(float2(wk, 11.9));
+        float wOn = step(0.55, wh) * smoothstep(0.5, 0.75, SLK_VN(float2(alongR / lerp(120.0, 260.0, wh2), wk * 0.61 + 5.3)));
+        float wdash = SLK_VN(float2(alongR / lerp(3.5, 7.0, wh), wk * 1.37 + 0.9));
+        float ww = lerp(0.6, 1.8, wh2);   // each row its own width
+        float wline = (1.0 - smoothstep(0.008 * ww, 0.025 * ww, abs(frac(wx) - (0.35 + 0.3 * wh)))) * smoothstep(0.4, 0.75, wdash) * wOn * lerp(0.4, 1.0, wh2);
+        wrow += frW * wline * smoothstep(3.0, 4.5, slowMs) * saturate(1.0 - dist / 150.0) * saturate(1.0 - fwA / 14.0 * 8.0);
+    }
+}
+wrow *= 1.0 - WindRowFade.z;   // -SailingNoWindrows
+// The gale streaks below (24 kn and up) keep one frame turning with the wind: between the two, on the render clock.
+float2 sw = normalize(lerp(WindSlow.xy, WindSlow.zw, WindRowFade.x) + float2(1e-4, 0.0));
+float2 sn = float2(-sw.y, sw.x);
+float across = dot(p.xy, sn), along = dot(p.xy, sw);
 // docs/wake-slick/: a boat's wake lane (FWakeGrid's slick: the water she stirred behind her), the wind's ripples damped
 // along it. sailing-feedback #9: it was 0.8 * saturate(1.5 slick), flat at full strength for most of its length, and drew
 // a long dark ribbon with hard edges; now it follows the lane (0.45 at most against 0.8, softer as it thins), a
 // faint smoother track that fades out a few lengths astern.
-float smoothing = max(max(glass, 0.45 * saturate(wakeSlick) * sqrt(saturate(wakeSlick))), max(0.65 * slick, 0.5 * wrow));
+float smoothing = max(max(glass, 0.45 * saturate(wakeSlick) * sqrt(saturate(wakeSlick))), max(0.65 * slick, 0.3 * wrow)); // windrows 0.5 -> 0.3: a faint line, not a mirror (docs/lake-streaks/)
 sx *= 1.0 - 0.85 * smoothing; sy *= 1.0 - 0.85 * smoothing;
 slopeVar *= 1.0 - 0.92 * smoothing;
 [branch] if (patFade < 1.0 && 0.05 * wrow > FOAM_SEEN && !patDone) FOAM_PAT(); // docs/storm-water/foam-cost/: a windrow is foam too
@@ -4296,7 +4358,7 @@ def build_water_v4():
                    .replace("STORM_CAP_RIM", os.environ.get("STORM_CAP_RIM", "1.2")).replace("STORM_CAP_CORE", os.environ.get("STORM_CAP_CORE", "0.3"))
                    .replace("STORM_FACE_TILT", os.environ.get("STORM_FACE_TILT", "0.35")).replace("STORM_FOAM_OPACITY", os.environ.get("STORM_FOAM_OPACITY", "0.35"))
                    .replace("STORM_CREST_LIFT", os.environ.get("STORM_CREST_LIFT", "2.0")).replace("STORM_TROUGH_DARK", os.environ.get("STORM_TROUGH_DARK", "0.6")), shade_common + ["HullClipA", "HullClipB", "HullClipC", "HullClipD", "HullClipMap", "HullClipRect", "HullClipV", "LongN", "DetailB", "RippleB", "CapillaryB", "CapillaryP", "Gust", "GustRect", "WindP", "Rain", "FoamThreshold",
-                                                  "WindFar", "WindFarRect", "WindSlow", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife", "StormWater", "LongH"],
+                                                  "WindFar", "WindFarRect", "WindSlow", "WindRowFade", "GustPrev", "WindFarPrev", "WindBlend", "Polarized", "Glitter", "DebugFoam", "DetailC", "CapT", "CapCal", "CapCalFar", "FoamGrid", "FoamGridRect", "FarCapSprites", "FoamTex", "FoamLife", "StormWater", "LongH"],
                    unreal.CustomMaterialOutputType.CMOT_FLOAT3, -700, 400,
                    extra_outputs=[("Foam", F1), ("Rough", F1), ("Dark", F1), ("Spec", F1), ("OceanShare", F1), ("FoamTone", F1), ("BodyT", F1)])
     for n in ("HullClipA", "HullClipB", "HullClipC", "HullClipD"):
@@ -4307,6 +4369,11 @@ def build_water_v4():
     connect(far_tex, "", shade, "WindFar")
     connect(far_rect, "RGBA", shade, "WindFarRect")
     connect(wind_slow, "RGBA", shade, "WindSlow")
+    # docs/lake-streaks/: the windrows' frame cross-fade and drift, the wind maps' previous passes and their blend.
+    connect(vector(mat, "WindRowFade", (0, 0, 0, 0), -2000, 950), "RGBA", shade, "WindRowFade")
+    connect(node(mat, unreal.MaterialExpressionTextureObjectParameter, -2200, 700, parameter_name="GustPrev", texture=white), "", shade, "GustPrev")
+    connect(node(mat, unreal.MaterialExpressionTextureObjectParameter, -2200, 800, parameter_name="WindFarPrev", texture=white), "", shade, "WindFarPrev")
+    connect(vector(mat, "WindBlend", (1, 1, 0, 0), -2200, 900), "RGBA", shade, "WindBlend")
     connect(polarized, "", shade, "Polarized")
     connect(scalar(mat, "Glitter", 0.0, -2000, 1050), "", shade, "Glitter")
     connect(scalar(mat, "FarCapSprites", 0.0, -2000, 1150), "", shade, "FarCapSprites")

@@ -319,6 +319,27 @@ TArray<FQualityCVar> FilmQualityCVars()
 	return V;
 }
 
+bool CaptureShowsHud(const TCHAR* CommandLine)
+{
+	return CommandLine && FParse::Param(CommandLine, TEXT("SailingCaptureHud"));
+}
+
+bool CaptureShowsHud()
+{
+	static SailingArgs::FCachedFlag HudArg(TEXT("SailingCaptureHud"));
+	return HudArg.Get();
+}
+
+bool CaptureHidesHud(bool bCaptureMode, bool bCaptureHud)
+{
+	return bCaptureMode && !bCaptureHud;
+}
+
+int32 StartingHudMode(bool bMeasuring, bool bCaptureHud, int32 ChosenMode)
+{
+	return bMeasuring && !bCaptureHud ? 0 : FMath::Clamp(ChosenMode, 0, 2);
+}
+
 bool IsFilmMode()
 {
 	static SailingArgs::FCachedFlag FilmArg(TEXT("SailingFilm"));

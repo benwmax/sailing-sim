@@ -514,7 +514,12 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 
 void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
 {
-	FollowActor();
+	// Only note a step here: the batched move is the tick's (a regroup that keeps many new crown tiles in one frame would
+	// otherwise spend the frame's budget once per tile and move the whole step at once).
+	NoteActorMove();
+	// docs/tide-hitch: on a coast the kept components (the crowns' tiles and proxies, the houses, the kit tiles) move with every
+	// 2 cm tide step; where the distance fields don't show they stay out of them (callers register after this).
+	MarkTideFollower(Cast<UPrimitiveComponent>(Component), GetWorld());
 	Component->SetRelativeTransform(Component->GetRelativeTransform() * GetActorTransform());   // where attaching would put it
 	// The crown tiles turn over as the trees regroup (their clones are destroyed): on a lake nothing else walks the list,
 	// so drop the dead entries whenever it has doubled since the last time.
@@ -524,22 +529,59 @@ void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
 		KeptPruneAt = FMath::Max(64, 2 * Kept.Num());
 	}
 	Kept.Add(Component);
+	KeptAtEach.Add(KeptAt);   // placed at the actor's transform now, which FollowActor just made KeptAt
 }
 
 void ALakeTerrainActor::PruneKept()
 {
-	Kept.RemoveAllSwap([](const TWeakObjectPtr<USceneComponent>& C) { return !C.IsValid(); }, EAllowShrinking::No);
+	check(KeptAtEach.Num() == Kept.Num());
+	for (int32 I = Kept.Num() - 1; I >= 0; --I)
+	{
+		if (Kept[I].IsValid()) continue;
+		Kept.RemoveAtSwap(I, 1, EAllowShrinking::No);
+		KeptAtEach.RemoveAtSwap(I, 1, EAllowShrinking::No);
+	}
+}
+
+void ALakeTerrainActor::NoteActorMove()
+{
+	const FVector At = GetActorLocation();
+	if (At.Equals(KeptAt, 0.01)) return;
+	KeptAt = At;
+	bKeptLagging = true;
+	PruneKept();
 }
 
 void ALakeTerrainActor::FollowActor()
 {
-	const FVector At = GetActorLocation();
-	if (At.Equals(KeptAt, 0.01)) return;
-	const FVector Delta = At - KeptAt;
-	KeptAt = At;
-	// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
-	PruneKept();
-	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(Delta, false);
+	NoteActorMove();
+	if (!bKeptLagging) return;
+	// docs/tide-hitch: the step is spread over frames, a budget of instances a frame (the crown tiles hold most of them); a
+	// component that alone is over the budget still moves whole. A few frames of 2 cm between the parts don't show.
+	static int32 Budget = -1;
+	static uint32 BudgetGen = MAX_uint32;
+	if (BudgetGen != SailingArgs::Generation())
+	{
+		BudgetGen = SailingArgs::Generation();
+		Budget = 20000;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTideBatch="), Budget);
+	}
+	int64 Spent = 0;
+	bool bAll = true;
+	for (int32 I = 0; I < Kept.Num(); ++I)
+	{
+		if (KeptAtEach[I].Equals(KeptAt, 0.01)) continue;
+		USceneComponent* C = Kept[I].Get();
+		if (!C) continue;
+		const UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(C);
+		const int64 Cost = Ism ? FMath::Max(1, Ism->GetInstanceCount()) : 1;
+		if (Budget > 0 && Spent > 0 && Spent + Cost > Budget) { bAll = false; break; }
+		// Not a move (a Static component refuses one, with a message-log warning each time): the offset path, as a world shift.
+		C->ApplyWorldOffset(KeptAt - KeptAtEach[I], false);
+		KeptAtEach[I] = KeptAt;
+		Spent += Cost;
+	}
+	if (bAll) bKeptLagging = false;
 }
 
 void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShift)
@@ -547,6 +589,7 @@ void ALakeTerrainActor::ApplyWorldOffset(const FVector& InOffset, bool bWorldShi
 	Super::ApplyWorldOffset(InOffset, bWorldShift);   // the root and what is attached to it
 	PruneKept();
 	for (const TWeakObjectPtr<USceneComponent>& C : Kept) C->ApplyWorldOffset(InOffset, bWorldShift);
+	for (FVector& A : KeptAtEach) A += InOffset;   // a lagging component keeps its lag
 	KeptAt += InOffset;
 }
 
@@ -573,6 +616,27 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 		int32 K = 0;
 		for (const TPair<FString, int64>& P : By) { if (K++ >= 16) break; Top += FString::Printf(TEXT(" %s %lld;"), *P.Key, P.Value); }
 		SAIL_LOG(Display, TEXT("World instances: %lld:%s"), Total, *Top);
+		// And what is in the distance-field scene, by owner (components, instances): every tide step and re-centre resends
+		// what moves of it (docs/recentre-hitch, docs/tide-hitch).
+		TMap<FString, TPair<int64, int64>> InDF;
+		int64 DFTotal = 0;
+		for (TObjectIterator<UStaticMeshComponent> It; It; ++It)
+		{
+			if (It->GetWorld() != GetWorld() || !It->IsRegistered() || !It->bAffectDistanceFieldLighting || !It->GetStaticMesh()) continue;
+			const UInstancedStaticMeshComponent* Ism = Cast<UInstancedStaticMeshComponent>(*It);
+			const int64 N = Ism ? Ism->GetInstanceCount() : 1;
+			if (N == 0) continue;
+			const FString Key = FString::Printf(TEXT("%s/%s"), It->GetOwner() ? *It->GetOwner()->GetClass()->GetName() : TEXT("-"),
+				Ism ? (It->Mobility == EComponentMobility::Movable ? TEXT("movable ISM") : TEXT("ISM")) : (It->Mobility == EComponentMobility::Movable ? TEXT("movable mesh") : TEXT("mesh")));
+			TPair<int64, int64>& V = InDF.FindOrAdd(Key, TPair<int64, int64>(0, 0));
+			V.Key += 1;
+			V.Value += N;
+			DFTotal += N;
+		}
+		InDF.ValueSort([](const TPair<int64, int64>& A, const TPair<int64, int64>& B) { return A.Value > B.Value; });
+		FString DFTop;
+		for (const TPair<FString, TPair<int64, int64>>& P : InDF) DFTop += FString::Printf(TEXT(" %s %lld in %lld;"), *P.Key, P.Value.Value, P.Value.Key);
+		SAIL_LOG(Display, TEXT("Distance-field instances: %lld:%s"), DFTotal, *DFTop);
 	}
 	const FLakeData* Lake = GetLake();
 	if (!Lake) return;

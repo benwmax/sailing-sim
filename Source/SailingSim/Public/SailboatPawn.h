@@ -739,7 +739,18 @@ private:
 	/** The cabin lamps (walk map "Lamp" spots) of each shown deck: lit with its mesh, gone with it. */
 	UPROPERTY(Transient) TArray<TObjectPtr<UPointLightComponent>> DeckLamps;
 	TArray<int32> DeckLampDecks;
+	/** Per walk-map deck: whether its lamps are lit, and when they stopped being wanted (platform seconds, -1 while
+	 *  wanted). A deck shown only as the overhead of the one below (FShipWalker::DecksOverhead) keeps its lamps unlit. */
+	TArray<bool> DeckLampsLit;
+	TArray<double> DeckLampsUnlitSince;
 	void SetDeckLamps(int32 Deck, bool bOn);
+	/** A ship's placed copies below (ShipOutside::FDeckTable: the frigate's berth deck hammocks, hooks, messes and chests)
+	 *  by walk-map deck: their meshes, loaded with the deck's; one instanced mesh per part, shown with the deck. Her
+	 *  lanterns (FLantern) are lit by SetDeckLamps with the deck's lamps. */
+	TArray<TArray<FSoftObjectPath>> DeckCopyPaths;
+	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> DeckCopies;
+	TArray<int32> DeckCopyDecks;
+	void SetDeckCopies(int32 Deck, bool bOn);
 	float BelowAdapt = 0.f;
 	void UpdateBelowAdapt(float DeltaSeconds);
 	void UpdateWalk(float DeltaSeconds);

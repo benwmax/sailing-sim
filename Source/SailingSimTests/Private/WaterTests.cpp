@@ -1411,3 +1411,51 @@ bool FWaterWakeGridShipTest::RunTest(const FString&)
 	TestTrue(TEXT("The foam is gone once she stops"), FoamNow < 0.01);
 	return true;
 }
+
+// docs/lake-streaks/ (Bean, Nov 25: white streaks passing across the lake and stuttering): the slicks and windrows lie in
+// two fixed frames and cross-fade when the wind turns. A windrow laid along a frame that turned slid sideways by
+// distance x angle (1.7 m a kilometre from the club per tenth of a degree); fixed frames slide by nothing. The wind backs
+// and veers slowly for an hour of render time: the frames only ever change by starting a new cross-fade, never during
+// one, only after a turn of kRowTurnDegrees, and the newer frame stays within a few degrees of the wind.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterRowFramesTest, "SailingSim.Visual.WindrowFrames", WaterFlags)
+bool FWaterRowFramesTest::RunTest(const FString& Parameters)
+{
+	FVector2D A(1.0, 0.0), B(1.0, 0.0);
+	double FadeStart = -1e9;
+	int32 Fades = 0;
+	double WorstLag = 0.0;
+	for (double T = 0.0; T < 3600.0; T += 0.1)
+	{
+		// A slow oscillating shift of +-8 degrees over six minutes on a slow veer of 10 degrees an hour.
+		const double Deg = 8.0 * FMath::Sin(2.0 * UE_DOUBLE_PI * T / 360.0) + 10.0 * T / 3600.0;
+		const FVector2D Dir(FMath::Cos(FMath::DegreesToRadians(Deg)), FMath::Sin(FMath::DegreesToRadians(Deg)));
+		const FVector2D A0 = A, B0 = B;
+		const double Start0 = FadeStart;
+		const bool bStarted = AWaterSurface::StepRowFrames(A, B, FadeStart, Dir, T);
+		if (!bStarted && (A != A0 || B != B0 || FadeStart != Start0))
+		{
+			AddError(FString::Printf(TEXT("%.1f s: the frames changed without a new cross-fade"), T));
+			break;
+		}
+		if (bStarted)
+		{
+			++Fades;
+			if (T - Start0 < AWaterSurface::kRowFadeSeconds) AddError(FString::Printf(TEXT("%.1f s: a cross-fade started during the last one"), T));
+			if (A != B0) AddError(TEXT("The older frame is not the last newer one"));
+		}
+		if (T > 120.0)
+		{
+			const double Lag = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector2D::DotProduct(B, Dir), -1.0, 1.0)));
+			WorstLag = FMath::Max(WorstLag, Lag);
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d cross-fades in an hour, the newer frame at most %.1f deg from the wind"), Fades, WorstLag));
+	TestTrue(TEXT("Some cross-fades, not one a frame"), Fades > 5 && Fades < 3600.0 / AWaterSurface::kRowFadeSeconds + 1);
+	TestTrue(TEXT("The newer frame keeps up with a +-8 deg shift"), WorstLag < 8.0);
+	// A small wobble under the threshold starts nothing.
+	FVector2D A2(1.0, 0.0), B2(1.0, 0.0);
+	double Start2 = -1e9;
+	const double Small = FMath::DegreesToRadians(AWaterSurface::kRowTurnDegrees * 0.5);
+	TestFalse(TEXT("Half the threshold starts no cross-fade"), AWaterSurface::StepRowFrames(A2, B2, Start2, FVector2D(FMath::Cos(Small), FMath::Sin(Small)), 0.0));
+	return true;
+}

@@ -23,8 +23,9 @@ struct SAILINGSIM_API FLogEntry
 class SAILINGSIM_API FLogbook
 {
 public:
-	/** Starts a session's log (and its file). */
-	void Begin(const FString& Area, const FString& Boat, double UnixTime, const FString& Clock);
+	/** Starts a session's log (and its file). The file is named by the world's local clock (UnixTime plus
+	 *  UtcOffsetHours), the clock the player sails by and the logbook's entries are written in. */
+	void Begin(const FString& Area, const FString& Boat, double UnixTime, double UtcOffsetHours);
 	void Add(const FLogEntry& Entry);
 	const TArray<FLogEntry>& GetEntries() const { return Entries; }
 	const FString& GetArea() const { return Area; }
@@ -36,6 +37,13 @@ public:
 
 	/** "29 deg 33.10' N  95 deg 01.37' W" style position, as written in a log. */
 	static FString FormatPosition(double Latitude, double Longitude);
+
+	/** "2026-10-10 1400": the local date and time a session's file name starts with. */
+	static FString LocalStamp(double UnixTime, double UtcOffsetHours);
+
+	/** A session file's base name ("2026-10-10 1400 Lake_Ray_Hubbard__Rush_Creek_YC_") as the Logbook screen lists it:
+	 *  When "10 Oct 2026, 14:00", Where "Lake Ray Hubbard, Rush Creek YC". A name without a stamp is shown as it is. */
+	static void ListLabel(const FString& BaseName, FString& When, FString& Where);
 
 private:
 	void Save() const;

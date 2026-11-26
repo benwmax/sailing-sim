@@ -63,6 +63,13 @@ public:
 private:
 	TArray<TWeakObjectPtr<USceneComponent>> Kept;
 	FVector KeptAt = FVector::ZeroVector;
+	/** docs/tide-hitch: where each kept component stands (the actor's location it matches). A tide step moves them over a few
+	 *  frames, a budget of instances a frame (-SailingTideBatch=<n>, 0 all at once): moving the crown tiles' half a million
+	 *  instances in one frame cost the renderer's scene culling 140 ms. */
+	TArray<FVector> KeptAtEach;
+	bool bKeptLagging = false;
+	/** Takes a new actor location as the kept components' target (they then lag until FollowActor has moved them). */
+	void NoteActorMove();
 	int32 KeptPruneAt = 64;
 	void PruneKept();
 	struct FChunkMesh

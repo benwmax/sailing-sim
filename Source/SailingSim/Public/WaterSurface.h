@@ -73,6 +73,12 @@ public:
 	/** docs/lake-body/: the share of the water body's light that leaves through a facet seen at this cosine (n . v), relative
 	 *  to straight up: 1 - Fresnel for water (n 1.333) over its value at normal incidence. M_WaterV4's BodyT mirrors it. */
 	static float BodyTransmission(float CosView);
+	/** docs/lake-streaks/: the windrows' frames. Given the older and newer frame, the cross-fade's start, the smoothed
+	 *  direction and the render time, start a new cross-fade (A = B, B = Dir) once the last one has finished and the wind has
+	 *  turned kRowTurnDegrees from B. Returns true when it started one. */
+	static bool StepRowFrames(FVector2D& A, FVector2D& B, double& FadeStart, const FVector2D& Dir, double Now);
+	static constexpr double kRowFadeSeconds = 45.0;
+	static constexpr double kRowTurnDegrees = 3.0;
 	/** docs/far-cap-sprites/ (far-caps option B): the far caps' sprites, High and Ultra. A tile's cover (Monahan's for the
 	 *  local wind, times the water body's share and the light-air onset), and how many sprite slots of a cap's area it
 	 *  takes, each live with what probability per 4 s life (mean life 0.7937 of it), so the caps' area is the cover. */
@@ -264,6 +270,10 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> GustMap;
 	/** W2: the far wind map (16 km). GustMap is the near one (3.2 km). */
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WindFarMap;
+	/** docs/lake-streaks/: the previous whole pass of each wind map; the water blends from it to GustMap/WindFarMap
+	 *  (WindBlend) over one pass, so puffs, lulls and the ripples' direction move smoothly instead of ticking. */
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> GustPrevMap;
+	UPROPERTY(Transient) TObjectPtr<UTexture2D> WindFarPrevMap;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> WakeMap;
 	UPROPERTY(Transient) TArray<TObjectPtr<UTexture2D>> OceanMaps;
 	UPROPERTY(Transient) TObjectPtr<UTexture2D> OceanMaskMap;
@@ -453,12 +463,29 @@ private:
 		FVector2D Center = FVector2D::ZeroVector;
 		TArray<FWindTexel> Texels;
 		TArray<uint8> Pixels;
+		// docs/lake-streaks/: the last whole pass drawn (Pixels is refilled a strip at a time), its centre, the render
+		// time it was handed to the water and the time the pass before it took.
+		TArray<uint8> Shown;
+		FVector2D ShownCenter = FVector2D::ZeroVector;
+		double KeyTime = 0.0, KeyPeriod = 0.8;
+		bool bKeyed = false;
+		/** 0..1: how far the water has blended from the previous pass to Shown at render time Now. */
+		float BlendAt(double Now) const { return bKeyed ? float(FMath::Clamp((Now - KeyTime) / FMath::Max(KeyPeriod, 0.05), 0.0, 1.0)) : 1.f; }
 	};
 	FWindLevel NearWind, FarWind;
 	/** W2: the wind's direction smoothed over minutes, which the windrows follow (they realign slowly after a shift). */
 	FVector2D WindrowDir = FVector2D(1.0, 0.0);
 	bool bWindrowDirSet = false;
 	double LastWindrowTime = 0.0;
+	/** docs/lake-streaks/: the slicks and windrows lie in two fixed frames, the older (A) and the newer (B) direction, and
+	 *  cross-fade over kRowFadeSeconds when WindrowDir has turned kRowTurnDegrees from B: the pattern never slides across the
+	 *  water (laid from the map origin, a turning frame swung it round the club). RowDrift (m) carries the windrows' dashes
+	 *  downwind on the render clock. */
+	FVector2D RowFrameA = FVector2D(1.0, 0.0), RowFrameB = FVector2D(1.0, 0.0);
+	bool bRowFramesSet = false;
+	double RowFadeStart = -1e9;
+	double RowDrift = 0.0, LastRowRender = -1.0;
+	float RowFadeAt(double Now) const;
 	void UpdateWindLevel(FWindLevel& Level, bool bNear, double T);
 	/** W2: the trees read the far wind map: their materials (M_Tree*) on the terrain's instanced components are swapped
 	 *  for one dynamic instance per material, bound to the map (rescanned every few seconds as trees are placed). */

@@ -13,7 +13,9 @@
 #include "Tides.h"
 #include "SailingEnvironment.h"
 #include "LakeTerrainActor.h"
+#include "SailingGameMode.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Dom/JsonObject.h"
@@ -689,6 +691,153 @@ bool FSailingCoastKeptStaticFollowsTideTest::RunTest(const FString&)
 		Terrain->FollowActor();
 		TestEqual(TEXT("A tide step drops the dead entries: only the live one is left"), Terrain->KeptCount(), 1);
 		TestTrue(TEXT("... and it still follows"), C->GetComponentLocation().Equals(FVector(5000.0 - 1920000.0, 2000.0, 266.0), 0.01));
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+
+// The tide's followers (terrain, bridges, landmarks, fixed navaids) stand at one stepped offset (ASailingGameMode::
+// GetTideFollowZ), and -SailingTideStepEvery=<s> forces a 2 cm step every <s> seconds so the step's render-thread hitch
+// can be measured in a minute instead of a 2 h Galveston soak (docs/tide-hitch).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCoastTideStepTest, "SailingSim.Coast.TideStep", Flags)
+bool FSailingCoastTideStepTest::RunTest(const FString&)
+{
+	TestEqual(TEXT("0.309 m steps to 0.30"), ASailingGameMode::TideStepped(0.309), 0.30, 1e-9);
+	TestEqual(TEXT("0.311 m steps to 0.32"), ASailingGameMode::TideStepped(0.311), 0.32, 1e-9);
+	TestEqual(TEXT("-0.251 m steps to -0.26"), ASailingGameMode::TideStepped(-0.251), -0.26, 1e-9);
+	// A slow tide moves the followers once per 2 cm, never back and forth.
+	int32 Steps = 0;
+	double Last = ASailingGameMode::TideStepped(0.0);
+	for (int32 I = 1; I <= 1000; ++I)
+	{
+		const double Now = ASailingGameMode::TideStepped(0.1 * I / 1000.0);   // 10 cm in 1,000 ticks
+		if (Now != Last) ++Steps;
+		Last = Now;
+	}
+	TestEqual(TEXT("10 cm of tide is five steps"), Steps, 5);
+	TestEqual(TEXT("No argument: nothing forced"), ASailingGameMode::ForcedTideStep(37.0, 0.0), 0.0, 1e-12);
+	TestEqual(TEXT("First period: nothing"), ASailingGameMode::ForcedTideStep(5.0, 10.0), 0.0, 1e-12);
+	TestEqual(TEXT("Second period: forced up"), ASailingGameMode::ForcedTideStep(15.0, 10.0), 0.03, 1e-12);
+	TestEqual(TEXT("Third: back"), ASailingGameMode::ForcedTideStep(25.0, 10.0), 0.0, 1e-12);
+	// Forced on top of a tide sitting mid-step, it still moves the followers once each period.
+	int32 Forced = 0;
+	Last = ASailingGameMode::TideStepped(0.305);
+	for (double T = 0.0; T < 60.0; T += 0.25)
+	{
+		const double Now = ASailingGameMode::TideStepped(0.305 + ASailingGameMode::ForcedTideStep(T, 10.0));
+		if (Now != Last) ++Forced;
+		Last = Now;
+	}
+	TestEqual(TEXT("A step every 10 s for a minute"), Forced, 5);
+	// ... and through the dead band, wherever in its step the tide sits (main 412440c8 forced 2 cm and, with the tide 1 cm
+	// under its held step, moved nothing).
+	int32 Swallowed = 0;
+	for (int32 K = -11; K <= 11; ++K)
+	{
+		const double Base = 0.30 + 0.001 * K;
+		double HeldStep = ASailingGameMode::TideStepped(Base);
+		int32 Moves = 0;
+		for (double T = 0.0; T < 60.0; T += 0.25)
+		{
+			const double Now = ASailingGameMode::TideStepWithDeadBand(HeldStep, Base + ASailingGameMode::ForcedTideStep(T, 10.0));
+			if (Now != HeldStep) ++Moves;
+			HeldStep = Now;
+		}
+		if (Moves != 5) ++Swallowed;
+	}
+	TestEqual(TEXT("Forced steps cross the dead band from anywhere in a step"), Swallowed, 0);
+	// The dead band: a tide wobbling about the boundary between two steps (here 0.31 m, +-1 mm as the boat moves) moves the
+	// followers once, not on every wobble; past the band they step, and a big jump (a new date) lands on its step at once.
+	double Held = 0.30;
+	int32 Flips = 0;
+	for (int32 I = 0; I < 200; ++I)
+	{
+		const double Now = ASailingGameMode::TideStepWithDeadBand(Held, 0.31 + ((I % 2) ? 0.001 : -0.001));
+		if (Now != Held) ++Flips;
+		Held = Now;
+	}
+	TestEqual(TEXT("A tide on the boundary: no flips"), Flips, 0);
+	TestEqual(TEXT("2 mm past the half-way mark: the next step"), ASailingGameMode::TideStepWithDeadBand(0.30, 0.3125), 0.32, 1e-9);
+	TestEqual(TEXT("Falling past it: the step below"), ASailingGameMode::TideStepWithDeadBand(0.30, 0.2875), 0.28, 1e-9);
+	TestEqual(TEXT("A jump lands on its own step"), ASailingGameMode::TideStepWithDeadBand(0.30, -0.411), -0.42, 1e-9);
+	int32 Slow = 0;
+	Held = 0.0;
+	for (int32 I = 1; I <= 1000; ++I)
+	{
+		const double Now = ASailingGameMode::TideStepWithDeadBand(Held, 0.1 * I / 1000.0);
+		if (Now != Held) ++Slow;
+		Held = Now;
+	}
+	TestEqual(TEXT("10 cm of slow tide is still five steps"), Slow, 5);
+	TestEqual(TEXT("... ending on the step"), Held, 0.10, 1e-9);
+	return true;
+}
+
+// A tide step moves the terrain actor's kept components a budget of instances a frame (20,000 by default), not all at once:
+// on Galveston the crown tiles' half a million instances moved in one frame stalled the render thread 400-800 ms
+// (re-binning in scene culling and the distance-field update; Inputs/bench/tide-df-fix). Every component still ends up
+// exactly where attaching would put it, and a world re-centre during the spread keeps each one's lag.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCoastTideStepBatchedTest, "SailingSim.Coast.TideStepBatched", Flags)
+bool FSailingCoastTideStepBatchedTest::RunTest(const FString&)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingTideBatchWorld"));
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	ALakeTerrainActor* Terrain = World->SpawnActor<ALakeTerrainActor>(FVector(0.0, 0.0, -30.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("Terrain actor"), Terrain))
+	{
+		// Three tiles of 15,000 instances (each alone under the budget, any two over it) and a plain mesh.
+		TArray<USceneComponent*> Parts;
+		for (int32 K = 0; K < 3; ++K)
+		{
+			UInstancedStaticMeshComponent* Ism = NewObject<UInstancedStaticMeshComponent>(Terrain);
+			Ism->SetMobility(EComponentMobility::Static);
+			Ism->SetRelativeLocation(FVector(1000.0 * K, 0.0, 100.0));
+			Terrain->KeepWithActor(Ism);
+			Ism->RegisterComponent();
+			TArray<FTransform> X;
+			X.Init(FTransform::Identity, 15000);
+			Ism->AddInstances(X, false);
+			Parts.Add(Ism);
+		}
+		UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(Terrain);
+		Mesh->SetMobility(EComponentMobility::Static);
+		Mesh->SetRelativeLocation(FVector(0.0, 5000.0, 100.0));
+		Terrain->KeepWithActor(Mesh);
+		Mesh->RegisterComponent();
+		Parts.Add(Mesh);
+		auto AtZ = [&Parts](double Z) { int32 N = 0; for (USceneComponent* P : Parts) if (FMath::IsNearlyEqual(P->GetComponentLocation().Z, Z, 0.01)) ++N; return N; };
+		TestEqual(TEXT("All placed at the 30 cm tide"), AtZ(70.0), 4);
+
+		Terrain->SetActorLocation(FVector(0.0, 0.0, -32.0));   // a 2 cm step
+		Terrain->FollowActor();
+		TestEqual(TEXT("First frame: one tile (15,000 of the 20,000 budget)"), AtZ(68.0), 1);
+		Terrain->FollowActor();
+		TestEqual(TEXT("Second frame: two"), AtZ(68.0), 2);
+		// A part kept mid-step (a regroup's new crown tile) is placed on the step and moves nothing else in that call.
+		UStaticMeshComponent* Late = NewObject<UStaticMeshComponent>(Terrain);
+		Late->SetMobility(EComponentMobility::Static);
+		Late->SetRelativeLocation(FVector(0.0, 9000.0, 100.0));
+		Terrain->KeepWithActor(Late);
+		Late->RegisterComponent();
+		Parts.Add(Late);
+		TestEqual(TEXT("Kept mid-step: on the step at once, the others still waiting"), AtZ(68.0), 3);
+		// A re-centre mid-step: everything shifts at once, the parts still behind stay 2 cm behind.
+		Terrain->ApplyWorldOffset(FVector(-1920000.0, 0.0, 0.0), true);
+		TestEqual(TEXT("The shift moves every part"), Parts[0]->GetComponentLocation().X, -1920000.0, 0.01);
+		for (int32 Frame = 0; Frame < 4; ++Frame) Terrain->FollowActor();
+		TestEqual(TEXT("A few frames later every part is on the step"), AtZ(68.0), 5);
+		TestEqual(TEXT("... and in its place after the shift"), Parts[2]->GetComponentLocation().X, 2000.0 - 1920000.0, 0.01);
+		TestEqual(TEXT("... the plain mesh too"), Mesh->GetComponentLocation().Y, 5000.0, 0.01);
+		TestEqual(TEXT("... and the late one, moved once only"), Late->GetComponentLocation().Y, 9000.0, 0.01);
+		// Two steps in quick succession: the second arrives while the first is spreading.
+		Terrain->SetActorLocation(Terrain->GetActorLocation() + FVector(0.0, 0.0, -2.0));
+		Terrain->FollowActor();
+		Terrain->SetActorLocation(Terrain->GetActorLocation() + FVector(0.0, 0.0, -2.0));
+		for (int32 Frame = 0; Frame < 4; ++Frame) Terrain->FollowActor();
+		TestEqual(TEXT("Two quick steps: every part ends 4 cm down, none moved twice by one step"), AtZ(64.0), 5);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

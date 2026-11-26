@@ -65,6 +65,20 @@ public:
 	double GetLocalHour() const;
 	/** Water level above chart datum at the boat (m); 0 on the lake. */
 	double GetTideHeight() const { return TideHeight; }
+	/** The offset (cm, up) the tide's followers stand at: -tide in 2 cm steps (the terrain, bridges, landmarks and fixed
+	 *  navaids all read this one value, so they step in the same frame). Moving them every frame would keep invalidating
+	 *  their shadows and resending their instances to the distance-field scene. */
+	double GetTideFollowZ() const { return -TideStepHeld * 100.0; }   // cm per m
+	/** A tide height (m) in the followers' 2 cm steps. */
+	static double TideStepped(double TideM) { return FMath::RoundToDouble(TideM / 0.02) * 0.02; }
+	/** The step the followers stand on, given the one they stood on (Held) and the tide now: it changes only once the tide is
+	 *  2 mm past the half-way mark between steps, so a tide sitting on the boundary (the boat moving, the level turning)
+	 *  doesn't flip the followers back and forth every few frames (each flip re-sends them: 70-90 ms frames on the PC). */
+	static double TideStepWithDeadBand(double Held, double TideM) { return FMath::Abs(TideM - Held) > 0.012 ? TideStepped(TideM) : Held; }
+	/** -SailingTideStepEvery=<s> (measuring the tide step's hitch without a 2 h soak): the extra height (m) that forces a
+	 *  step every <s> seconds of play, 0 and 0.03 in turn; 0 without the argument (Every <= 0). 3 cm, not 2: past the dead
+	 *  band from anywhere inside it (a tide 1.1 cm under its held step plus 2 cm is only 0.9 cm over, and nothing moved). */
+	static double ForcedTideStep(double Seconds, double Every) { return Every > 0.0 && FMath::FloorToInt64(Seconds / Every) % 2 == 1 ? 0.03 : 0.0; }
 	/** Tidal current at a point (m/s, map frame). */
 	Sailing::Vec3 GetCurrentAt(double X, double Y) const { return Lake.IsTidal() ? Lake.Tides.CurrentAt(X, Y, GetUnixTime()) : Sailing::Vec3(); }
 
@@ -204,6 +218,8 @@ private:
 	double SunsetHour = 19.0; // docs/night-clouds/: local hour, from the date and the latitude (BeginPlay)
 	int32 UtcOffsetHours = -5;
 	double TideHeight = 0.0;
+	double TideStepHeld = 0.0;      // GetTideFollowZ's step (m), with its dead band
+	bool bTideStepHeld = false;
 	Sailing::FTideEvent NextTide;
 	bool bHasNextTide = false;
 	double NextTideUpdate = -1e9;
