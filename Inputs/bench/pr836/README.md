@@ -90,3 +90,11 @@ Bean's Saved was held aside and restored for every run (7B5CA7BE).
 - **Memory:** flat to 30 min (working set 3.71-3.77 GB). From 30 min, when the trace window opened, it rose about
   400 MB (working set 4.18-4.20 GB, private 15.3 GB at 40 min). That's probably the trace's buffers. A soak without
   the trace would confirm it.
+
+## Update: 0d2ac23a (the 1.2 cm dead band on the tide step), build and tests only
+
+- **MSVC build: succeeded, 0 errors.** All 21 warnings are in engine headers; none are in the project's `Source/`.
+- **`SailingSim.Coast`: 23 tests, 0 failed** (19 clean, 4 with warnings). `KeptStaticFollowsTide`, `TideStep`,
+  `TideStepBatched` and `TideTimesMatchNoaa` pass (`test-coast-0d2ac23a.json`).
+- No soak, as asked. The flapping in the 45-min soak above should be gone with this: a step now changes only once the
+  tide is 1.2 cm from the step it holds.

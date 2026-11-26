@@ -1,0 +1,945 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "13416690419A61D1B9EAD1865A8A2C13",
+			"instanceName": "BEN-PC-29356",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.25-23.36.43",
+	"succeeded": 19,
+	"succeededWithWarnings": 4,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 336.85934448242188,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "ChartSymbolsMatchNoaaChart",
+			"fullTestPath": "SailingSim.Coast.ChartSymbolsMatchNoaaChart",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.43090099096298218,
+			"dateTime": "2026.11.25-23.31.05",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/pr836/Content/TerrainData/GalvestonBay.detail' error.",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.05"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "352 numbered lateral aids, 352 consistent",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.06"
+				}
+			],
+			"warnings": 1,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CurrentSetsTheBoat",
+			"fullTestPath": "SailingSim.Coast.CurrentSetsTheBoat",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.18016129732131958,
+			"dateTime": "2026.11.25-23.31.06",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "After 2 min: 1.44 kn over the ground toward 295 T, log -0.04 kn",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.06"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CurrentTimesMatchNoaa",
+			"fullTestPath": "SailingSim.Coast.CurrentTimesMatchNoaa",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.1403253972530365,
+			"dateTime": "2026.11.25-23.31.06",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Slack: 15 of 15 within 10 min (worst 4.1). Max flood/ebb: 17 of 17 within 20 min and 0.05 m/s (worst 117.0 min, 0.026 m/s)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.06"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "DepthsMatchChartSoundings",
+			"fullTestPath": "SailingSim.Coast.DepthsMatchChartSoundings",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.40190479159355164,
+			"dateTime": "2026.11.25-23.31.06",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "6009 soundings: median error 0.00 m, 90th percentile 0.05 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.06"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "GalvestonSwell",
+			"fullTestPath": "SailingSim.Coast.GalvestonSwell",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 6.6578288078308105,
+			"dateTime": "2026.11.25-23.31.07",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/pr836/Content/TerrainData/GalvestonBay.detail' error.",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "1 km off the Seawall: mask 1.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Pleasure Pier end: mask 1.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "between the jetty heads: mask 1.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Bolivar Roads: mask 0.29",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Texas City Dike: mask 0.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Clear Lake: mask 0.00",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Mask built in 297 ms",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.07"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Close-hauled: Clear Lake 5.96 kn without the ocean, 5.96 with; off the Seawall 5.96 without, 5.82 with",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.13"
+				}
+			],
+			"warnings": 1,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "GulfFront",
+			"fullTestPath": "SailingSim.Coast.GulfFront",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0085819996893405914,
+			"dateTime": "2026.11.25-23.31.13",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Grid north -39240 to 8910 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.13"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Seawall 10959 m, longest jetty 5981 m, 32 Gulf groins; jetty ends 0 m and 0 m from Lights 6A and 5A",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.13"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "KeptStaticFollowsTide",
+			"fullTestPath": "SailingSim.Coast.KeptStaticFollowsTide",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.022228103131055832,
+			"dateTime": "2026.11.25-23.31.13",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Landmarks",
+			"fullTestPath": "SailingSim.Coast.Landmarks",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.008141200989484787,
+			"dateTime": "2026.11.25-23.31.13",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "186 of 348 landmarks drawn",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.13"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "LightsFlashTheirCharacteristics",
+			"fullTestPath": "SailingSim.Coast.LightsFlashTheirCharacteristics",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0082540996372699738,
+			"dateTime": "2026.11.25-23.31.13",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "266 lit aids, 266 with a consistent rhythm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.13"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "LongPassageStable",
+			"fullTestPath": "SailingSim.Coast.LongPassageStable",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 328.2855224609375,
+			"dateTime": "2026.11.25-23.31.13",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/pr836/Content/TerrainData/GulfPassage.detail' error.",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.31.13"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "90 minutes: 7.3 nm by the log, waypoint 2 of 6 reached, max heel 27 deg, aground 0 samples, capsized 0",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 1,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MarseilleCassis",
+			"fullTestPath": "SailingSim.Coast.MarseilleCassis",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.19477549195289612,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogStreaming: Failed to read file 'D:/dev/ss-fix-wt/pr836/Content/TerrainData/Marseille.detail' error.",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Cassis, Port de Cassis at -9130, 14210: 3.5 m of water",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Moored: Cassis 75, La Ciotat 333, Port-Miou 23",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Passage: 7 waypoints, 17.6 nm, shallowest 5.1 m (Vieux-Port entrance to Off the Pharo)",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 1,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MarseilleLights",
+			"fullTestPath": "SailingSim.Coast.MarseilleLights",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0083362013101577759,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Ile de Planier: Fl W 5s 223ft 23M",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Chateau d'If: Fl(2) W 6s 89ft 11M",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Pointe de la Desirade: Fl G 4s 43ft 7M",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Sourdaras: Q(9) W 15s 46ft 7M",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "73 aids, 54 lit, 15 lateral",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MarseilleLoads",
+			"fullTestPath": "SailingSim.Coast.MarseilleLoads",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0085691995918750763,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "home_slip: Vieux-Port, Quai de Rive Neuve, 6.0 m of water",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "anchorage: Frioul anchorage, off Port du Frioul, 14.1 m of water",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "gale: Offshore, past Planier (gale), 90.5 m of water",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MarseilleMooredBoatsAfloat",
+			"fullTestPath": "SailingSim.Coast.MarseilleMooredBoatsAfloat",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0081853978335857391,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "3822 moored boats: 1867 in the Vieux-Port, 771 at Frioul",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MarseilleShoreAndSeams",
+			"fullTestPath": "SailingSim.Coast.MarseilleShoreAndSeams",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.22015850245952606,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Fort Saint-Jean: the water's edge 1.4 m from the OSM coastline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Chateau d'If: the water's edge 3.6 m from the OSM coastline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Cap Croisette: the water's edge 0.9 m from the OSM coastline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Cassis, Pointe des Lombards: the water's edge 0.4 m from the OSM coastline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "La Ciotat, Bec de l'Aigle: the water's edge 4.1 m from the OSM coastline",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Open water: 2187068 neighbour pairs, largest step 13.5 m, 30 over 5 m; deepest 122 m",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MooredBoatsAfloat",
+			"fullTestPath": "SailingSim.Coast.MooredBoatsAfloat",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0077681019902229309,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "1163 moored boats, 1039 in marinas, 214 south of the old grid edge",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MooredPowerClasses",
+			"fullTestPath": "SailingSim.Coast.MooredPowerClasses",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.09091389924287796,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "490 power boats: runabout 56, express 133, trawler 17, sportfisher 116, motor yacht 168; 470 within 25% of their length",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Piers",
+			"fullTestPath": "SailingSim.Coast.Piers",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0080249011516571045,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "PlottedFixesLandWithinTolerance",
+			"fullTestPath": "SailingSim.Coast.PlottedFixesLandWithinTolerance",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.007935699075460434,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Worst fix error: 21 m with bearings read to the degree, 134 m with +-2 degree compass error",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SunRisesAndSetsOnTime",
+			"fullTestPath": "SailingSim.Coast.SunRisesAndSetsOnTime",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0086346007883548737,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "12 Aug: sunrise 06:45, sunset 20:03 CDT",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "12 Oct: solar noon 13:05 CDT, sun 53.6 deg high",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "TideStep",
+			"fullTestPath": "SailingSim.Coast.TideStep",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.0084271989762783051,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "TideStepBatched",
+			"fullTestPath": "SailingSim.Coast.TideStepBatched",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.013008199632167816,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "TideTimesMatchNoaa",
+			"fullTestPath": "SailingSim.Coast.TideTimesMatchNoaa",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"13416690419A61D1B9EAD1865A8A2C13"
+			],
+			"duration": 0.13076010346412659,
+			"dateTime": "2026.11.25-23.36.42",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "8771450: 42 of 42 highs and lows matched; worst 6.0 min (well-defined turns), worst height 0.5 cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.42"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "8771013: 36 of 36 highs and lows matched; worst 5.5 min (well-defined turns), worst height 0.5 cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.25-23.36.43"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
