@@ -1357,7 +1357,9 @@ if (VC.r < 0.5)
     // Frigate polish: growth rings as wood has them, not a sine: each year a pale band of earlywood closed by a narrow dark
     // line of latewood, the years unevenly wide (the ring count warped by two octaves of 1D noise, still increasing) and
     // their latewood of uneven weight (a hash per year); docs/frigate-import/ (polish).
-    float rt = (gw * 6.0 + 4.0 * vn) / 6.2832;
+    // (vn's finer octaves, 9 and 2 cm, at the small boats' weight rippled the lines across the overhead planks in the PC's
+    // #842 close-ups: here they only nudge the rings.)
+    float rt = (gw * 6.0 + 1.2 * vn) / 6.2832;
     float rq = rt * 0.31, rqi = floor(rq), rqf = smoothstep(0.0, 1.0, frac(rq));
     float rq2 = rt * 1.7 + 5.0, rqi2 = floor(rq2), rqf2 = smoothstep(0.0, 1.0, frac(rq2));
     rt += 0.9 * (lerp(frac(sin(rqi * 12.9898 + 1.3) * 43758.5453), frac(sin((rqi + 1.0) * 12.9898 + 1.3) * 43758.5453), rqf) - 0.5)
@@ -1868,10 +1870,12 @@ else if (surf == 19)    // Frigate polish: cast iron, blacked (her guns, the car
     col = lerp(col, float3(0.085, 0.082, 0.078), 0.6 * ciWorn);   // the blacking thin on the highs: dark grey iron
     metalOut = lerp(metalOut, 0.65, ciWorn);
     rough = lerp(rough, 0.42, 0.5 * ciWorn);
-    float ciRust = saturate(dirtK * 1.2) * saturate((0.42 - ciN) * 3.0 + (0.45 - vn) * 2.0);
-    col = lerp(col, float3(0.15, 0.058, 0.024), 0.45 * ciRust);  // in the lows, soft brown
-    metalOut *= 1.0 - 0.8 * ciRust;
-    rough = lerp(rough, 0.85, 0.7 * ciRust);
+    // (The PC's #842 close-ups: with the 37 cm grime noise shaping it the rust drew orange camouflage blotches over a barrel;
+    // a navy gun is kept blacked, so the rust is the 4 cm skin's lows only, faint, its amount varied by the grime noise.)
+    float ciRust = saturate(dirtK * 1.2) * smoothstep(0.32, 0.16, ciN) * (0.4 + 0.6 * vn);
+    col = lerp(col, float3(0.10, 0.048, 0.024), 0.3 * ciRust);   // in the lows, a dull brown
+    metalOut *= 1.0 - 0.5 * ciRust;
+    rough = lerp(rough, 0.8, 0.5 * ciRust);
     ciDirt = saturate(0.25 + dirtK);
 }
 else if (surf == 17)    // J-Class 15: three-strand manila (Bluebonnet's sheets, guys, tails and coils; weathering.py manila). New,
