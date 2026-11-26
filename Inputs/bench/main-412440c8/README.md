@@ -27,7 +27,8 @@ Bean's Saved was held aside and restored (7B5CA7BE).
 | far-coast-night | 76.9 | 73.7 | +3.2 | 5.41 / 5.42 | 10.83 / 10.93 | 12.97 / 13.54 |
 | marseille-port | 71.8 | 71.4 | +0.4 | 7.09 / 7.42 | 10.42 / 10.60 | 13.90 / 13.99 |
 | stream-run | 67.2 | 63.9 | +3.3 | 8.28 / 8.06 | 11.52 / 12.72 | 14.85 / 15.61 |
-mean 69.8 vs 70.1
+
+Mean 69.8 vs 70.1 fps.
 
 **Rerun of the five views down more than 2 fps** (`rerun/`, the same package, straight after):
 
