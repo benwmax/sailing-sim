@@ -1,0 +1,78 @@
+pkg-lake: LogSailing: Display: Wildlife: habitat map at 6, -38 in 8 ms
+pkg-lake: LogSailing: Display: Wildlife: RayHubbard, 11 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 273 harbour cells
+pkg-lake: LogSailing: Wildlife: 42 flocks, 830 birds (204 resting), drawn 311 quads 0 bodies, 297 in view (nearest american_white_pelican 512 m bearing 297 elevation 12.6 deg), 0 flushes, update 0.220 ms
+pkg-lake: LogSailing: Wildlife: 43 flocks, 870 birds (247 resting), drawn 311 quads 0 bodies, 271 in view (nearest american_white_pelican 518 m bearing 302 elevation 12.4 deg), 0 flushes, update 0.080 ms
+pkg-lake: LogSailing: Wildlife: 45 flocks, 950 birds (325 resting), drawn 311 quads 0 bodies, 307 in view (nearest double_crested_cormorant 197 m bearing 344 elevation -0.0 deg), 0 flushes, update 0.082 ms
+pkg-marseille: LogSailing: Display: Wildlife: habitat map at -130, 610 in 8 ms
+pkg-marseille: LogSailing: Display: Wildlife: Marseille, 8 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 938 harbour cells
+pkg-marseille: LogSailing: Wildlife: 5 flocks, 40 birds (11 resting), drawn 40 quads 0 bodies, 40 in view (nearest yellow_legged_gull 437 m bearing 275 elevation -0.9 deg), 0 flushes, update 0.109 ms
+pkg-marseille: LogSailing: Wildlife: 5 flocks, 40 birds (11 resting), drawn 40 quads 0 bodies, 40 in view (nearest yellow_legged_gull 424 m bearing 275 elevation -0.9 deg), 0 flushes, update 0.014 ms
+pkg-marseille: LogSailing: Wildlife: 6 flocks, 80 birds (11 resting), drawn 80 quads 0 bodies, 80 in view (nearest yellow_legged_gull 420 m bearing 275 elevation -0.9 deg), 0 flushes, update 0.021 ms
+birds-lake-20s: LogSailing: Display: Wildlife: habitat map at 6, -38 in 9 ms
+birds-lake-20s: LogSailing: Display: Wildlife: RayHubbard, 11 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 273 harbour cells
+birds-lake-20s: LogSailing: Wildlife: 43 flocks, 978 birds (273 resting), drawn 312 quads 0 bodies, 231 in view (nearest double_crested_cormorant 213 m bearing 59 elevation 1.5 deg), 0 flushes, update 0.184 ms
+birds-lake-20s: LogSailing: Wildlife: 43 flocks, 992 birds (316 resting), drawn 312 quads 0 bodies, 251 in view (nearest double_crested_cormorant 176 m bearing 26 elevation 1.0 deg), 0 flushes, update 0.084 ms
+birds-lake-20s: LogSailing: Wildlife: 46 flocks, 1043 birds (316 resting), drawn 312 quads 0 bodies, 219 in view (nearest double_crested_cormorant 241 m bearing 343 elevation -0.5 deg), 0 flushes, update 0.084 ms
+birds-lake-level-20s: LogSailing: Display: Wildlife: habitat map at 6, -38 in 9 ms
+birds-lake-level-20s: LogSailing: Display: Wildlife: RayHubbard, 11 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 273 harbour cells
+birds-lake-level-20s: LogSailing: Wildlife: 43 flocks, 978 birds (273 resting), drawn 312 quads 0 bodies, 232 in view (nearest double_crested_cormorant 213 m bearing 59 elevation 2.5 deg), 0 flushes, update 0.189 ms
+birds-lake-level-20s: LogSailing: Wildlife: 43 flocks, 992 birds (316 resting), drawn 312 quads 0 bodies, 281 in view (nearest double_crested_cormorant 184 m bearing 27 elevation 2.1 deg), 0 flushes, update 0.079 ms
+birds-lake-level-20s: LogSailing: Wildlife: 46 flocks, 1043 birds (316 resting), drawn 312 quads 0 bodies, 220 in view (nearest osprey 171 m bearing 310 elevation 4.6 deg), 0 flushes, update 0.078 ms
+birds-marseille-20s: LogSailing: Display: Wildlife: habitat map at -130, 610 in 8 ms
+birds-marseille-20s: LogSailing: Display: Wildlife: Marseille, 8 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 938 harbour cells
+birds-marseille-20s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.495 ms
+birds-marseille-20s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.013 ms
+birds-marseille-20s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.011 ms
+birds-marseille-level-20s: LogSailing: Display: Wildlife: habitat map at -130, 610 in 7 ms
+birds-marseille-level-20s: LogSailing: Display: Wildlife: Marseille, 8 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 938 harbour cells
+birds-marseille-level-20s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.263 ms
+birds-marseille-level-20s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.011 ms
+birds-marseille-level-20s: LogSailing: Wildlife: 6 flocks, 85 birds (16 resting), drawn 85 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.018 ms
+birds-lake-90s: LogSailing: Display: Wildlife: habitat map at 6, -38 in 9 ms
+birds-lake-90s: LogSailing: Display: Wildlife: RayHubbard, 11 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 273 harbour cells
+birds-lake-90s: LogSailing: Wildlife: 43 flocks, 978 birds (273 resting), drawn 312 quads 0 bodies, 231 in view (nearest double_crested_cormorant 213 m bearing 59 elevation 1.5 deg), 0 flushes, update 0.183 ms
+birds-lake-90s: LogSailing: Wildlife: 43 flocks, 992 birds (318 resting), drawn 312 quads 0 bodies, 253 in view (nearest double_crested_cormorant 176 m bearing 25 elevation 0.9 deg), 0 flushes, update 0.080 ms
+birds-lake-90s: LogSailing: Wildlife: 46 flocks, 1043 birds (316 resting), drawn 312 quads 0 bodies, 219 in view (nearest double_crested_cormorant 242 m bearing 342 elevation -0.5 deg), 0 flushes, update 0.088 ms
+birds-lake-90s: LogSailing: Wildlife: 47 flocks, 1083 birds (306 resting), drawn 315 quads 0 bodies, 304 in view (nearest great_blue_heron 206 m bearing 102 elevation 2.2 deg), 0 flushes, update 0.103 ms
+birds-lake-90s: LogSailing: Wildlife: 49 flocks, 1094 birds (248 resting), drawn 360 quads 0 bodies, 327 in view (nearest great_blue_heron 283 m bearing 111 elevation 0.6 deg), 0 flushes, update 0.104 ms
+birds-lake-90s: LogSailing: Wildlife: 49 flocks, 1094 birds (245 resting), drawn 360 quads 0 bodies, 316 in view (nearest franklins_gull 252 m bearing 96 elevation 3.9 deg), 0 flushes, update 0.085 ms
+birds-lake-90s: LogSailing: Wildlife: 49 flocks, 1107 birds (245 resting), drawn 360 quads 0 bodies, 240 in view (nearest osprey 154 m bearing 279 elevation 1.1 deg), 0 flushes, update 0.136 ms
+birds-lake-90s: LogSailing: Wildlife: 50 flocks, 1147 birds (283 resting), drawn 366 quads 6 bodies, 250 in view (nearest osprey 170 m bearing 274 elevation 1.0 deg), 0 flushes, update 0.099 ms
+birds-lake-90s: LogSailing: Wildlife: 49 flocks, 1107 birds (282 resting), drawn 326 quads 46 bodies, 279 in view (nearest franklins_gull 23 m bearing 251 elevation 21.9 deg), 0 flushes, update 0.097 ms
+birds-lake-90s: LogSailing: Wildlife: 49 flocks, 1037 birds (284 resting), drawn 360 quads 0 bodies, 223 in view (nearest ring_billed_gull 290 m bearing 296 elevation 0.1 deg), 0 flushes, update 0.093 ms
+birds-lake-level-90s: LogSailing: Display: Wildlife: habitat map at 6, -38 in 9 ms
+birds-lake-level-90s: LogSailing: Display: Wildlife: RayHubbard, 11 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 273 harbour cells
+birds-lake-level-90s: LogSailing: Wildlife: 43 flocks, 978 birds (273 resting), drawn 312 quads 0 bodies, 232 in view (nearest double_crested_cormorant 213 m bearing 59 elevation 2.5 deg), 0 flushes, update 0.190 ms
+birds-lake-level-90s: LogSailing: Wildlife: 43 flocks, 992 birds (316 resting), drawn 312 quads 0 bodies, 281 in view (nearest double_crested_cormorant 185 m bearing 27 elevation 2.1 deg), 0 flushes, update 0.078 ms
+birds-lake-level-90s: LogSailing: Wildlife: 46 flocks, 1043 birds (316 resting), drawn 312 quads 0 bodies, 220 in view (nearest osprey 171 m bearing 310 elevation 4.6 deg), 0 flushes, update 0.095 ms
+birds-lake-level-90s: LogSailing: Wildlife: 48 flocks, 1092 birds (314 resting), drawn 315 quads 0 bodies, 304 in view (nearest great_blue_heron 215 m bearing 102 elevation 3.2 deg), 0 flushes, update 0.076 ms
+birds-lake-level-90s: LogSailing: Wildlife: 49 flocks, 1094 birds (245 resting), drawn 360 quads 0 bodies, 338 in view (nearest great_blue_heron 291 m bearing 112 elevation 1.4 deg), 0 flushes, update 0.085 ms
+birds-lake-level-90s: LogSailing: Wildlife: 49 flocks, 1094 birds (242 resting), drawn 360 quads 0 bodies, 325 in view (nearest franklins_gull 251 m bearing 90 elevation 3.5 deg), 0 flushes, update 0.082 ms
+birds-lake-level-90s: LogSailing: Wildlife: 49 flocks, 1099 birds (243 resting), drawn 360 quads 0 bodies, 238 in view (nearest osprey 160 m bearing 276 elevation 2.5 deg), 0 flushes, update 0.097 ms
+birds-lake-level-90s: LogSailing: Wildlife: 50 flocks, 1139 birds (282 resting), drawn 360 quads 12 bodies, 250 in view (nearest osprey 178 m bearing 272 elevation 2.2 deg), 0 flushes, update 0.104 ms
+birds-lake-level-90s: LogSailing: Wildlife: 50 flocks, 1139 birds (286 resting), drawn 339 quads 33 bodies, 291 in view (nearest franklins_gull 33 m bearing 258 elevation 22.1 deg), 0 flushes, update 0.093 ms
+birds-lake-level-90s: LogSailing: Wildlife: 49 flocks, 1029 birds (283 resting), drawn 360 quads 0 bodies, 239 in view (nearest ring_billed_gull 295 m bearing 297 elevation 0.8 deg), 0 flushes, update 0.086 ms
+birds-marseille-90s: LogSailing: Display: Wildlife: habitat map at -130, 610 in 8 ms
+birds-marseille-90s: LogSailing: Display: Wildlife: Marseille, 8 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 938 harbour cells
+birds-marseille-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.583 ms
+birds-marseille-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.012 ms
+birds-marseille-90s: LogSailing: Wildlife: 6 flocks, 85 birds (16 resting), drawn 85 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.015 ms
+birds-marseille-90s: LogSailing: Wildlife: 6 flocks, 87 birds (16 resting), drawn 87 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.017 ms
+birds-marseille-90s: LogSailing: Wildlife: 6 flocks, 87 birds (16 resting), drawn 87 quads 0 bodies, 24 in view (nearest marseille_winter_gulls_terns 1515 m bearing 253 elevation 0.5 deg), 0 flushes, update 0.018 ms
+birds-marseille-90s: LogSailing: Wildlife: 6 flocks, 87 birds (16 resting), drawn 80 quads 0 bodies, 39 in view (nearest yellow_legged_gull 439 m bearing 273 elevation -0.9 deg), 0 flushes, update 0.021 ms
+birds-marseille-90s: LogSailing: Wildlife: 6 flocks, 87 birds (16 resting), drawn 80 quads 0 bodies, 80 in view (nearest yellow_legged_gull 441 m bearing 274 elevation -0.9 deg), 0 flushes, update 0.017 ms
+birds-marseille-90s: LogSailing: Wildlife: 4 flocks, 63 birds (16 resting), drawn 56 quads 0 bodies, 56 in view (nearest yellow_legged_gull 436 m bearing 275 elevation -0.9 deg), 0 flushes, update 0.012 ms
+birds-marseille-90s: LogSailing: Wildlife: 5 flocks, 64 birds (16 resting), drawn 57 quads 0 bodies, 41 in view (nearest yellow_legged_gull 984 m bearing 317 elevation 1.2 deg), 0 flushes, update 0.013 ms
+birds-marseille-90s: LogSailing: Wildlife: 5 flocks, 64 birds (16 resting), drawn 57 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.013 ms
+birds-marseille-level-90s: LogSailing: Display: Wildlife: habitat map at -130, 610 in 8 ms
+birds-marseille-level-90s: LogSailing: Display: Wildlife: Marseille, 8 birds in the table, tier 2 budget far 300 mid 60 near 12, 0 styles without a body mesh, 938 harbour cells
+birds-marseille-level-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.059 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.011 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.010 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 45 quads 0 bodies, 19 in view (nearest yellow_legged_gull 1911 m bearing 258 elevation 0.5 deg), 0 flushes, update 0.011 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 44 quads 0 bodies, 40 in view (nearest yellow_legged_gull 447 m bearing 271 elevation -0.4 deg), 0 flushes, update 0.013 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 38 quads 0 bodies, 34 in view (nearest yellow_legged_gull 452 m bearing 273 elevation -0.4 deg), 0 flushes, update 0.012 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 5 flocks, 45 birds (16 resting), drawn 38 quads 0 bodies, 38 in view (nearest yellow_legged_gull 449 m bearing 275 elevation -0.4 deg), 0 flushes, update 0.013 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 4 flocks, 26 birds (16 resting), drawn 19 quads 0 bodies, 4 in view (nearest marseille_winter_gulls_terns 1504 m bearing 337 elevation 0.5 deg), 0 flushes, update 0.009 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 4 flocks, 26 birds (16 resting), drawn 19 quads 0 bodies, 4 in view (nearest marseille_winter_gulls_terns 1407 m bearing 337 elevation 0.6 deg), 0 flushes, update 0.008 ms
+birds-marseille-level-90s: LogSailing: Wildlife: 4 flocks, 26 birds (16 resting), drawn 19 quads 0 bodies, 0 in view (nearest none), 0 flushes, update 0.008 ms
