@@ -19,12 +19,6 @@ chase-camera lake sailing (inputs branch `Inputs/bench/stutter-main/` and `follo
 - Every game `ParallelFor` body is named for traces: `Sailing_WakeGridRows`, `Sailing_ShoreDepthRows`,
   `Sailing_WindMapRows`, `Sailing_SailClothRender`, `Sailing_StreamTileRead`, `Sailing_TrafficBoatStep`.
 
-- PC scopes (inputs a81cfb69, `Inputs/bench/stutter-main/scopes/`): the burst is the wake FFT's **column** pass,
-  28-33 ms of worker time per render frame (about 1.5 cores, 70% of the background ParallelFor time) against 2 ms for
-  the row pass: the columns were transformed in place with a stride of N. `Fft2` now gathers eight adjacent columns
-  into contiguous lines, transforms them and scatters them back (bit-identical; standalone at N 512: 16.9 -> 4.3 ms,
-  256: 1.5 -> 0.8 ms). Bow wave phase 3's second `Fft2` gets the same saving.
-
 ## Proof (to do)
 
 PC: the same 60 s run, VSync off, traced: the share of frames changing by more than 2 ms, p99, and the named scopes
