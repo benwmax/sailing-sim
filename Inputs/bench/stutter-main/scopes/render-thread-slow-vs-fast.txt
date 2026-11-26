@@ -1,0 +1,48 @@
+frames 274: slow (> 22.5 ms) 97, fast (< 19.0 ms) 25
+mean frame: slow 24.57 ms, fast 18.40 ms
+timer                                                                     slow    fast    diff
+SceneRender                                                              15.84   12.66   +3.18
+SceneRenderBuilder_Render                                                15.69   12.60   +3.09
+FRHIBreadcrumbScope_GameThread_Begin                                      7.77    5.01   +2.76
+RenderViewFamily                                                         12.42   10.01   +2.41
+FDeferredShadingSceneRenderer_Render                                     12.41   10.01   +2.40
+Scene                                                                     9.63    7.66   +1.97
+FProcMeshSectionUpdate                                                    3.93    2.83   +1.10
+UpdateSection RT                                                          3.92    2.83   +1.10
+RenderGraphExecute                                                        3.90    2.90   +1.00
+FlushDeferredResourceUpdateCommand                                        1.30    0.64   +0.66
+DispatchCanvasRenderCommands                                              1.28    0.63   +0.65
+WaitUntilTasksComplete                                                    0.52    0.01   +0.50
+WaitForVisibilityTasks                                                    0.48    0.01   +0.47
+View Visibility                                                           0.51    0.04   +0.46
+ProcessVisibilityTasks                                                    0.51    0.04   +0.46
+InitViews                                                                 0.72    0.28   +0.44
+VisibilityCommands                                                        0.72    0.28   +0.44
+FDeferredShadingSceneRenderer_InitViews                                   0.72    0.28   +0.44
+%s                                                                        0.83    0.42   +0.41
+CanvasDrawTiles                                                           0.79    0.40   +0.39
+STAT_CanvasDrawTiles                                                      0.79    0.40   +0.39
+Collect Resources                                                         1.89    1.50   +0.39
+FRDGBuilder::CollectResources                                             1.88    1.50   +0.39
+UpdateTextureRegionsData                                                  1.09    0.73   +0.36
+UpdatePrimitive                                                           1.54    1.21   +0.33
+UpdateAllPrimitiveSceneInfos                                              1.44    1.13   +0.31
+FTaskBase::WaitImpl_StateChangeEvent_WaitFor                              0.99    0.68   +0.31
+WaitForTasks                                                              0.27    0.00   +0.27
+FRDGBuilder::AllocateTransientResources                                   1.15    0.90   +0.25
+ExecuteCommandList                                                        0.67    0.47   +0.20
+Nanite::DrawGeometry                                                      1.58    1.39   +0.19
+ShadowDepths                                                              1.13    0.95   +0.18
+D3D12RHI::CreateRHIBuffer                                                 0.44    0.26   +0.18
+Tasks::Wait                                                               0.78    0.61   +0.17
+SetMIParameterValue                                                       0.31    0.14   +0.17
+CreateBuffer time                                                         0.42    0.25   +0.17
+FSceneRenderer::RenderShadowDepthMaps                                     1.07    0.92   +0.15
+FSceneRenderer_RenderShadowDepthMaps                                      1.07    0.92   +0.15
+FTaskBase::TryRetractAndExecute                                           0.31    0.16   +0.15
+DiffuseIndirectAndAO                                                      1.03    0.90   +0.13
+DrawTileMesh                                                              0.25    0.11   +0.13
+FShadowSceneRenderer::RenderVirtualShadowMaps                             0.90    0.77   +0.13
+RenderVirtualShadowMaps                                                   0.87    0.75   +0.12
+FDeferredShadingSceneRenderer::UpdateLumenScene                           0.74    0.62   +0.12
+LumenSceneUpdate:                                                         0.73    0.61   +0.12

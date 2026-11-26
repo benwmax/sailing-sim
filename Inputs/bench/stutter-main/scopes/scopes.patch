@@ -1,0 +1,165 @@
+diff --git a/Source/SailingSim/Private/SailVisuals.cpp b/Source/SailingSim/Private/SailVisuals.cpp
+index 27b1e5372..1469d9117 100644
+--- a/Source/SailingSim/Private/SailVisuals.cpp
++++ b/Source/SailingSim/Private/SailVisuals.cpp
+@@ -1,5 +1,6 @@
+ // Visual V3: the sails as cloth and the telltales as ribbons (the cloth itself is SailCloth.cpp).
+ #include "SailboatPawn.h"
++#include "ProfilingDebugging/CpuProfilerTrace.h"
+ #include "SailingSim.h"
+ #include "SailingSettings.h"
+ #include "ProceduralMeshComponent.h"
+@@ -268,6 +269,7 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float
+ 	const double Start = FPlatformTime::Seconds();
+ 	ParallelFor(Sails.Num(), [&](int32 K)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_SailCloth);
+ 		const FSailUpdate& U = Sails[K];
+ 		FSailCloth& Cloth = *U.Cloth;
+ 		if (!Cloth.IsValid()) return;
+diff --git a/Source/SailingSim/Private/TrafficManager.cpp b/Source/SailingSim/Private/TrafficManager.cpp
+index 1c3eed4b7..a7f9c6928 100644
+--- a/Source/SailingSim/Private/TrafficManager.cpp
++++ b/Source/SailingSim/Private/TrafficManager.cpp
+@@ -1,4 +1,5 @@
+ #include "TrafficManager.h"
++#include "ProfilingDebugging/CpuProfilerTrace.h"
+ #include "SoundCaptions.h"
+ #include "SailingAudio.h"
+ #include "CourseMarks.h"
+@@ -70,7 +71,7 @@ void ATrafficManager::BeginPlay()
+ 	// for the whole frame's steps: the player's boat, whose time it is, has already stepped).
+ 	Sim.SetWorld(&GM->GetWind(), &GM->GetWaves(), Lake.IsLoaded() ? &Lake.Terrain : nullptr,
+ 		[this, GM](double X, double Y) { const FLakeData& L = GM->GetLake(); return L.IsTidal() ? L.Tides.CurrentAt(X, Y, UnixNow) : Sailing::Vec3(); });
+-	Sim.ParallelFor = [](int Count, const std::function<void(int)>& Body) { ::ParallelFor(Count, [&Body](int32 I) { Body(I); }); };
++	Sim.ParallelFor = [](int Count, const std::function<void(int)>& Body) { ::ParallelFor(Count, [&Body](int32 I) { TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_TrafficSails); Body(I); }); };
+ 	Sim.SetTime(GM->GetSimTime());
+ }
+ 
+diff --git a/Source/SailingSim/Private/WakeGrid.cpp b/Source/SailingSim/Private/WakeGrid.cpp
+index ed93d2b68..420057e7f 100644
+--- a/Source/SailingSim/Private/WakeGrid.cpp
++++ b/Source/SailingSim/Private/WakeGrid.cpp
+@@ -1,5 +1,7 @@
+ #include "WakeGrid.h"
+ #include "Async/ParallelFor.h"
++#include "ProfilingDebugging/CpuProfilerTrace.h"
++#include "BenchRunner.h"
+ 
+ namespace
+ {
+@@ -40,10 +42,27 @@ namespace
+ 		}
+ 	}
+ 
++	// stutter-main/scopes (local measuring): -SailingWakeFftCap=<k> runs each FFT pass as k chunks (k tasks at most)
++	// instead of one task per row; 0 (default) is unchanged.
++	int32 WakeFftCap()
++	{
++		static int32 Cap = -1;
++		static uint32 Gen = MAX_uint32;
++		if (Gen != SailingArgs::Generation()) { Gen = SailingArgs::Generation(); Cap = 0; FParse::Value(SailingArgs::Dev(), TEXT("SailingWakeFftCap="), Cap); }
++		return Cap;
++	}
++
++	template <typename F> void WakeFor(int32 Num, F&& Body)
++	{
++		const int32 Cap = WakeFftCap();
++		if (Cap <= 0 || Cap >= Num) { ParallelFor(Num, Body); return; }
++		ParallelFor(Cap, [&](int32 B) { for (int32 I = B * Num / Cap; I < (B + 1) * Num / Cap; ++I) Body(I); });
++	}
++
+ 	void Fft2(TArray<std::complex<float>>& A, int32 N, float Sign)
+ 	{
+-		ParallelFor(N, [&](int32 R) { Fft(A.GetData() + R * N, N, 1, Sign); });
+-		ParallelFor(N, [&](int32 C) { Fft(A.GetData() + C, N, N, Sign); });
++		WakeFor(N, [&](int32 R) { TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WakeFftRows); Fft(A.GetData() + R * N, N, 1, Sign); });
++		WakeFor(N, [&](int32 C) { TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WakeFftCols); Fft(A.GetData() + C, N, N, Sign); });
+ 	}
+ }
+ 
+@@ -149,6 +168,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
+ 	Swap(StirMid, PrevStirMid);
+ 	ParallelFor(N, [&](int32 R)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WakeDepth);
+ 		for (int32 C = 0; C < N; ++C)
+ 		{
+ 			const FVector2D P = Corner + FVector2D((R + 0.5f) * Cell, (C + 0.5f) * Cell);
+@@ -181,6 +201,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
+ 	// Pressure head, softened over a cell so the hull's sharp outline doesn't ring at the grid scale.
+ 	ParallelFor(N, [&](int32 R)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WakePressure);
+ 		for (int32 C = 0; C < N; ++C)
+ 		{
+ 			float Sum = 0.f, Weight = 0.f;
+@@ -210,6 +231,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
+ 	Out.SetNumUninitialized(NN);
+ 	ParallelFor(N, [&](int32 R)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WakeSpectrum);
+ 		const int32 Rm = (N - R) % N;
+ 		for (int32 C = 0; C < N; ++C)
+ 		{
+@@ -238,6 +260,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
+ 
+ 	ParallelFor(N, [&](int32 R)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WakeOut);
+ 		for (int32 C = 0; C < N; ++C)
+ 		{
+ 			const int32 I = R * N + C;
+@@ -291,6 +314,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
+ 	const float Mix = FMath::Min(kSlickDiffusion * Dt / (Cell * Cell), 0.2f);
+ 	ParallelFor(N, [&](int32 R)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WakeSlick);
+ 		for (int32 C = 0; C < N; ++C)
+ 		{
+ 			const int32 I = R * N + C;
+diff --git a/Source/SailingSim/Private/WaterSurface.cpp b/Source/SailingSim/Private/WaterSurface.cpp
+index 8101a112a..2157fab3d 100644
+--- a/Source/SailingSim/Private/WaterSurface.cpp
++++ b/Source/SailingSim/Private/WaterSurface.cpp
+@@ -1,4 +1,5 @@
+ #include "WaterSurface.h"
++#include "ProfilingDebugging/CpuProfilerTrace.h"
+ #include "GreenWater.h"
+ #include "SailingFrame.h"
+ #include "SeaState.h"
+@@ -1464,6 +1465,7 @@ void AWaterSurface::BuildShoreDepth(const FLakeData& Lake, const Sailing::FLakeT
+ 	OutDepth.SetNumUninitialized(Res * Res);
+ 	ParallelFor(Res, [&](int32 R)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WaterDepthMap);
+ 		for (int32 C = 0; C < Res; ++C)
+ 		{
+ 			OutDepth[R * Res + C] = float(Terrain.DepthAt(Origin.X + (R + 0.5) * CellM, Origin.Y + (C + 0.5) * CellM));
+@@ -2564,6 +2566,7 @@ void AWaterSurface::UpdateWindLevel(FWindLevel& Level, bool bNear, double T)
+ 	Level.NextStrip = (Level.NextStrip + 1) % Level.Strips;
+ 	ParallelFor(RowCount, [&](int32 K)
+ 	{
++		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WaterWindMapRows);
+ 		const int32 IY = J0 + RowStart + K;
+ 		const int32 SlotY = (IY % Res + Res) % Res;
+ 		for (int32 C = 0; C < Res; ++C)
+diff --git a/Source/SailingSim/Private/WorldStreaming.cpp b/Source/SailingSim/Private/WorldStreaming.cpp
+index 0cb64f75f..4528687a2 100644
+--- a/Source/SailingSim/Private/WorldStreaming.cpp
++++ b/Source/SailingSim/Private/WorldStreaming.cpp
+@@ -1,4 +1,5 @@
+ #include "WorldStreaming.h"
++#include "ProfilingDebugging/CpuProfilerTrace.h"
+ #include "LakeData.h"
+ #include "SailingSim.h"
+ #include "Async/Async.h"
+@@ -138,7 +139,7 @@ void FWorldStreamer::LoadAround(double X, double Y, double RadiusM)
+ 		if (!ResidentFlags[K] && Index.DistanceTo(Entries[K], X, Y) <= RadiusM) Want.Add(K);
+ 	TArray<FLoaded> Read;
+ 	Read.SetNum(Want.Num());
+-	ParallelFor(Want.Num(), [&](int32 I) { Read[I] = ReadTile(Path, Index, Want[I]); });
++	ParallelFor(Want.Num(), [&](int32 I) { TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_PF_WorldTiles); Read[I] = ReadTile(Path, Index, Want[I]); });
+ 	for (FLoaded& L : Read) Install(MoveTemp(L));
+ 	Publish();
+ 	PlannedX = PlannedY = 1e300;   // plan again from here

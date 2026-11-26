@@ -1,0 +1,16 @@
+render frames 274: slow (> 22.5 ms) 97, fast (< 19.0 ms) 25
+scope (ms of worker time inside the frame)            slow    fast    diff
+Sailing_WaterDetailBlend                             10.27    8.01   +2.26
+Sailing_PF_WakeSlick                                  1.53    0.68   +0.85
+Sailing_PF_WakeOut                                    1.56    0.90   +0.67
+Sailing_PF_TrafficSails                               2.71    2.60   +0.11
+Sailing_BoatPhysicsTask                               1.41    1.40   +0.00
+Sailing_PF_SailCloth                                  1.00    1.01   -0.01
+Sailing_PF_WakeSpectrum                               2.01    2.39   -0.38
+Sailing_PF_WakeDepth                                  0.82    1.23   -0.41
+Sailing_PF_WakeFftRows                                2.08    2.54   -0.46
+Sailing_WaterFoamGrid                                 3.84    4.38   -0.53
+Sailing_PF_WakePressure                               1.68    2.39   -0.71
+Sailing_PF_WaterWindMapRows                           2.80    4.66   -1.86
+Sailing_PF_WakeFftCols                               27.60   32.45   -4.85
+ParallelFor Task                                     39.31   45.95   -6.64
