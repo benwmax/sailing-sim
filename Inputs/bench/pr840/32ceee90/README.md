@@ -40,3 +40,13 @@ still alone at 1920. They're the same args as before: Gulf, launch 2, wind 12, C
 may need a closer or lit view of painted wood.
 
 Bean's Saved was held aside and restored for every run (7B5CA7BE).
+
+## Update: rebased onto 0302437e (gAxis by step() sums)
+
+- **No export regen:** the 32ceee90 export is still valid.
+- **Rebase:** the local Content commit was rebased onto 0302437e. There was no conflict, the working tree is clean, and
+  no replayed file is pointer-sized.
+- **Material:** `make_materials.py -Only build_boat_library` was re-run, exit 0, and folded into the local commit. **The
+  local Content commit is now `8e556a98`**, parent 0302437e, still not pushed. The push to the PR branch waits for
+  Bean's label and his typed OK.
+- **`SailingSim.Visual`: 108 tests, 0 failed** (105 clean, 3 with warnings), with **BoatShaderLiterals passing**.
