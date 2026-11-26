@@ -42,3 +42,34 @@ Not yet run. It waits for the Mac's asset commit and goes with #837's stills. It
 `Sailing_WakeGridRows`.
 
 Bean's Saved was held aside and restored for every run (7B5CA7BE).
+
+## #837 at 48c61014 (background priority and named scopes, no column fix)
+
+**The run:** the same 60 s VSync-off lake run, traced. **This package was warm**: the trace came after its 18 clips. See
+`../../gt-regression-823/` for why that matters.
+
+| Traced run | p50 | p95 | p99 | Frame-to-frame change > 2 ms | Game p50 | Slow (> 22.5 ms) / fast (< 19 ms) frames in 40-46 s |
+|---|---|---|---|---|---|---|
+| `followup/`, d8f2a3dc | 20.59 | 22.85 | 24.10 | 29.4% (mean 2.24 ms) | 10.1 | 37 / 22 of 287 |
+| #839 f186aa47 (**first run of a fresh package**) | 22.20 | 26.31 | 29.85 | 48.2% | 16.3 | 94 / 23 of 275 |
+| **#837 48c61014 (warm)** | **20.24** | **22.27** | **24.06** | **24.1%** (mean 2.18 ms) | 11.2 | **7 / 46 of 298** |
+
+**Worker time per render frame by the branch's new scope names, slow against fast frames:**
+
+| Scope | Slow | Fast |
+|---|---|---|
+| **`Sailing_WakeGridRows`** | **35.9 ms** | **10.2 ms** |
+| `Sailing_WindMapRows` | 5.3 | 2.2 |
+| `Sailing_WaterDetailBlend` | 7.4 | 6.9 |
+| `Sailing_TrafficBoatStep` | 2.2 | 1.8 |
+| `Sailing_WaterFoamGrid` | 2.6 | 2.8 |
+| `Sailing_SailClothRender` | 0.6 | 0.6 |
+| all background `ParallelFor Task` | 40.0 | 14.1 |
+
+- **Slow frames are rarer:** 7 in 298, against 37 in 287 in `followup/`. p99 and the frame-to-frame spread are a little
+  better than `followup/`.
+- **The few slow frames that remain are the wake grid's bursts:** `Sailing_WakeGridRows` takes 35.9 ms of worker time in
+  them against 10.2 ms in fast frames. With them, the render thread waits +2.7 ms on its visibility tasks.
+- **This is the pass the column fix on #839 (f186aa47) targets.** With both changes, the bursts should shrink too.
+- **The f186aa47 row isn't a fair comparison:** it was a fresh package's first run (game thread 16 ms), so it can't be
+  set against this one directly. A warm rerun of f186aa47, or of a tree with both changes, would settle it.
