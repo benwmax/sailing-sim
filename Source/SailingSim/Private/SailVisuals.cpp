@@ -5,6 +5,7 @@
 #include "ProceduralMeshComponent.h"
 #include "BenchRunner.h"
 #include "Async/ParallelFor.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "Misc/App.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Engine/Engine.h"
@@ -268,6 +269,7 @@ void ASailboatPawn::UpdateSailCloths(TArrayView<const FSailUpdate> Sails, float 
 	const double Start = FPlatformTime::Seconds();
 	ParallelFor(Sails.Num(), [&](int32 K)
 	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_SailClothRender); // docs/frame-pacing/: named for traces
 		const FSailUpdate& U = Sails[K];
 		FSailCloth& Cloth = *U.Cloth;
 		if (!Cloth.IsValid()) return;

@@ -9,6 +9,7 @@
 #include "SailingGameMode.h"
 #include "Async/Async.h"
 #include "Async/ParallelFor.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "EngineUtils.h"
 #include "SailboatPawn.h"
 #include "CrewPose.h"
@@ -1466,13 +1467,15 @@ void AWaterSurface::BuildShoreDepth(const FLakeData& Lake, const Sailing::FLakeT
 	TArray<float>& OutDepth)
 {
 	OutDepth.SetNumUninitialized(Res * Res);
+	// docs/frame-pacing/: built on a worker and only polled, so at background priority (frame work goes first).
 	ParallelFor(Res, [&](int32 R)
 	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_ShoreDepthRows);
 		for (int32 C = 0; C < Res; ++C)
 		{
 			OutDepth[R * Res + C] = float(Terrain.DepthAt(Origin.X + (R + 0.5) * CellM, Origin.Y + (C + 0.5) * CellM));
 		}
-	});
+	}, EParallelForFlags::BackgroundPriority);
 	// The cells within Reach of a footprint's box (clamped to the map), each given Depth(P) where that is shallower.
 	auto Stamp = [&](FVector2D Lo, FVector2D Hi, double Reach, TFunctionRef<float(const FVector2D&)> Depth)
 	{
@@ -2593,6 +2596,7 @@ void AWaterSurface::UpdateWindLevel(FWindLevel& Level, bool bNear, double T)
 	Level.NextStrip = (Level.NextStrip + 1) % Level.Strips;
 	ParallelFor(RowCount, [&](int32 K)
 	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WindMapRows); // docs/frame-pacing/: named for traces
 		const int32 IY = J0 + RowStart + K;
 		const int32 SlotY = (IY % Res + Res) % Res;
 		for (int32 C = 0; C < Res; ++C)
