@@ -55,7 +55,29 @@ namespace
 	void Fft2(TArray<std::complex<float>>& A, int32 N, float Sign)
 	{
 		WakeParallel(N, [&](int32 R) { Fft(A.GetData() + R * N, N, 1, Sign); });
-		WakeParallel(N, [&](int32 C) { Fft(A.GetData() + C, N, N, Sign); });
+		// docs/frame-pacing/ (PC scopes, Nov 26): the column pass ran its butterflies in place with a stride of N, a cache
+		// miss per element: 28-33 ms of worker time per render frame against 2 ms for the rows, the same arithmetic. Now
+		// eight adjacent columns at a time (one cache line across a row) are gathered into contiguous lines, transformed
+		// there and scattered back: the same result to the bit, about the rows' cost (standalone, N 512: 16.9 -> 4.3 ms).
+		constexpr int32 kBlock = 8;
+		WakeParallel((N + kBlock - 1) / kBlock, [&](int32 Blk)
+		{
+			const int32 C0 = Blk * kBlock, W = FMath::Min(kBlock, N - C0);
+			TArray<std::complex<float>> Lines;
+			Lines.SetNumUninitialized(W * N);
+			std::complex<float>* L = Lines.GetData();
+			for (int32 R = 0; R < N; ++R)
+			{
+				const std::complex<float>* Row = A.GetData() + R * N + C0;
+				for (int32 J = 0; J < W; ++J) L[J * N + R] = Row[J];
+			}
+			for (int32 J = 0; J < W; ++J) Fft(L + J * N, N, 1, Sign);
+			for (int32 R = 0; R < N; ++R)
+			{
+				std::complex<float>* Row = A.GetData() + R * N + C0;
+				for (int32 J = 0; J < W; ++J) Row[J] = L[J * N + R];
+			}
+		});
 	}
 }
 
