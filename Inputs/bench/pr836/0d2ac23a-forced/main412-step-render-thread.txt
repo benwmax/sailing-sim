@@ -1,0 +1,48 @@
+frames 70: slow (> 45.0 ms) 7, fast (< 30.0 ms) 58
+mean frame: slow 54.85 ms, fast 21.56 ms
+timer                                                                     slow    fast    diff
+RenderViewFamily                                                         38.60   13.63  +24.98
+FDeferredShadingSceneRenderer_Render                                     38.60   13.62  +24.98
+SceneRenderBuilder_Render                                                40.37   15.67  +24.70
+SceneRender                                                              40.36   15.67  +24.69
+FTaskBase::WaitImpl_StateChangeEvent_WaitFor                             14.94    3.19  +11.76
+UpdatePrimitive                                                          11.60    0.82  +10.78
+UpdateAllPrimitiveSceneInfos                                             11.51    0.78  +10.74
+Scene                                                                    21.72   11.66  +10.06
+FRHIBreadcrumbScope_GameThread_Begin                                     13.61    4.42   +9.19
+ExecuteCommandList                                                        8.12    0.41   +7.70
+VisibilityCommands                                                        7.40    2.60   +4.80
+View Visibility                                                           7.20    2.40   +4.80
+ProcessVisibilityTasks                                                    7.20    2.40   +4.80
+InitViews                                                                 7.40    2.60   +4.80
+FDeferredShadingSceneRenderer_InitViews                                   7.40    2.60   +4.80
+FSceneRenderer::PrepareDistanceFieldScene                                 4.75    0.77   +3.98
+"DistanceFields"                                                          4.74    0.77   +3.98
+STAT_PrepareDistanceFieldScene                                            4.74    0.77   +3.98
+UpdateDistanceFieldObjectBuffers                                          3.76    0.40   +3.36
+STAT_UpdateDistanceFieldObjectBuffers                                     3.76    0.40   +3.36
+AddPrimitiveCommand                                                       3.15    0.03   +3.12
+FScene_VirtualShadowCacheUpdate                                           3.08    0.07   +3.01
+RemovePrimitive                                                           2.65    0.08   +2.57
+FSkinningSceneExtension_FRenderer_UpdateViewData                          5.72    3.67   +2.05
+Update Finalize                                                           5.68    3.64   +2.05
+SceneCulling_Update_FinalizeAndClear                                      5.68    3.64   +2.04
+FDeferredShadingSceneRenderer::UpdateLumenScene                           2.24    0.39   +1.85
+UpdateTransformCommand                                                    1.95    0.22   +1.74
+AddPrimitive                                                              1.44    0.02   +1.42
+FRemovePrimitiveCommand                                                   1.32    0.03   +1.29
+FProcMeshSectionUpdate                                                    3.74    2.62   +1.12
+UpdateSection RT                                                          3.74    2.62   +1.12
+Update GPU Scene                                                          1.10    0.07   +1.03
+Tasks::Wait                                                               1.30    0.33   +0.97
+GPUSceneUpdate                                                            1.13    0.19   +0.94
+GPUScene.Update                                                           1.03    0.10   +0.93
+STAT_UploadDistanceFieldObjectDataAndBounds                               1.03    0.16   +0.87
+ParallelFor                                                               0.94    0.13   +0.81
+UpdateGPUScene                                                            0.90    0.14   +0.76
+STAT_UpdateGPUScene                                                       0.81    0.06   +0.75
+"GlobalDistanceFieldUpdate"                                               0.90    0.33   +0.58
+UpdatePrimitiveTransform                                                  0.64    0.08   +0.56
+STAT_RemoveCachedNaniteMaterialBins                                       0.53    0.01   +0.52
+FPrimitiveSceneInfo_AddToScene                                            0.55    0.04   +0.51
+ProceduralMeshComponent/Game/Maps/Lake.Lake.PersistentLevel.LakeTerrai    0.45    0.00   +0.45

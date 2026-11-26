@@ -1,0 +1,2 @@
+[2026.11.26-06.27.31:863][  1]LogSailing: Display: Tide step: the followers stand at -22 cm (frame 1)
+[2026.11.26-06.27.51:607][938]LogSailing: Display: Tide step: the followers stand at -24 cm (frame 938)
