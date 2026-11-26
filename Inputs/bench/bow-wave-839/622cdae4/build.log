@@ -1,0 +1,177 @@
+Using bundled DotNet SDK version: 10.0 win-x64
+Running UnrealBuildTool: dotnet "..\..\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll" SailingSimEditor Win64 Development -Project="D:\dev\ss-fix-wt\pr839\SailingSim.uproject" -WaitMutex -NoHotReload
+Log file: C:\Users\ben\AppData\Local\UnrealBuildTool\Log.txt
+Determining max actions to execute in parallel (8 physical cores, 16 logical cores)
+  Executing up to 8 processes, one per physical core
+Using 'git status' to determine working set for adaptive non-unity build (D:\dev\ss-fix-wt\pr839).
+UbaServer - Listening on 0.0.0.0:1345
+Available x64 toolchains (2):
+ * C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231
+    (Family=14.51.36231, FamilyRank=2, Version=14.51.36260, HostArchitecture=x64, ReleaseChannel=Latest, Architecture=x64)
+ * C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231
+    (Family=14.51.36231, FamilyRank=2, Version=14.51.36260, HostArchitecture=x64, ReleaseChannel=Latest, Architecture=x64)
+Visual Studio compiler version 14.51.36260 is newer than latest preferred version 14.50.35717. Please use caution as this compiler has not been heavily tested
+UHT compiled-in object format Default
+Building SailingSimEditor...
+===== Toolchain Information =====
+Using ISPC compiler (C:\Program Files\Epic Games\UE_5.8\Engine\Source\ThirdParty\Intel\ISPC\bin\Windows\ispc.exe)
+  Intel(r) Implicit SPMD Program Compiler (Intel(r) ISPC), 1.24.0 (build commit  @ 20250404, LLVM 18.1.2) 
+Using Visual Studio 14.51.36260 toolchain (C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231) and Windows 10.0.26100.0 SDK (C:\Program Files (x86)\Windows Kits\10).
+Warning: Visual Studio compiler 14.51.36260 is not a preferred version
+===== End Toolchain Information =====
+Using Unreal Build Accelerator local executor to run 47 action(s)
+  CPU 8 physical cores, 16 logical cores
+  Memory 63.94 GB physical, 22.86 GB/78.87 GB committed
+  UBA Storage capacity 40 GB
+[1/47] Compile [x64] ShipWalk.cpp
+[2/47] Link [x64] UnrealEditor-SailingPhysics.lib
+[3/47] Link [x64] UnrealEditor-SailingPhysics.dll
+[4/47] Compile [x64] BluebonnetTests.cpp
+[5/47] Compile [x64] Module.SailingSim.7.cpp
+[6/47] Compile [x64] ChaseCameraTests.cpp
+[7/47] Compile [x64] CoastTests.cpp
+[8/47] Compile [x64] CrewCostTests.cpp
+[9/47] Compile [x64] Module.SailingSim.4.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Sound\SoundWaveProcedural.h(65,26): warning C4996: 'USoundWave::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	                        ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Sound\SoundCue.h(359,48): warning C4996: 'Audio::ILegacyParameterTransmitter::GetReferencedObjects': Use AddReferencedObjects(...) instead - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API TArray<const TObjectPtr<UObject>*> GetReferencedObjects() const override;
+	                                              ^
+[10/47] Compile [x64] CrewMotionTests.cpp
+[11/47] Compile [x64] Module.SailingSim.1.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Sound\SoundWaveProcedural.h(65,26): warning C4996: 'USoundWave::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	                        ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Components\HierarchicalInstancedStaticMeshComponent.h(353,26): warning C4996: 'UInstancedStaticMeshComponent::BuildComponentInstanceData': Please use BuildComponentInstanceData with EShaderPlatform argument and not ERHIFeatureLevel::Type - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API virtual void BuildComponentInstanceData(ERHIFeatureLevel::Type FeatureLevel, FInstanceUpdateComponentDesc& OutData) override;
+	                        ^
+[12/47] Compile [x64] EnvironmentTests.cpp
+[13/47] Compile [x64] FarRingTests.cpp
+[14/47] Compile [x64] FilmModeTests.cpp
+[15/47] Compile [x64] FirstLaunchTests.cpp
+[16/47] Compile [x64] Module.SailingSim.6.cpp
+[17/47] Compile [x64] Module.SailingSim.5.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Sound\SoundWaveProcedural.h(65,26): warning C4996: 'USoundWave::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	                        ^
+[18/47] Compile [x64] MarseilleTests.cpp
+[19/47] Compile [x64] Module.SailingSim.2.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\PhysicsEngine\PhysicsAsset.h(276,15): warning C4996: 'UObject::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	             ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(74,17): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetRadius() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(74,17): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(27,8): note: while compiling class template 'Chaos::TSphere'
+	class TSphere final : public FImplicitObject
+	      ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(337,41): note: see reference to class template instantiation 'Chaos::TSphere<Chaos::FReal,3>' being compiled
+			return Chaos::FImplicitObjectPtr(new FSphere(Center, GetRadiusf()));
+			                                     ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(207,17): warning C4996: 'Chaos::FImplicitObject::GetMargin': Please use GetMarginf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetMargin() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(212,17): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetRadius() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Plane.h(42,16): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	virtual FReal GetRadius() const override
+	              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Plane.h(42,16): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(926,5): note: see reference to class template instantiation 'Chaos::TPlane<Chaos::FConvex::FRealType,3>' being compiled
+				Ar << TmpPlanes;
+				^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Box.h(104,17): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetRadius() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Box.h(104,17): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(966,23): note: see reference to class template instantiation 'Chaos::TBox<Chaos::FConvex::FRealType,3>' being compiled
+			TBox<FRealType,3>::SerializeAsAABB(Ar, LocalBoundingBox);
+			                   ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\HairStrands\Source\HairStrandsCore\Public\GroomAsset.h(753,22): warning C4996: 'UObject::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	UE_API virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	                    ^
+[20/47] Compile [x64] LakeTests.cpp
+[21/47] Compile [x64] OceanTests.cpp
+[22/47] Compile [x64] ShipOutsideTests.cpp
+[23/47] Compile [x64] ShipWalkTests.cpp
+[24/47] Compile [x64] PrologueTests.cpp
+[25/47] Compile [x64] PerfTests.cpp
+[26/47] Compile [x64] PhotoModeTests.cpp
+[27/47] Compile [x64] ShipWatchTests.cpp
+[28/47] Compile [x64] RigClearanceTests.cpp
+[29/47] Compile [x64] ShowCrewTests.cpp
+[30/47] Compile [x64] ShowroomTests.cpp
+[31/47] Compile [x64] StartHoldTests.cpp
+[32/47] Compile [x64] SliceTests.cpp
+[33/47] Compile [x64] SmokeTests.cpp
+[34/47] Compile [x64] Module.SailingSim.3.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Components\HierarchicalInstancedStaticMeshComponent.h(353,26): warning C4996: 'UInstancedStaticMeshComponent::BuildComponentInstanceData': Please use BuildComponentInstanceData with EShaderPlatform argument and not ERHIFeatureLevel::Type - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API virtual void BuildComponentInstanceData(ERHIFeatureLevel::Type FeatureLevel, FInstanceUpdateComponentDesc& OutData) override;
+	                        ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Sound\SoundWaveProcedural.h(65,26): warning C4996: 'USoundWave::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	                        ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(74,17): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetRadius() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(74,17): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(27,8): note: while compiling class template 'Chaos::TSphere'
+	class TSphere final : public FImplicitObject
+	      ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Sphere.h(337,41): note: see reference to class template instantiation 'Chaos::TSphere<Chaos::FReal,3>' being compiled
+			return Chaos::FImplicitObjectPtr(new FSphere(Center, GetRadiusf()));
+			                                     ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(207,17): warning C4996: 'Chaos::FImplicitObject::GetMargin': Please use GetMarginf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetMargin() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(212,17): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetRadius() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Plane.h(42,16): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	virtual FReal GetRadius() const override
+	              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Plane.h(42,16): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(926,5): note: see reference to class template instantiation 'Chaos::TPlane<Chaos::FConvex::FRealType,3>' being compiled
+				Ar << TmpPlanes;
+				^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Box.h(104,17): warning C4996: 'Chaos::FImplicitObject::GetRadius': Please use GetRadiusf instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+		virtual FReal GetRadius() const override
+		              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Box.h(104,17): note: the template instantiation context (the oldest one first) is
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Experimental\Chaos\Public\Chaos\Convex.h(966,23): note: see reference to class template instantiation 'Chaos::TBox<Chaos::FConvex::FRealType,3>' being compiled
+			TBox<FRealType,3>::SerializeAsAABB(Ar, LocalBoundingBox);
+			                   ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Runtime\HairStrands\Source\HairStrandsCore\Public\GroomAsset.h(753,22): warning C4996: 'UObject::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	UE_API virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	                    ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\PhysicsEngine\PhysicsAsset.h(276,15): warning C4996: 'UObject::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	             ^
+[35/47] Link [x64] UnrealEditor-SailingSim.lib
+[36/47] Compile [x64] StormWaterTests.cpp
+[37/47] Compile [x64] StormTests.cpp
+[38/47] Link [x64] UnrealEditor-SailingSim.dll
+[39/47] Compile [x64] TrafficTests.cpp
+[40/47] Compile [x64] WaterTests.cpp
+[41/47] Compile [x64] WorldStreamingTests.cpp
+[42/47] Compile [x64] UITests.cpp
+[43/47] Compile [x64] VisualTests.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Engine\Classes\Sound\SoundWaveProcedural.h(65,26): warning C4996: 'USoundWave::GetAssetRegistryTags': Implement the version that takes FAssetRegistryTagsContext instead. - Please update your code to the new API before upgrading to the next release, otherwise your project will no longer compile.
+	ENGINE_API virtual void GetAssetRegistryTags(TArray<FAssetRegistryTag>& OutTags) const override;
+	                        ^
+[44/47] Link [x64] UnrealEditor-SailingSimTests.lib
+[45/47] Link [x64] UnrealEditor-SailingSimTests.dll
+[46/47] WriteMetadata SailingSimEditor.target [NoUba]
+[47/47] cmd Executing post build script (PostBuild-1.bat) [NoUba]
+Sentry: Start debug symbols upload
+Sentry: Automatic symbols upload is not required for Editor target. Skipping...
+
+Total time in Unreal Build Accelerator local executor: 82.59 seconds
+Output binary: C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe
+
+Result: Succeeded
+Total execution time: 87.32 seconds
+Trace written to file C:\Users\ben\AppData\Local\UnrealBuildTool\Trace.uba with size 23.7kb

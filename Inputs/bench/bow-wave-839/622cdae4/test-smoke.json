@@ -1,0 +1,1028 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "A830FB534EBBED50800DC6B9DADE48ED",
+			"instanceName": "BEN-PC-26684",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.26-17.22.30",
+	"succeeded": 37,
+	"succeededWithWarnings": 1,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 15.560512542724609,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "ArgsReread",
+			"fullTestPath": "SailingSim.Smoke.BenchList.ArgsReread",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0078526996076107025,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Parse",
+			"fullTestPath": "SailingSim.Smoke.BenchList.Parse",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0084997005760669708,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ResetsRunState",
+			"fullTestPath": "SailingSim.Smoke.BenchList.ResetsRunState",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0079344995319843292,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "RestoresCVars",
+			"fullTestPath": "SailingSim.Smoke.BenchList.RestoresCVars",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0315404012799263,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CaptureHud",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.CaptureHud",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0084066018462181091,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "FrameClock",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.FrameClock",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0082741007208824158,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShotMoves",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.ShotMoves",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0077764987945556641,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShotParse",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.ShotParse",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0076366029679775238,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Switches",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.Switches",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.008443199098110199,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "AsyncPhysicsMatchesSync",
+			"fullTestPath": "SailingSim.Smoke.AsyncPhysicsMatchesSync",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 4.8134136199951172,
+			"dateTime": "2026.11.26-17.22.14",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_Wind.S_Wind'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_GustRumble.S_GustRumble'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_SailFlog.S_SailFlog'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_Telltales.S_Telltales'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_BowWave.S_BowWave'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_HullSlap.S_HullSlap'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_Winch.S_Winch'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_SheetBlock.S_SheetBlock'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_HalyardSlap.S_HalyardSlap'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_RainDeck.S_RainDeck'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_RainWater.S_RainWater'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_SquallHiss.S_SquallHiss'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				},
+				{
+					"event":
+					{
+						"type": "Warning",
+						"message": "LogUObjectGlobals: Failed to find object 'SoundBase /Game/Audio/Samples/S_Thunder.S_Thunder'",
+						"context": "log",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.17"
+				}
+			],
+			"warnings": 13,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BoatNameMatch",
+			"fullTestPath": "SailingSim.Smoke.BoatNameMatch",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.095824800431728363,
+			"dateTime": "2026.11.26-17.22.19",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "BoatSpawnsFloatsAndSails",
+			"fullTestPath": "SailingSim.Smoke.BoatSpawnsFloatsAndSails",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 1.8172975778579712,
+			"dateTime": "2026.11.26-17.22.19",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "After 10 s: moved 24.4 m, z 50.1 cm, heel -4.5 deg, speed 5.76 kn",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.21"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CameraAboveWater",
+			"fullTestPath": "SailingSim.Smoke.CameraAboveWater",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 1.4646158218383789,
+			"dateTime": "2026.11.26-17.22.21",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CameraOffShore",
+			"fullTestPath": "SailingSim.Smoke.CameraOffShore",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.32829079031944275,
+			"dateTime": "2026.11.26-17.22.22",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ConditionsKeepTime",
+			"fullTestPath": "SailingSim.Smoke.ConditionsKeepTime",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0099908970296382904,
+			"dateTime": "2026.11.26-17.22.23",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Front 3.000 km off at 150.0 s; after the preview and Back, 152.0 s of weather",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.23"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ConditionsKeepTimeSession",
+			"fullTestPath": "SailingSim.Smoke.ConditionsKeepTimeSession",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0092925019562244415,
+			"dateTime": "2026.11.26-17.22.23",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CrashReportsInert",
+			"fullTestPath": "SailingSim.Smoke.CrashReportsInert",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0069258995354175568,
+			"dateTime": "2026.11.26-17.22.23",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CrashReportsScrub",
+			"fullTestPath": "SailingSim.Smoke.CrashReportsScrub",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0082271993160247803,
+			"dateTime": "2026.11.26-17.22.23",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "CrewAnimation",
+			"fullTestPath": "SailingSim.Smoke.CrewAnimation",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.67377179861068726,
+			"dateTime": "2026.11.26-17.22.23",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "GalleryStage",
+			"fullTestPath": "SailingSim.Smoke.GalleryStage",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.036013398319482803,
+			"dateTime": "2026.11.26-17.22.24",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "J/22 whole: 834756 triangles in 15 parts, 7.41 x 3.03 x 10.74 m, lowest point -0.00 m over the floor",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.24"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "KeyRebinding",
+			"fullTestPath": "SailingSim.Smoke.KeyRebinding",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.095462396740913391,
+			"dateTime": "2026.11.26-17.22.24",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "LakeMapLoads",
+			"fullTestPath": "SailingSim.Smoke.LakeMapLoads",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0081956014037132263,
+			"dateTime": "2026.11.26-17.22.24",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "LogbookListsLocalTime",
+			"fullTestPath": "SailingSim.Smoke.LogbookListsLocalTime",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0081469006836414337,
+			"dateTime": "2026.11.26-17.22.24",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "2026-10-10 1400 Lake_Ray_Hubbard__Rush_Creek_YC_",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.24"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "LogbookWritesEntries",
+			"fullTestPath": "SailingSim.Smoke.LogbookWritesEntries",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.012658499181270599,
+			"dateTime": "2026.11.26-17.22.24",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "29°32.68'N  95°01.16'W",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.24"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MetaHumanCrewMix",
+			"fullTestPath": "SailingSim.Smoke.MetaHumanCrewMix",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.90424948930740356,
+			"dateTime": "2026.11.26-17.22.24",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "MoonPhase",
+			"fullTestPath": "SailingSim.Smoke.MoonPhase",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0084501989185810089,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "PhotoWorldHeld",
+			"fullTestPath": "SailingSim.Smoke.PhotoWorldHeld",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0088053010404109955,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ReferenceCapture",
+			"fullTestPath": "SailingSim.Smoke.ReferenceCapture",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.026096697896718979,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ReplayRecordsAndPlays",
+			"fullTestPath": "SailingSim.Smoke.ReplayRecordsAndPlays",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.09856799989938736,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "600 frames over 59.9 s",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.25"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "At 30 s the replay is 0.000 m from where she was",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.25"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShippingSmokeArgs",
+			"fullTestPath": "SailingSim.Smoke.ShippingSmokeArgs",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0083868987858295441,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShowCrew",
+			"fullTestPath": "SailingSim.Smoke.ShowCrew",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.26899981498718262,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShowroomPreviewLive",
+			"fullTestPath": "SailingSim.Smoke.ShowroomPreviewLive",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0095677971839904785,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShowroomSwap",
+			"fullTestPath": "SailingSim.Smoke.ShowroomSwap",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 3.2069680690765381,
+			"dateTime": "2026.11.26-17.22.25",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "SoundLayers",
+			"fullTestPath": "SailingSim.Smoke.SoundLayers",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.55440223217010498,
+			"dateTime": "2026.11.26-17.22.28",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Silence 0.0000, wind 0.0149, wind in a gust 0.0186",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "MarinaHalyards: 0.0998",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Gulls: 0.0959",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Outboard: 0.1381",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Diesel: 0.2488",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Horn: 0.4019",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Thunder: 0.4732",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "ShoreLife: 0.1043",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "StartHold",
+			"fullTestPath": "SailingSim.Smoke.StartHold",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.09389369934797287,
+			"dateTime": "2026.11.26-17.22.29",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "StowExtension",
+			"fullTestPath": "SailingSim.Smoke.StowExtension",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.75078427791595459,
+			"dateTime": "2026.11.26-17.22.29",
+			"entries": [
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "J/22, crew hidden: extension from (-216, 0, 83) to (-216, 0, 83) cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.29"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "J/22, crew shown: extension from (-216, 1, 88) to (-233, -48, 86) cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.30"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "J/22, cockpit view (crew shown): extension from (-216, 1, 83) to (-216, 1, 83) cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.30"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Sunfish, crew hidden: extension from (-130, 0, 37) to (-130, 0, 37) cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.30"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Sunfish, crew shown: extension from (-130, 1, 42) to (-61, -19, 53) cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.30"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Sunfish, cockpit view (crew shown): extension from (-130, 1, 37) to (-130, 1, 37) cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.30"
+				},
+				{
+					"event":
+					{
+						"type": "Info",
+						"message": "Sunfish, crew hidden again: extension from (-130, 1, 37) to (-130, 1, 37) cm",
+						"context": "",
+						"artifact": "00000000000000000000000000000000"
+					},
+					"filename": "",
+					"lineNumber": -1,
+					"timestamp": "2026.11.26-17.22.30"
+				}
+			],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "VesselLightsShowOverTheirArcs",
+			"fullTestPath": "SailingSim.Smoke.VesselLightsShowOverTheirArcs",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.12852489948272705,
+			"dateTime": "2026.11.26-17.22.30",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "WrapDegrees",
+			"fullTestPath": "SailingSim.Smoke.WrapDegrees",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"A830FB534EBBED50800DC6B9DADE48ED"
+			],
+			"duration": 0.0083223991096019745,
+			"dateTime": "2026.11.26-17.22.30",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
