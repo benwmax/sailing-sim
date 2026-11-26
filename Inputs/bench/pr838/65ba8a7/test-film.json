@@ -1,0 +1,104 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "01222E0B479F2AC26A77ADAEB375B986",
+			"instanceName": "BEN-PC-20508",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.26-00.37.04",
+	"succeeded": 5,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 0.039562400430440903,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "CaptureHud",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.CaptureHud",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"01222E0B479F2AC26A77ADAEB375B986"
+			],
+			"duration": 0.007682502269744873,
+			"dateTime": "2026.11.26-00.37.04",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "FrameClock",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.FrameClock",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"01222E0B479F2AC26A77ADAEB375B986"
+			],
+			"duration": 0.0074758008122444153,
+			"dateTime": "2026.11.26-00.37.04",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShotMoves",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.ShotMoves",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"01222E0B479F2AC26A77ADAEB375B986"
+			],
+			"duration": 0.0078225992619991302,
+			"dateTime": "2026.11.26-00.37.04",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "ShotParse",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.ShotParse",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"01222E0B479F2AC26A77ADAEB375B986"
+			],
+			"duration": 0.0080711990594863892,
+			"dateTime": "2026.11.26-00.37.04",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Switches",
+			"fullTestPath": "SailingSim.Smoke.FilmMode.Switches",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"01222E0B479F2AC26A77ADAEB375B986"
+			],
+			"duration": 0.008510299026966095,
+			"dateTime": "2026.11.26-00.37.04",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
