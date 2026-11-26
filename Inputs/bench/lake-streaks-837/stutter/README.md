@@ -73,3 +73,44 @@ Bean's Saved was held aside and restored for every run (7B5CA7BE).
 - **This is the pass the column fix on #839 (f186aa47) targets.** With both changes, the bursts should shrink too.
 - **The f186aa47 row isn't a fair comparison:** it was a fresh package's first run (game thread 16 ms), so it can't be
   set against this one directly. A warm rerun of f186aa47, or of a tree with both changes, would settle it.
+
+## #839 at f186aa47, warm rerun (the column fix, no #837 priority)
+
+**The run:** the same 60 s VSync-off 4K Ultra lake run, traced. One untraced warm-up launch ran first, so the package was
+warm, like the 48c61014 run. bench.json: avg 20.04 ms, p99 23.91, game 10.7 ms.
+
+**Method:** both rows below are computed the same way here (`f186aa47-warm.frames.csv`):
+- p50/p95/p99 and the frame-to-frame change are over 3-69 s of the trace's frames.csv.
+- Its mean jump leaves out the one load jump over 200 ms, so it reads lower than the 2.18 above.
+- Slow and fast frames are counted in 40-46 s, as before.
+
+| Traced run (warm) | p50 | p95 | p99 | Frame-to-frame change > 2 ms | Mean jump | Game p50 | Slow / fast frames in 40-46 s |
+|---|---|---|---|---|---|---|---|
+| #837 48c61014 (priority and names) | 20.24 | 22.27 | 24.05 | 24.1% | 1.44 ms | 11.2 | 7 / 46 of 298 |
+| **#839 f186aa47 (column fix)** | **20.02** | **22.09** | **24.08** | **21.6%** | **1.36 ms** | 10.4 | 9 / 38 of 298 |
+
+**Worker time per render frame, slow against fast** (`f186warm-workers.txt`):
+
+| Scope | 48c61014 slow | 48c61014 fast | **f186aa47 slow** | **f186aa47 fast** |
+|---|---|---|---|---|
+| All background `ParallelFor Task` | 40.0 | 14.1 | **11.4** | **16.3** |
+| `Sailing_WakeGridRows` (#837's name) | 35.9 | 10.2 | not named on this branch | not named on this branch |
+| `Sailing_WaterDetailBlend` | 7.4 | 6.9 | 7.6 | 7.0 |
+| `Sailing_WaterFoamGrid` | 2.6 | 2.8 | 4.8 | 3.5 |
+
+**Findings:**
+- **The column fix removes the wake bursts.** On 48c61014, slow frames carried about 26 ms more background
+  `ParallelFor` time than fast ones; on f186aa47 they carry *less* (11.4 against 16.3). The wake grid no longer lines up
+  with the slow frames.
+- **Pacing is a little better than 48c61014's:**
+  - frames changing by more than 2 ms: 21.6% against 24.1%;
+  - p50 and p95 are slightly lower;
+  - p99 is the same (24.1 ms).
+- **The remaining slow frames (9 in 298) are general render-thread work,** not our workers:
+  - scene render is +5.1 ms in slow frames;
+  - of that, the wait on the engine's visibility tasks is +2.2 ms (`f186warm-render-thread.txt`);
+  - background `ParallelFor` time is lower in those frames, so the wait isn't behind our tasks.
+- **The earlier f186aa47 row was the first-run effect.** Warm, the game thread is 10.4 ms, not 16.3.
+- **Both changes together** (#837's priority on top of the column fix) should be no worse than either alone. Not traced yet.
+
+Bean's Saved was held aside and restored for both launches (7B5CA7BE).

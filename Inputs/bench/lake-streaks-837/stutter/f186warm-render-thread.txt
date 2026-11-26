@@ -1,0 +1,14 @@
+frames 298: slow (> 22.5 ms) 9, fast (< 19.0 ms) 38
+mean frame: slow 23.89 ms, fast 18.31 ms
+timer                                                                     slow    fast    diff
+SceneRender                                                              19.27   14.16   +5.11
+SceneRenderBuilder_Render                                                19.27   14.16   +5.11
+Scene                                                                    15.38   10.59   +4.80
+RenderViewFamily                                                         17.27   12.58   +4.69
+FDeferredShadingSceneRenderer_Render                                     17.27   12.57   +4.69
+VisibilityCommands                                                        7.96    5.77   +2.19
+FDeferredShadingSceneRenderer_InitViews                                   7.96    5.77   +2.19
+InitViews                                                                 7.96    5.77   +2.19
+ProcessVisibilityTasks                                                    7.77    5.59   +2.18
+View Visibility                                                           7.77    5.59   +2.18
+WaitUntilTasksComplete                                                    7.50    5.34   +2.16

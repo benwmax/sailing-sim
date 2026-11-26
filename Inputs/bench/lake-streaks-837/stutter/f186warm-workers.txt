@@ -1,0 +1,6 @@
+render frames 298: slow (> 22.5 ms) 9, fast (< 19.0 ms) 38
+scope (ms of worker time inside the frame)            slow    fast    diff
+Sailing_WaterFoamGrid                                 4.79    3.50   +1.29
+Sailing_WaterDetailBlend                              7.62    6.99   +0.63
+Sailing_BoatPhysicsTask                               0.97    0.96   +0.01
+ParallelFor Task                                     11.43   16.30   -4.88
