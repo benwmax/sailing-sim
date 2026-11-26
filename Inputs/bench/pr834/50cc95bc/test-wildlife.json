@@ -1,0 +1,164 @@
+﻿{
+	"devices": [
+		{
+			"deviceName": "BEN-PC",
+			"instance": "EF0CA6354D81E63383EF15AA1F5FC103",
+			"instanceName": "BEN-PC-7056",
+			"platform": "WindowsEditor",
+			"oSVersion": "Windows 11 (24H2) [10.0.26100.9711] ",
+			"model": "Default",
+			"gPU": "NVIDIA GeForce RTX 4090",
+			"cPUModel": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+			"rAMInGB": 64,
+			"renderMode": "SM6",
+			"rHI": "",
+			"appInstanceLog": ""
+		}
+	],
+	"reportCreatedOn": "2026.11.26-15.34.53",
+	"succeeded": 9,
+	"succeededWithWarnings": 0,
+	"failed": 0,
+	"notRun": 0,
+	"inProcess": 0,
+	"totalDuration": 7.6693563461303711,
+	"comparisonExported": false,
+	"comparisonExportDirectory": "",
+	"tests": [
+		{
+			"testDisplayName": "Counts",
+			"fullTestPath": "SailingSim.Wildlife.Counts",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 2.9134507179260254,
+			"dateTime": "2026.11.26-15.34.45",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Day",
+			"fullTestPath": "SailingSim.Wildlife.Day",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 0.0086226984858512878,
+			"dateTime": "2026.11.26-15.34.48",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Flush",
+			"fullTestPath": "SailingSim.Wildlife.Flush",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 0.10681959986686707,
+			"dateTime": "2026.11.26-15.34.48",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Habitats",
+			"fullTestPath": "SailingSim.Wildlife.Habitats",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 0.0083661973476409912,
+			"dateTime": "2026.11.26-15.34.49",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Passes",
+			"fullTestPath": "SailingSim.Wildlife.Passes",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 3.2869260311126709,
+			"dateTime": "2026.11.26-15.34.49",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Repeatable",
+			"fullTestPath": "SailingSim.Wildlife.Repeatable",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 0.17060220241546631,
+			"dateTime": "2026.11.26-15.34.52",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Sprites",
+			"fullTestPath": "SailingSim.Wildlife.Sprites",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 0.0077239014208316803,
+			"dateTime": "2026.11.26-15.34.52",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "Tables",
+			"fullTestPath": "SailingSim.Wildlife.Tables",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 0.0081462003290653229,
+			"dateTime": "2026.11.26-15.34.52",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		},
+		{
+			"testDisplayName": "View",
+			"fullTestPath": "SailingSim.Wildlife.View",
+			"tags": [],
+			"state": "Success",
+			"deviceInstance": [
+				"EF0CA6354D81E63383EF15AA1F5FC103"
+			],
+			"duration": 1.1586987972259521,
+			"dateTime": "2026.11.26-15.34.52",
+			"entries": [],
+			"warnings": 0,
+			"errors": 0,
+			"artifacts": []
+		}
+	]
+}
