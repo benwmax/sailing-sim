@@ -31,20 +31,21 @@ PARENT = "/Game/Boats/Materials/M_BoatSurface"
 SHIPS = os.path.join(REPO, "Content", "TerrainData", "Ships")
 
 # M_BoatSurface's Surface kinds (make_materials.py BOAT_SURFACE): 1 paint/gelcoat, 3 bright metal, 5 painted metal, 6 wood,
-# 7 teak deck, 8 rubber, 9 rope, 10 sailcloth, 11 canvas cover, 13 black plastic, 14 webbing, 15 cabin window, 16 cast bronze.
+# 7 teak deck, 8 rubber, 9 rope, 10 sailcloth, 11 canvas cover, 13 black plastic, 14 webbing, 15 cabin window, 16 cast bronze,
+# 19 cast iron, blacked (frigate polish: her guns and ironwork, over the cast bronze's sand map: CAST_MAPS).
 # (17 manila and 18 laid teak need their own maps, set only on MI_Boat_Manila and MI_Boat_LaidTeak: not used here.)
 # By the material's name, then the export's `kind`, then its `surface`; (surface code, metallic, grain). Grain draws the
 # wood's figure along each timber's own long axis, which the export paints into the meshes' Grain colour attribute
 # (export.py paint_grain; M_BoatSurface reads it): on a mesh without it the figure runs along the ship, as it did on the
 # first import, where a pillar or a beam showed it as wavy bands across the timber (the PC's first gun-deck still), so the
 # materials with Grain 1 want the export regenerated with the attribute (docs/frigate-import/).
-BY_SURFACE = {"wood": (6, 0.0, 1.0), "deck": (7, 0.0, 1.0), "paint": (1, 0.0, 0.0), "iron": (5, 0.3, 0.0), "bright": (16, 1.0, 0.0),
+BY_SURFACE = {"wood": (6, 0.0, 1.0), "deck": (7, 0.0, 1.0), "paint": (1, 0.0, 0.0), "iron": (19, 0.15, 0.0), "bright": (16, 1.0, 0.0),
               "copper": (3, 1.0, 0.0), "rope": (9, 0.0, 0.0), "canvas": (10, 0.0, 0.0), "below_decks": (6, 0.0, 1.0), "unweathered": (1, 0.0, 0.0)}
 BY_KIND = {"tarpaulin": (11, 0.0, 0.0), "canvas": (11, 0.0, 0.0), "sail": (10, 0.0, 0.0), "lead": (3, 1.0, 0.0), "gilt": (16, 1.0, 0.0),
-           "bronze": (16, 1.0, 0.0), "blacked": (5, 0.3, 0.0), "iron": (5, 0.3, 0.0), "sheathing": (3, 1.0, 0.0)}
+           "bronze": (16, 1.0, 0.0), "blacked": (19, 0.15, 0.0), "iron": (19, 0.15, 0.0), "sheathing": (3, 1.0, 0.0)}
 BY_NAME = {"ClearGlass": (15, 0.0, 0.0), "Glass": (15, 0.0, 0.0), "Netting": (14, 0.0, 0.0), "FloorCloth": (11, 0.0, 0.0),
            "Interior": (1, 0.0, 0.0), "Shadow": (1, 0.0, 0.0), "CompassCard": (1, 0.0, 0.0), "Brick": (1, 0.0, 0.0),
-           "Tin": (3, 1.0, 0.0), "Fleece": (11, 0.0, 0.0), "Horn": (1, 0.0, 0.0), "Powder": (1, 0.0, 0.0), "Pin": (5, 0.3, 0.0),
+           "Tin": (3, 1.0, 0.0), "Fleece": (11, 0.0, 0.0), "Horn": (1, 0.0, 0.0), "Powder": (1, 0.0, 0.0), "Pin": (19, 0.15, 0.0),
            "Sheave": (6, 0.0, 0.0), "Deadeye": (6, 0.0, 0.0), "Block": (6, 0.0, 0.0),
            "GunDeckPlanks": (7, 0.0, 1.0), "BerthDeckPlanks": (7, 0.0, 1.0), "OrlopPlanks": (7, 0.0, 1.0), "Deck": (6, 0.0, 1.0)}
 # The materials Blender draws from a pattern over a 0.8 grey base (deck.planks_material, the floor cloth's squares, the
@@ -53,6 +54,13 @@ BY_NAME = {"ClearGlass": (15, 0.0, 0.0), "Glass": (15, 0.0, 0.0), "Netting": (14
 COLOUR = {"DeckPlanks": (0.42, 0.36, 0.27), "GunDeckPlanks": (0.42, 0.36, 0.27), "BerthDeckPlanks": (0.42, 0.36, 0.27),
           "FloorCloth": (0.72, 0.70, 0.64), "Sailcloth": (0.72, 0.66, 0.52), "SailclothFA": (0.75, 0.70, 0.57)}
 HULL_SLOTS = ("HullBlack", "HullOchre", "HullRed", "Copper")
+# Frigate polish (docs/frigate-import/): her wear. A ship six years in commission and kept by a working crew, not a yacht's
+# owner (Age 6, Care 0.5): her paint (no clear coat, so PaintWear draws its wear) and her iron show it; the wood keeps the
+# well kept two years (Age 2, Care 0.8), since the varnish's failure at that dirt would read as neglect below decks.
+WEAR_WORKED = {"Age": 6.0, "Care": 0.5}
+WEAR_KEPT = {"Age": 2.0, "Care": 0.8}
+# The cast iron's own detail pair: the J-Class's sand-cast map (R 0 in a pit, G roughness), the same sand for iron.
+CAST_MAPS = (("OwnDetailN", "/Game/Boats/Detail/T_JClass_CastBronze_N"), ("OwnDetailM", "/Game/Boats/Detail/T_JClass_CastBronze_M"))
 
 
 def surface_for(name, m):
@@ -86,10 +94,18 @@ def build_materials(table):
         # (M_BoatSurface's weathering: paint chalking and wear, bare wood's checks, iron's rust in the pits) as a ship two
         # years in commission and well kept; the export's own wear levels stay unused (the PC's Nov 24 textures report).
         values = {"Roughness": float(m.get("roughness", 0.6)), "Metallic": metallic, "ClearCoat": 0.0, "NonSkid": 0.0, "Porosity": 0.0,
-                  "IsHull": 1.0 if name in HULL_SLOTS else 0.0, "Grain": grain, "Surface": float(surface), "GrainScale": 3.0,
-                  "Age": 2.0, "Care": 0.8}
+                  "IsHull": 1.0 if name in HULL_SLOTS else 0.0, "Grain": grain, "Surface": float(surface), "GrainScale": 3.0}
+        painted = surface == 1 and name not in BY_NAME and m.get("surface") in ("paint", None)
+        values.update(WEAR_WORKED if (painted or surface == 19) else WEAR_KEPT)
+        values["PaintWear"] = 1.0 if painted else 0.0
         for pname, value in values.items():
             MEL.set_material_instance_scalar_parameter_value(mi, pname, value)
+        if surface == 19:
+            for pname, path in CAST_MAPS:
+                tex = unreal.load_asset(path)
+                if not tex:
+                    raise RuntimeError(f"{path} missing: run import_boat_detail.py first")
+                MEL.set_material_instance_texture_parameter_value(mi, pname, tex)
         MEL.update_material_instance(mi)
         unreal.EditorAssetLibrary.save_loaded_asset(mi)
         unreal.log(f"{slot}: surface {surface} metallic {metallic} colour {col}")
