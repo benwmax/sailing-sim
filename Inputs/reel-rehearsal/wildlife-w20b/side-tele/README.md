@@ -27,3 +27,14 @@ Without the pan (yaw 91.5) the right edge would be at 98 (fov 13) and 101.5 (fov
 **A retake that would give the beat:** the same keys, plus a pan back right after the flock has gone, from t = 22 to
 30 s (80 to 88 s), to yaw 90 (fov 13: right edge 96.5) or 88 (fov 20: right edge 98). Her sail then comes on at the
 right edge for the last few seconds. Not shot; waiting on the reel thread.
+
+## r2 (`tele13-r2/`, `tele20-r2/`): with a pan back right for her sail
+
+The same keys, plus a hold at yaw 84.5 to t = 22 s and an eased pan back right to t = 30 s (80 to 88 s game time): to yaw
+90 at fov 13 (right edge 96.5), 88 at fov 20 (right edge 98) (`shot.json`). Same stills plus `4-sail-on`.
+
+- **fov 13:** her sail reaches the right edge at about frame 900 (88 s) and is fully in by 960 (90 s), about 2 s later
+  than the 86 s asked for.
+- **fov 20:** her sail enters at about frame 840 (86 s) and is in by 870 (87 s).
+
+I checked this from the frames: `camera.json` holds only the first frame's pose.
