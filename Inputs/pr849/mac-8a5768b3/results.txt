@@ -1,0 +1,6 @@
+#849 head 8a5768b3 19:04:19
+build ok, warnings: 2
+SailingSim.Smoke.SoakMemory: 1 passed, 0 failed, 1 total
+SailingSim.Smoke: 39 passed, 0 failed, 39 total
+mem.csv rows: 21
+soak_mem: {"rows": 11, "mb_per_hour": 867.5, "mb_per_100km": 9722.5, "first_mb": 14088, "last_mb": 14242, "peak_mb": 14242, "travelled_km": 3.2, "budget_mb_per_hour": 50, "verdict": "growing"}
