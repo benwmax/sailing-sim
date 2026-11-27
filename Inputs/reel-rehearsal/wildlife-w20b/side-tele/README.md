@@ -38,3 +38,22 @@ The same keys, plus a hold at yaw 84.5 to t = 22 s and an eased pan back right t
 - **fov 20:** her sail enters at about frame 840 (86 s) and is in by 870 (87 s).
 
 I checked this from the frames: `camera.json` holds only the first frame's pose.
+
+## r3 and r3b (`tele13-r3/`): the set-up moved to open water; the lift is missed
+
+**r3 (not pushed):** the whole set-up moved 500 m north and 3 km west (her start 3500,-3550; raft 3733,-3492; camera
+3733,-3942, 1.5 m, pitch +1, fov 13), where the RayHubbard bake has 4.6 to 5.6 km of open water east of the camera. The
+framing worked, but she sails slower there (3.1-3.4 kn, wind about 185 against 168), so she came within 80 m of the
+raft only at about 92 s, the end of the window, and her sail stayed outside the right edge.
+
+**r3b (this folder):** her start kept; raft and camera moved to (3675,-3461) and (3675,-3911) (shot pos `[175,-361,1.5]`)
+to bring the flush to about 66 s, with the left pan moved to 67-72 s and the pan back right to 75-82 s (`shot.json`).
+`framing-still.webp` was checked first: the raft line left of centre on the lower third, a thin hazy shore 4.8 km
+behind.
+
+- **The lift is missed:** at frame 0 (58 s) the raft line is already gone. The log's first flush is in its 7th 10 s
+  sample, but she came within 80 m earlier than my estimate from r3's telemetry, so the flush came just before the
+  recording.
+- **Her sail comes on at the right edge** from about frame 720 (82 s) to the end (`4-sail-on`).
+- Not retaken, as asked. Another pass needs the window starting earlier (warm-up about 48 s) or the raft about 20 m
+  further along her track.
