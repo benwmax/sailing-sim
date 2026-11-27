@@ -1,121 +1,151 @@
-growth MB attributed to every function on the growing stacks (inclusive)
-  177.26 MB  0x19f5c8ce4 (libsystem_pthread.dylib) _pthread_start
-  177.26 MB  0x19f5c3cd0 (libsystem_pthread.dylib) thread_start
-  161.94 MB  0x100ed9d28 (com.benwmax.SailingSim) UE::Tasks::Private::FTaskBase::TryExecuteTask()
-  149.17 MB  0x101091954 (com.benwmax.SailingSim) FRunnableThreadPThread::_ThreadProc(void*)
-  149.17 MB  0x101129070 (com.benwmax.SailingSim) FRunnableThreadPThread::Run()
-  126.01 MB  0x101551024 (com.benwmax.SailingSim) TGraphTask<TFunctionGraphTaskImpl<void (ENamedThreads::Type, TRefCountPtr<FBaseGraphTask> const&), (ESubsequentsMode::Type)0>>::ExecuteTask()
-  125.85 MB  0x102146cdc (com.benwmax.SailingSim) FRHICommandListExecutor::FTaskPipe::Execute(FRHICommandListExecutor::FTaskPipe::FTask*, TRefCountPtr<FBaseGraphTask> const&) const
-  117.91 MB  0x100ee0248 (com.benwmax.SailingSim) FNamedTaskThread::ProcessTasksNamedThread(int, bool)
-   96.47 MB  0x1a0ef489c (libsystem_malloc.dylib) _malloc_zone_malloc_instrumented_or_legacy
-   96.32 MB  0x100edf33c (com.benwmax.SailingSim) FNamedTaskThread::ProcessTasksUntilQuit(int)
-   94.57 MB  0x102033814 (com.benwmax.SailingSim) FRHIThread::Run()
-   81.43 MB  0x102149284 (com.benwmax.SailingSim) FRHICommandListExecutor::FTranslateState::Translate_ExecuteCommandList(FRHICommandListBase*)
-   81.43 MB  0x1021462a8 (com.benwmax.SailingSim) FRHICommandListBase::Execute()
-   55.11 MB  0x1010f9820 (com.benwmax.SailingSim) FMallocAnsi::TryMalloc(unsigned long, unsigned int)
-   55.11 MB  0x10c338274 (com.benwmax.SailingSim) FMallocPoisonProxy::Malloc(unsigned long, unsigned int)
-   55.11 MB  0x1010f9980 (com.benwmax.SailingSim) FMallocAnsi::Malloc(unsigned long, unsigned int)
-   49.06 MB  0x101156b70 (com.benwmax.SailingSim) FThreadImpl::Run()
-   49.06 MB  0x100edbfac (com.benwmax.SailingSim) LowLevelTasks::FTask::ExecuteTask()
-   44.70 MB  0x108bfe7cc (com.benwmax.SailingSim) FMetalRHICommandContext::PushDescriptorUpdates()
-   44.42 MB  0x108b9f818 (com.benwmax.SailingSim) FMetalBindlessDescriptorManager::FlushPendingDescriptorUpdates(FMetalRHICommandContext&, FMetalPendingDescriptorUpdates const&)
-   43.89 MB  0x100ec0b70 (com.benwmax.SailingSim) LowLevelTasks::FScheduler::ExecuteTask(LowLevelTasks::FTask*)
-   43.69 MB  0x1021496f0 (com.benwmax.SailingSim) FRHICommandListExecutor::FTranslateState::Translate_CloseChain()
-   43.63 MB  0x100ed941c (com.benwmax.SailingSim) LowLevelTasks::TTaskDelegate<LowLevelTasks::FTask* (bool), 112u>::TTaskDelegateImpl<void LowLevelTasks::FTask::Init<UE::Tasks::Private::FTaskBase::Init(char16_t const*, LowLevelTasks::ETaskPriority, UE::Tasks::EExtendedTaskPriority, UE::Tasks::ETaskFlags)::'lambda'()>(char16_t const*, LowLevelTasks::ETaskPriority, UE::Tasks::Private::FTaskBase::Init(char16_t const*, LowLevelTasks::ETaskPriority, UE::Tasks::EExtendedTaskPriority, UE::Tasks::ETaskFlags)::'lambda'()&&, LowLevelTasks::ETaskFlags)::'lambda'(bool), false>::CallAndMove(LowLevelTasks::TTaskDelegate<LowLevelTasks::FTask* (bool), 112u>&, void*, unsigned int, bool)
-   43.13 MB  0x10897bc00 (com.benwmax.SailingSim) operator new(unsigned long)
-   41.54 MB  0x1a0ef4a8c (libsystem_malloc.dylib) _malloc_zone_calloc_instrumented_or_legacy
-   40.86 MB  0x1010f9bd0 (com.benwmax.SailingSim) FMallocAnsi::Realloc(void*, unsigned long, unsigned int)
-   40.86 MB  0x1010f9a68 (com.benwmax.SailingSim) FMallocAnsi::TryRealloc(void*, unsigned long, unsigned int)
-   40.86 MB  0x1011526ec (com.benwmax.SailingSim) FMallocPoisonProxy::Realloc(void*, unsigned long, unsigned int)
-   40.86 MB  0x101132f50 (com.benwmax.SailingSim) FMemory::Realloc(void*, unsigned long, unsigned int)
-   40.49 MB  0x100ec2e7c (com.benwmax.SailingSim) LowLevelTasks::FScheduler::WorkerMain(LowLevelTasks::Private::FWaitEvent*, LowLevelTasks::Private::TLocalQueueRegistry<1024u, 1024u>::TLocalQueue*, unsigned int, bool)
-   40.24 MB  0x100ec2548 (com.benwmax.SailingSim) LowLevelTasks::FScheduler::WorkerLoop(LowLevelTasks::Private::FWaitEvent*, LowLevelTasks::Private::TLocalQueueRegistry<1024u, 1024u>::TLocalQueue*, unsigned int, bool)
-   40.04 MB  0x108c1161c (com.benwmax.SailingSim) FMetalDynamicRHI::RHIFinalizeContexts(FDynamicRHI::FRHIFinalizeContextsArgs&&)
-   40.04 MB  0x108c0050c (com.benwmax.SailingSim) FMetalRHICommandContext::Finalize(TArray<FMetalPayload*, TSizedDefaultAllocator<32>>&)
-   35.93 MB  0x100f150e8 (com.benwmax.SailingSim) TSizedHeapAllocator<32, FMemory>::ForAnyElementType::ResizeAllocation(int, int, unsigned long, unsigned int)
-   31.35 MB  0x108b9e244 (com.benwmax.SailingSim) FMetalDescriptorHeap::Init(FRHICommandListBase&, int)
-   31.24 MB  0x1a0ed3f5c (libsystem_malloc.dylib) _calloc
-   31.03 MB  0x1010f96bc (com.benwmax.SailingSim) AnsiReallocInternal(void*, unsigned long, unsigned int)
-   28.48 MB  0x1b2f6b5d0 (com.apple.IOGPU) IOGPUMetalCommandBufferStorageAllocResourceAtIndex
-   28.37 MB  0x1b2f702ec (com.apple.IOGPU) -[IOGPUMetalResource initWithDevice:remoteStorageResource:options:args:argsSize:]
-   28.34 MB  0x1b2f71728 (com.apple.IOGPU) IOGPUMetalResourcePoolCreatePooledResource
-   28.31 MB  0x1b2f7783c (com.apple.IOGPU) IOGPUResourceCreate
-   28.22 MB  0x101f5b7a0 (com.benwmax.SailingSim) FRHICommand<FRHICommandBeginRenderPass, FRHICommandBeginRenderPassString1753>::ExecuteAndDestruct(FRHICommandListBase&)
-   28.08 MB  0x1011e89a0 (com.benwmax.SailingSim) -[FCocoaGameThread main]
-   28.08 MB  0x107ddea30 (com.benwmax.SailingSim) GuardedMain(char16_t const*)
-   28.08 MB  0x107defe28 (com.benwmax.SailingSim) -[UEAppDelegate runGameThread:]
-   28.08 MB  0x19fc51c98 (com.apple.Foundation) __NSThread__start__
-   28.04 MB  0x19f44c81c (libobjc.A.dylib) _objc_rootAllocWithZone
-   27.88 MB  0x107dda760 (com.benwmax.SailingSim) FEngineLoop::Tick()
-   21.91 MB  0x1044b8230 (com.benwmax.SailingSim) UGameEngine::Tick(float, bool)
-   21.59 MB  0x1051524dc (com.benwmax.SailingSim) FTickTaskManager::RunTickGroup(ETickingGroup, bool)
-   21.59 MB  0x10515ba10 (com.benwmax.SailingSim) FTickFunctionTask::DoTask(ENamedThreads::Type, TRefCountPtr<FBaseGraphTask> const&)
-   21.59 MB  0x10515b858 (com.benwmax.SailingSim) TGraphTask<FTickFunctionTask>::ExecuteTask()
-   21.59 MB  0x100edf408 (com.benwmax.SailingSim) FNamedTaskThread::ProcessTasksUntilIdle(int)
-   21.59 MB  0x105156880 (com.benwmax.SailingSim) FTickTaskSequencer::ReleaseTickGroup(ETickingGroup, bool, TArray<FTickFunction*, TSizedDefaultAllocator<32>>&)
-   21.59 MB  0x100ede7d4 (com.benwmax.SailingSim) FTaskGraphCompatibilityImplementation::ProcessUntilTasksComplete(TArray<TRefCountPtr<FBaseGraphTask>, TSizedInlineAllocator<4u, 32, TSizedDefaultAllocator<32>>> const&, ENamedThreads::Type, TFunction<FTaskGraphInterface::EProcessTasksOperation (int)> const&)
-   19.55 MB  0x2711451c8 (com.apple.AGXMetalG17X) -[AGXG17XFamilyRenderContext initWithCommandBuffer:descriptor:subEncoderIndex:framebuffer:]
-   19.06 MB  0x108bcb400 (com.benwmax.SailingSim) FMetalRHICommandContext::RHIBuildAccelerationStructures(TArrayView<FRayTracingSceneBuildParams const, int>)
-   19.06 MB  0x1062cbed8 (com.benwmax.SailingSim) FRHICommand<FRHICommandBuildSceneAccelerationStructures, FUnnamedRhiCommand>::ExecuteAndDestruct(FRHICommandListBase&)
-   18.77 MB  0x108bcb0e0 (com.benwmax.SailingSim) FMetalRayTracingScene::BuildAccelerationStructure(FMetalRHICommandContext&, FMetalRHIBuffer*, unsigned int, FMetalRHIBuffer*, unsigned int, FMetalRHIBuffer*, unsigned int, unsigned int)
-   17.69 MB  0x270f2cbc4 (com.apple.AGXMetalG17X) AGX::ContextCommon<AGX::HAL300::Encoders, AGX::HAL300::Classes, AGX::HAL300::ObjClasses, AGX::HAL300::DataBufferAllocator>::newCommand(unsigned long, bool)
-   15.43 MB  0x108bff864 (com.benwmax.SailingSim) FMetalRHICommandContext::RHIBeginRenderPass(FRHIRenderPassInfo const&, char16_t const*)
-   15.43 MB  0x270f68094 (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer renderCommandEncoderWithDescriptor:]
-   15.43 MB  0x108bb1718 (com.benwmax.SailingSim) FMetalCommandEncoder::BeginRenderCommandEncoding(FMetalCounterSampler*)
-   13.80 MB  0x103d7db60 (com.benwmax.SailingSim) FActorTickFunction::ExecuteTick(float, ELevelTick, ENamedThreads::Type, TRefCountPtr<FBaseGraphTask> const&)
-   13.35 MB  0x108bb3734 (com.benwmax.SailingSim) FMetalCommandEncoder::BeginAccelerationStructureCommandEncoding()
-   13.28 MB  0x100ed4c7c (com.benwmax.SailingSim) decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()) UE::Core::Private::ReallocGrow1_DoAlloc_Tiny<3u, TSizedHeapAllocator<32, FMemory>::ForAnyElementType>(unsigned short, TSizedHeapAllocator<32, FMemory>::ForAnyElementType&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&)
-   13.06 MB  0x108b9abb8 (com.benwmax.SailingSim) FRHIDescriptorAllocator::FRHIDescriptorAllocator(unsigned int, TArrayView<TStatId const, int>)
-   13.06 MB  0x108b9e26c (com.benwmax.SailingSim) FMetalDescriptorHeap::Init(FRHICommandListBase&, int)
-   13.06 MB  0x108b9c0c4 (com.benwmax.SailingSim) FRHIHeapDescriptorAllocator::FRHIHeapDescriptorAllocator(ERHIDescriptorTypeMask, unsigned int, TArrayView<TStatId const, int>)
-   12.80 MB  0x2711223cc (com.apple.AGXMetalG17X) AGX::RenderContext<AGX::HAL300::Encoders, AGX::HAL300::Classes, AGX::HAL300::ObjClasses, AGX::HAL300::CommandEncoding>::beginRenderPass()
-   11.97 MB  0x10476aabc (com.benwmax.SailingSim) UWorld::Tick(ELevelTick, float)
-   10.30 MB  0x1a0ed4138 (libsystem_malloc.dylib) _malloc_zone_calloc
-   10.30 MB  0x1a370f6cc (com.apple.CoreFoundation) _CFRuntimeCreateInstance
-   10.29 MB  0x1021772bc (com.benwmax.SailingSim) FRHICommand<FRHICommandBuildAccelerationStructures, FUnnamedRhiCommand>::ExecuteAndDestruct(FRHICommandListBase&)
-   10.27 MB  0x108bcbdbc (com.benwmax.SailingSim) FMetalRHICommandContext::RHIBuildAccelerationStructures(TArrayView<FRayTracingGeometryBuildParams const, int>, FRHIBufferRange const&)
-   10.25 MB  0x1a370ed9c (com.apple.CoreFoundation) __CFStringCreateImmutableFunnel3
-    9.94 MB  0x108bcac44 (com.benwmax.SailingSim) FMetalRHICommandContext::BuildAccelerationStructure(NS::SharedPtr<MTL::AccelerationStructure>, MTL::AccelerationStructureDescriptor*, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int)
-    9.85 MB  0x100ed7f0c (com.benwmax.SailingSim) decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()) UE::Core::Private::ReallocGrow<3u, TSizedHeapAllocator<32, FMemory>::ForAnyElementType>(unsigned int, unsigned int, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()), TSizedHeapAllocator<32, FMemory>::ForAnyElementType&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&)
-    9.83 MB  0x10c334f90 (com.benwmax.SailingSim) AnsiReallocInternal(void*, unsigned long, unsigned int) (.cold.1)
-    9.83 MB  0x1010f96fc (com.benwmax.SailingSim) AnsiReallocInternal(void*, unsigned long, unsigned int)
-    9.66 MB  0x19f47c620 (libobjc.A.dylib) objc_alloc_init
-    9.62 MB  0x10476a640 (com.benwmax.SailingSim) UWorld::Tick(ELevelTick, float)
-    9.50 MB  0x270f68dd4 (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer computeCommandEncoderWithDescriptor:]
-    9.10 MB  0x101124224 (com.benwmax.SailingSim) FMemory::Malloc(unsigned long, unsigned int)
-    9.10 MB  0x108bca7f4 (com.benwmax.SailingSim) FMetalRHICommandContext::BuildAccelerationStructure(TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, unsigned int, FMetalAccelerationStructure*)
-    8.84 MB  0x270f678b0 (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer initWithQueue:retainedReferences:]
-    8.84 MB  0x1b2f6bea0 (com.apple.IOGPU) IOGPUMetalCommandBufferStoragePoolCreateStorage
-    8.84 MB  0x1b2f5c064 (com.apple.IOGPU) -[IOGPUMetalCommandBuffer initWithQueue:retainedReferences:synchronousDebugMode:]
-    8.81 MB  0x108bca820 (com.benwmax.SailingSim) FMetalRHICommandContext::BuildAccelerationStructure(TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, unsigned int, FMetalAccelerationStructure*)
-    8.73 MB  0x108bb0038 (com.benwmax.SailingSim) FMetalCommandQueue::CreateCommandBuffer()
-    8.72 MB  0x270f6cd40 (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandQueue commandBufferWithDescriptor:]
-    8.67 MB  0x1013076c4 (com.benwmax.SailingSim) FPageAllocator::Alloc(int)
-    8.65 MB  0x1087438b4 (com.benwmax.SailingSim) UProceduralMeshComponent::CreateMeshSection_LinearColor(int, TArray<UE::Math::TVector<double>, TSizedDefaultAllocator<32>> const&, TArray<int, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<FLinearColor, TSizedDefaultAllocator<32>> const&, TArray<FProcMeshTangent, TSizedDefaultAllocator<32>> const&, bool, bool)
-    8.57 MB  0x100ec196c (com.benwmax.SailingSim) LowLevelTasks::FScheduler::StandbyLoop(LowLevelTasks::Private::FWaitEvent*, LowLevelTasks::Private::TLocalQueueRegistry<1024u, 1024u>::TLocalQueue*, unsigned int, bool)
-    8.57 MB  0x100ec2e60 (com.benwmax.SailingSim) LowLevelTasks::FScheduler::WorkerMain(LowLevelTasks::Private::FWaitEvent*, LowLevelTasks::Private::TLocalQueueRegistry<1024u, 1024u>::TLocalQueue*, unsigned int, bool)
-    8.53 MB  0x1b305edcc (com.apple.Metal) +[MTLInstanceAccelerationStructureDescriptor descriptor]
-    8.52 MB  0x101307c8c (com.benwmax.SailingSim) FMemStackBase::AllocateNewChunk(int)
-    8.42 MB  0x108897e7c (com.benwmax.SailingSim) ALakeTerrainActor::Tick(float)
-    8.15 MB  0x108bfdcec (com.benwmax.SailingSim) FMetalStateCache::StartRenderPass(FRHIRenderPassInfo const&, TRefCountPtr<FMetalQueryBuffer>, MTL::RenderPassDescriptor*, bool)
-    8.15 MB  0x108bff75c (com.benwmax.SailingSim) FMetalRHICommandContext::RHIBeginRenderPass(FRHIRenderPassInfo const&, char16_t const*)
-    8.14 MB  0x108c07390 (com.benwmax.SailingSim) FMetalStateCache::SetRenderPassInfo(FRHIRenderPassInfo const&, TRefCountPtr<FMetalQueryBuffer>)
-    8.14 MB  0x1acd3daa0 (com.apple.QuartzCore) -[CAMetalLayer nextDrawable]
-    8.14 MB  0x108c409c8 (com.benwmax.SailingSim) FMetalViewport::GetDrawableTexture(EMetalViewportAccessFlag, TOptional<int>)
-    8.14 MB  0x108c40528 (com.benwmax.SailingSim) FMetalViewport::GetDrawableInternal(EMetalViewportAccessFlag, TOptional<int>, bool)
-    8.14 MB  0x108c0a158 (com.benwmax.SailingSim) FMetalSurface::GetDrawableTexture()
-    8.14 MB  0x108c40db4 (com.benwmax.SailingSim) FMetalViewport::GetDrawableTexture(EMetalViewportAccessFlag, FMetalSurface*)
-    7.41 MB  0x1b2f65468 (com.apple.IOGPU) IOGPUMetalDeviceShmemPoolCreateShmem
-    7.41 MB  0x1b2f64ecc (com.apple.IOGPU) -[IOGPUMetalDeviceShmem initWithDevice:shmemSize:shmemType:]
-    7.41 MB  0x1b2f75e20 (com.apple.IOGPU) IOGPUDeviceCreateDeviceShmem
-    7.20 MB  0x1088e9a18 (com.benwmax.SailingSim) ASailboatPawn::TickAfterPhysics(float)
-    7.20 MB  0x100ee7768 (com.benwmax.SailingSim) decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()) UE::Core::Private::ReallocGrow1_DoAlloc<3u, TSizedHeapAllocator<32, FMemory>::ForAnyElementType>(unsigned int, unsigned int, TSizedHeapAllocator<32, FMemory>::ForAnyElementType&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&)
-    7.20 MB  0x1088cc3e8 (com.benwmax.SailingSim) FReplay::Record(Sailing::FBoatModel const&)
-    7.13 MB  0x1b2f6ac5c (com.apple.IOGPU) IOGPUMetalCommandBufferStorageCreateExt
-    6.82 MB  0x270f67f4c (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer _accelerationStructureCommandEncoderWithDescriptor:]
-    6.75 MB  0x270f2a49c (com.apple.AGXMetalG17X) AGX::DataBufferAllocator<45ul>::initializeOnDemandDataBufferSlow(unsigned int)
-    6.75 MB  0x271123a74 (com.apple.AGXMetalG17X) AGX::RenderContext<AGX::HAL300::Encoders, AGX::HAL300::Classes, AGX::HAL300::ObjClasses, AGX::HAL300::CommandEncoding>::beginRenderPass()
-    6.70 MB  0x108c00398 (com.benwmax.SailingSim) FMetalRHICommandContext::CopyFromBufferToBuffer(TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned long, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned long, unsigned long)
-    6.53 MB  0x270f67f58 (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer _accelerationStructureCommandEncoderWithDescriptor:]
-    6.49 MB  0x1087480d0 (com.benwmax.SailingSim) UProceduralMeshComponent::CreateMeshSection(int, TArray<UE::Math::TVector<double>, TSizedDefaultAllocator<32>> const&, TArray<int, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<UE::Math::TVector2<double>, TSizedDefaultAllocator<32>> const&, TArray<FColor, TSizedDefaultAllocator<32>> const&, TArray<FProcMeshTangent, TSizedDefaultAllocator<32>> const&, bool)
-    6.48 MB  0x108bafefc (com.benwmax.SailingSim) FMetalCommandEncoder::StartCommandBuffer()
+growth MB attributed inclusively to each function on the growing stacks
+  161.94 MB  (com.benwmax.SailingSim) UE::Tasks::Private::FTaskBase::TryExecuteTask()
+  149.17 MB  (com.benwmax.SailingSim) FRunnableThreadPThread::_ThreadProc(void*)
+  149.17 MB  (com.benwmax.SailingSim) FRunnableThreadPThread::Run()
+  126.01 MB  (com.benwmax.SailingSim) FRHICommandListExecutor::FTaskPipe::Execute(FRHICommandListExecutor::FTaskPipe::FTask*, TRefCountPtr<FBaseGraphTask> const&) const
+  126.01 MB  (com.benwmax.SailingSim) TGraphTask<TFunctionGraphTaskImpl<void (ENamedThreads::Type, TRefCountPtr<FBaseGraphTask> const&), (ESubsequentsMode::Type)0>>::ExecuteTask()
+  117.91 MB  (com.benwmax.SailingSim) FNamedTaskThread::ProcessTasksNamedThread(int, bool)
+   96.32 MB  (com.benwmax.SailingSim) FNamedTaskThread::ProcessTasksUntilQuit(int)
+   94.57 MB  (com.benwmax.SailingSim) FRHIThread::Run()
+   81.98 MB  (com.benwmax.SailingSim) FRHICommandListExecutor::FTranslateState::Translate_ExecuteCommandList(FRHICommandListBase*)
+   81.43 MB  (com.benwmax.SailingSim) FRHICommandListBase::Execute()
+   49.06 MB  (com.benwmax.SailingSim) FThreadImpl::Run()
+   49.06 MB  (com.benwmax.SailingSim) LowLevelTasks::FScheduler::WorkerMain(LowLevelTasks::Private::FWaitEvent*, LowLevelTasks::Private::TLocalQueueRegistry<1024u, 1024u>::TLocalQueue*, unsigned int, bool)
+   49.06 MB  (com.benwmax.SailingSim) LowLevelTasks::FTask::ExecuteTask()
+   49.06 MB  (com.benwmax.SailingSim) LowLevelTasks::FScheduler::ExecuteTask(LowLevelTasks::FTask*)
+   44.70 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::PushDescriptorUpdates()
+   44.70 MB  (com.benwmax.SailingSim) FMetalBindlessDescriptorManager::FlushPendingDescriptorUpdates(FMetalRHICommandContext&, FMetalPendingDescriptorUpdates const&)
+   44.42 MB  (com.benwmax.SailingSim) FMetalDescriptorHeap::Init(FRHICommandListBase&, int)
+   43.69 MB  (com.benwmax.SailingSim) FMetalDynamicRHI::RHIFinalizeContexts(FDynamicRHI::FRHIFinalizeContextsArgs&&)
+   43.69 MB  (com.benwmax.SailingSim) FRHICommandListExecutor::FTranslateState::Translate_CloseChain()
+   43.63 MB  (com.benwmax.SailingSim) LowLevelTasks::TTaskDelegate<LowLevelTasks::FTask* (bool), 112u>::TTaskDelegateImpl<void LowLevelTasks::FTask::Init<UE::Tasks::Private::FTaskBase::Init(char16_t const*, LowLevelTasks::ETaskPriority, UE::Tasks::EExtendedTaskPriority, UE::Tasks::ETaskFlags)::'lambda'()>(char16_t const*, LowLevelTasks::ETaskPriority, UE::Tasks::Private::FTaskBase::Init(char16_t const*, LowLevelTasks::ETaskPriority, UE::Tasks::EExtendedTaskPriority, UE::Tasks::ETaskFlags)::'lambda'()&&, LowLevelTasks::ETaskFlags)::'lambda'(bool), false>::CallAndMove(LowLevelTasks::TTaskDelegate<LowLevelTasks::FTask* (bool), 112u>&, void*, unsigned int, bool)
+   40.86 MB  (com.benwmax.SailingSim) AnsiReallocInternal(void*, unsigned long, unsigned int)
+   40.49 MB  (com.benwmax.SailingSim) LowLevelTasks::FScheduler::WorkerLoop(LowLevelTasks::Private::FWaitEvent*, LowLevelTasks::Private::TLocalQueueRegistry<1024u, 1024u>::TLocalQueue*, unsigned int, bool)
+   28.48 MB  (com.apple.IOGPU) IOGPUMetalCommandBufferStorageAllocResourceAtIndex
+   28.48 MB  (com.apple.IOGPU) IOGPUMetalResourcePoolCreatePooledResource
+   28.37 MB  (com.apple.IOGPU) -[IOGPUMetalResource initWithDevice:remoteStorageResource:options:args:argsSize:]
+   28.37 MB  (com.apple.IOGPU) IOGPUResourceCreate
+   28.22 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::RHIBeginRenderPass(FRHIRenderPassInfo const&, char16_t const*)
+   28.22 MB  (com.benwmax.SailingSim) FRHICommand<FRHICommandBeginRenderPass, FRHICommandBeginRenderPassString1753>::ExecuteAndDestruct(FRHICommandListBase&)
+   28.08 MB  (com.benwmax.SailingSim) GuardedMain(char16_t const*)
+   28.08 MB  (com.benwmax.SailingSim) -[FCocoaGameThread main]
+   28.08 MB  (com.apple.Foundation) __NSThread__start__
+   28.08 MB  (com.benwmax.SailingSim) -[UEAppDelegate runGameThread:]
+   28.08 MB  (com.benwmax.SailingSim) FEngineLoop::Tick()
+   27.88 MB  (com.benwmax.SailingSim) UGameEngine::Tick(float, bool)
+   21.91 MB  (com.benwmax.SailingSim) UWorld::Tick(ELevelTick, float)
+   21.59 MB  (com.benwmax.SailingSim) FTickTaskManager::RunTickGroup(ETickingGroup, bool)
+   21.59 MB  (com.benwmax.SailingSim) FNamedTaskThread::ProcessTasksUntilIdle(int)
+   21.59 MB  (com.benwmax.SailingSim) TGraphTask<FTickFunctionTask>::ExecuteTask()
+   21.59 MB  (com.benwmax.SailingSim) FTickFunctionTask::DoTask(ENamedThreads::Type, TRefCountPtr<FBaseGraphTask> const&)
+   19.83 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyRenderContext initWithCommandBuffer:descriptor:subEncoderIndex:framebuffer:]
+   19.55 MB  (com.apple.AGXMetalG17X) AGX::RenderContext<AGX::HAL300::Encoders, AGX::HAL300::Classes, AGX::HAL300::ObjClasses, AGX::HAL300::CommandEncoding>::beginRenderPass()
+   19.06 MB  (com.benwmax.SailingSim) FMetalRayTracingScene::BuildAccelerationStructure(FMetalRHICommandContext&, FMetalRHIBuffer*, unsigned int, FMetalRHIBuffer*, unsigned int, FMetalRHIBuffer*, unsigned int, unsigned int)
+   19.06 MB  (com.benwmax.SailingSim) FRHICommand<FRHICommandBuildSceneAccelerationStructures, FUnnamedRhiCommand>::ExecuteAndDestruct(FRHICommandListBase&)
+   19.05 MB  (com.benwmax.SailingSim) FMetalCommandEncoder::BeginAccelerationStructureCommandEncoding()
+   18.77 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::BuildAccelerationStructure(TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int, unsigned int, FMetalAccelerationStructure*)
+   17.69 MB  (com.apple.AGXMetalG17X) AGX::ContextCommon<AGX::HAL300::Encoders, AGX::HAL300::Classes, AGX::HAL300::ObjClasses, AGX::HAL300::DataBufferAllocator>::newCommand(unsigned long, bool)
+   15.43 MB  (com.benwmax.SailingSim) FMetalCommandEncoder::BeginRenderCommandEncoding(FMetalCounterSampler*)
+   15.43 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer renderCommandEncoderWithDescriptor:]
+   13.80 MB  (com.benwmax.SailingSim) FActorTickFunction::ExecuteTick(float, ELevelTick, ENamedThreads::Type, TRefCountPtr<FBaseGraphTask> const&)
+   13.35 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer _accelerationStructureCommandEncoderWithDescriptor:]
+   13.28 MB  (com.benwmax.SailingSim) decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()) UE::Core::Private::ReallocGrow1_DoAlloc_Tiny<3u, TSizedHeapAllocator<32, FMemory>::ForAnyElementType>(unsigned short, TSizedHeapAllocator<32, FMemory>::ForAnyElementType&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&)
+   10.29 MB  (com.benwmax.SailingSim) FRHICommand<FRHICommandBuildAccelerationStructures, FUnnamedRhiCommand>::ExecuteAndDestruct(FRHICommandListBase&)
+   10.27 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::BuildAccelerationStructure(NS::SharedPtr<MTL::AccelerationStructure>, MTL::AccelerationStructureDescriptor*, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned int)
+    9.85 MB  (com.benwmax.SailingSim) decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()) UE::Core::Private::ReallocGrow<3u, TSizedHeapAllocator<32, FMemory>::ForAnyElementType>(unsigned int, unsigned int, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()), TSizedHeapAllocator<32, FMemory>::ForAnyElementType&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&)
+    9.83 MB  (com.benwmax.SailingSim) AnsiReallocInternal(void*, unsigned long, unsigned int) (.cold.1)
+    9.54 MB  (com.benwmax.SailingSim) ALakeTerrainActor::Tick(float)
+    9.50 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer computeCommandEncoderWithDescriptor:]
+    9.50 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer computeCommandEncoderWithConfig:]
+    8.86 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer initWithQueue:retainedReferences:]
+    8.84 MB  (com.apple.IOGPU) -[IOGPUMetalCommandBuffer initWithQueue:retainedReferences:synchronousDebugMode:]
+    8.84 MB  (com.apple.IOGPU) IOGPUMetalCommandBufferStorageCreateExt
+    8.84 MB  (com.apple.IOGPU) IOGPUMetalCommandBufferStoragePoolCreateStorage
+    8.83 MB  (com.benwmax.SailingSim) FPageAllocator::Alloc(int)
+    8.79 MB  (com.apple.AGXMetalG17X) AGX::ComputeContext<AGX::HAL300::Encoders, AGX::HAL300::Classes, AGX::HAL300::ObjClasses, AGX::HAL300::CommandEncoding, AGX::HAL300::EncoderComputeServiceClasses>::beginComputePass(bool, eAGXDataBufferPools)
+    8.74 MB  (com.benwmax.SailingSim) FMetalCommandQueue::CreateCommandBuffer()
+    8.73 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandQueue commandBufferWithDescriptor:]
+    8.57 MB  (com.benwmax.SailingSim) LowLevelTasks::FScheduler::StandbyLoop(LowLevelTasks::Private::FWaitEvent*, LowLevelTasks::Private::TLocalQueueRegistry<1024u, 1024u>::TLocalQueue*, unsigned int, bool)
+    8.55 MB  (com.benwmax.SailingSim) FMemStackBase::AllocateNewChunk(int)
+    8.53 MB  (com.apple.Metal) +[MTLInstanceAccelerationStructureDescriptor descriptor]
+    8.15 MB  (com.benwmax.SailingSim) FMetalStateCache::SetRenderPassInfo(FRHIRenderPassInfo const&, TRefCountPtr<FMetalQueryBuffer>)
+    8.15 MB  (com.benwmax.SailingSim) FMetalStateCache::StartRenderPass(FRHIRenderPassInfo const&, TRefCountPtr<FMetalQueryBuffer>, MTL::RenderPassDescriptor*, bool)
+    8.14 MB  (com.benwmax.SailingSim) FMetalViewport::GetDrawableInternal(EMetalViewportAccessFlag, TOptional<int>, bool)
+    8.14 MB  (com.apple.QuartzCore) CAMetalLayerPrivateNextDrawableLocked(CAMetalLayer*, CAMetalDrawable**, unsigned long*)
+    8.14 MB  (com.benwmax.SailingSim) FMetalViewport::GetDrawableTexture(EMetalViewportAccessFlag, FMetalSurface*)
+    8.14 MB  (com.apple.QuartzCore) -[CAMetalLayer nextDrawable]
+    8.14 MB  (com.benwmax.SailingSim) FMetalSurface::GetDrawableTexture()
+    8.14 MB  (com.benwmax.SailingSim) FMetalViewport::GetDrawableTexture(EMetalViewportAccessFlag, TOptional<int>)
+    7.79 MB  (com.benwmax.SailingSim) ASailboatPawn::TickAfterPhysics(float)
+    7.42 MB  (com.apple.IOGPU) IOGPUMetalDeviceShmemPoolCreateShmem
+    7.41 MB  (com.apple.IOGPU) IOGPUDeviceCreateDeviceShmem
+    7.41 MB  (com.apple.IOGPU) -[IOGPUMetalDeviceShmem initWithDevice:shmemSize:shmemType:]
+    7.20 MB  (com.benwmax.SailingSim) FReplay::Record(Sailing::FBoatModel const&)
+    7.20 MB  (com.benwmax.SailingSim) decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()) UE::Core::Private::ReallocGrow1_DoAlloc<3u, TSizedHeapAllocator<32, FMemory>::ForAnyElementType>(unsigned int, unsigned int, TSizedHeapAllocator<32, FMemory>::ForAnyElementType&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&)
+    7.13 MB  (com.apple.IOGPU) _iogpuMetalCommandBufferStorageSetupShmems(IOGPUMetalCommandBufferStorage*, IOGPUMetalCommandBufferStorageCreateParams*)
+    6.78 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::BeginBlitEncoder()
+    6.75 MB  (com.apple.AGXMetalG17X) AGX::DataBufferAllocator<45ul>::initializeOnDemandDataBufferSlow(unsigned int)
+    6.70 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::CopyFromBufferToBuffer(TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned long, TSharedPtr<FMetalBuffer, (ESPMode)1>, unsigned long, unsigned long)
+    6.53 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyRayTracingGPUBuilder initWithCommandBuffer:descriptor:]
+    6.48 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::StartCommandBuffer()
+    6.48 MB  (com.benwmax.SailingSim) FMetalCommandEncoder::StartCommandBuffer()
+    6.28 MB  (com.benwmax.SailingSim) UE::Tasks::Private::TExecutableTaskBase<FRDGBuilder::SetupParallelExecute(TStaticArray<void*, 1u, 4294967295u> const&)::$_0, void, void>::ExecuteTask()
+    6.28 MB  (com.benwmax.SailingSim) FRDGBuilder::ExecutePass(FRHIComputeCommandList&, FRDGPass*)
+    6.23 MB  (com.benwmax.SailingSim) UActorComponent::DoDeferredRenderUpdates_Concurrent()
+    6.22 MB  (com.benwmax.SailingSim) UPrimitiveComponent::CreateRenderState_Concurrent(FRegisterComponentContext*)
+    6.22 MB  (com.benwmax.SailingSim) UActorComponent::RecreateRenderState_Concurrent()
+    6.22 MB  (com.benwmax.SailingSim) FScene::AddPrimitive(UPrimitiveComponent*)
+    5.97 MB  (com.benwmax.SailingSim) FRendererModule::BeginRenderingViewFamily(FCanvas*, FSceneViewFamily*)
+    5.97 MB  (com.benwmax.SailingSim) UWorld::SendAllEndOfFrameUpdates()
+    5.97 MB  (com.benwmax.SailingSim) UEngine::RedrawViewports(bool)
+    5.97 MB  (com.benwmax.SailingSim) UGameViewportClient::Draw(FViewport*, FCanvas*)
+    5.97 MB  (com.benwmax.SailingSim) UWorld::SendAllEndOfFrameUpdatesInternal(UWorld::EEndOfFrameUpdateLocation)
+    5.97 MB  (com.benwmax.SailingSim) FViewport::Draw(bool)
+    5.96 MB  (com.benwmax.SailingSim) FActorPrimitiveComponentInterface::CreateSceneProxy()
+    5.86 MB  (com.benwmax.SailingSim) UWorld::FEndOfFrameUpdateContext::Update_GameThread(FSceneInterface*, FRenderCommandList*)
+    5.84 MB  (com.benwmax.SailingSim) UProceduralMeshComponent::CreateSceneProxy()
+    5.82 MB  (com.benwmax.SailingSim) FProceduralMeshSceneProxy::FProceduralMeshSceneProxy(UProceduralMeshComponent*)
+    5.69 MB  (com.benwmax.SailingSim) FRHICommand<FRHICommandBindAccelerationStructureMemory, FUnnamedRhiCommand>::ExecuteAndDestruct(FRHICommandListBase&)
+    5.69 MB  (com.benwmax.SailingSim) FMetalRayTracingScene::BindBuffer(FRHIBuffer*, unsigned int)
+    5.16 MB  (com.benwmax.SailingSim) FQueuedLowLevelThreadPool::AddQueuedWork(IQueuedWork*, EQueuedWorkPriority)::'lambda'()::operator()() const
+    5.16 MB  (com.benwmax.SailingSim) LowLevelTasks::TTaskDelegate<LowLevelTasks::FTask* (bool), 112u>::TTaskDelegateImpl<void LowLevelTasks::FTask::Init<FQueuedLowLevelThreadPool::AddQueuedWork(IQueuedWork*, EQueuedWorkPriority)::'lambda'()>(char16_t const*, LowLevelTasks::ETaskPriority, FQueuedLowLevelThreadPool::AddQueuedWork(IQueuedWork*, EQueuedWorkPriority)::'lambda'()&&, LowLevelTasks::ETaskFlags)::'lambda'(bool), false>::CallAndMove(LowLevelTasks::TTaskDelegate<LowLevelTasks::FTask* (bool), 112u>&, void*, unsigned int, bool)
+    5.16 MB  (com.benwmax.SailingSim) FThreadStats::AddStatMessage(FStatMessage const&)
+    5.16 MB  (com.benwmax.SailingSim) TChunkedArray<FStatMessage, 65536u, TSizedDefaultAllocator<32>>::Add(int)
+    4.97 MB  (com.benwmax.SailingSim) FMetalCommandEncoder::BeginBlitCommandEncoding(FMetalCounterSampler*)
+    4.97 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyBlitContext initWithCommandBuffer:descriptor:]
+    4.97 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer blitCommandEncoderCommon:]
+    4.62 MB  (com.benwmax.SailingSim) AWaterSurface::UpdateDetail()::$_2::operator()(TSharedPtr<Sailing::FWaveDetail, (ESPMode)1> const&, double, int, double) const
+    4.62 MB  (com.benwmax.SailingSim) Sailing::FWaveDetail::Evaluate(int, double, Sailing::FWaveDetail::FGrid&, double) const
+    4.55 MB  (com.benwmax.SailingSim) TRHILambdaCommand<FRHICommandListBase, FRHICommandListBase::ActivatePipelines(ERHIPipeline)::$_0>::ExecuteAndDestruct(FRHICommandListBase&)
+    4.55 MB  (com.benwmax.SailingSim) FRHICommandListBase::ActivatePipelines(ERHIPipeline)::$_0::operator()(FRHICommandListBase&) const
+    4.55 MB  (com.benwmax.SailingSim) FMetalCommandEncoder::BeginRenderCommandEncoding(MTL::RenderPassDescriptor*, NS::SharedPtr<MTL::ParallelRenderCommandEncoder>)
+    4.55 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyThreadedRenderPass renderCommandEncoder]
+    4.55 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::SetupParallelContext(FRHIParallelRenderPassInfo const*)
+    4.55 MB  (com.benwmax.SailingSim) FMetalDynamicRHI::RHIGetParallelCommandContext(FRHIParallelRenderPassInfo const&)
+    4.41 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyCommandBuffer subRenderCommandEncoderWithDescriptor:subEncoderIndex:framebuffer:]
+    4.04 MB  (com.apple.AGXMetalG17X) AGX::DataBufferAllocator<45ul>::grow(unsigned int, bool)
+    3.89 MB  (com.apple.AGXMetalG17X) AGX::ContextSwitcherGen3<AGX::HAL300::Encoders, AGX::HAL300::Classes>::setupComputeCommand(AGXComputeCommandRec*, IOGPUResourceList*, AGX::HAL300::DataBufferAllocator&)
+    3.82 MB  (com.apple.AGXMetalG17X) -[AGXG17XFamilyComputeContext initWithCommandBuffer:config:]
+    3.68 MB  (com.benwmax.SailingSim) void FThreadStats::AddMessage<long long>(FName, EStatOperation::Type, long long, bool)
+    3.66 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::BeginComputeEncoder()
+    3.60 MB  (com.apple.QuartzCore) -[CAMetalDrawable initWithDrawablePrivate:layer:waitStart:]
+    3.56 MB  (com.benwmax.SailingSim) FMetalCommandEncoder::BeginComputeCommandEncoding(MTL::DispatchType, FMetalCounterSampler*)
+    3.48 MB  (com.benwmax.SailingSim) std::__1::vector<float, std::__1::allocator<float>>::resize(unsigned long)
+    3.26 MB  (com.benwmax.SailingSim) AWaterSurface::Tick(float)
+    3.26 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::RHIDispatchComputeShader(unsigned int, unsigned int, unsigned int)
+    3.25 MB  (com.benwmax.SailingSim) AWaterSurface::UpdateDetail()
+    2.98 MB  (com.benwmax.SailingSim) FRHICommand<FRHICommandDispatchComputeShader, FRHICommandDispatchComputeShaderString1825>::ExecuteAndDestruct(FRHICommandListBase&)
+    2.60 MB  (com.benwmax.SailingSim) FStaticMeshVertexBuffer::Init(unsigned int, unsigned int, bool)
+    2.56 MB  (com.benwmax.SailingSim) FMetalDynamicRHI::ProcessSubmissionQueue()
+    2.56 MB  (com.benwmax.SailingSim) FMetalThread::Run()
+    2.29 MB  (com.benwmax.SailingSim) TAsyncQueuedWork<AWaterSurface::FWakeFrame>::DoThreadedWork()
+    2.29 MB  (com.benwmax.SailingSim) void SetPromise<AWaterSurface::FWakeFrame, TUniqueFunction<AWaterSurface::FWakeFrame ()>&>(TPromise<AWaterSurface::FWakeFrame>&, TUniqueFunction<AWaterSurface::FWakeFrame ()>&)
+    2.29 MB  (com.benwmax.SailingSim) UE::Core::Private::Function::TFunctionRefCaller<AWaterSurface::UpdateWakeGrid(float)::$_0, AWaterSurface::FWakeFrame>::Call(void*)
+    2.27 MB  (com.apple.CoreFoundation) __NSArrayM_new
+    2.27 MB  (com.benwmax.SailingSim) TRHILambdaCommand<FRHIComputeCommandList, FRHIComputeCommandList::EndBreadcrumbGPU(FRHIBreadcrumbNode*, ERHIPipeline)::'lambda'(FRHICommandListBase&)>::ExecuteAndDestruct(FRHICommandListBase&)
+    2.27 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::RHIEndBreadcrumbGPU(FRHIBreadcrumbNode*)
+    2.12 MB  (com.benwmax.SailingSim) FWakeGrid::Follow(UE::Math::TVector2<double> const&)
+    2.03 MB  (com.benwmax.SailingSim) void UE::Core::Private::ReallocForCopy<3u, TSizedHeapAllocator<32, FMemory>::ForAnyElementType>(unsigned int, unsigned int, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()), decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()), TSizedHeapAllocator<32, FMemory>::ForAnyElementType&, decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity()), decltype(std::declval<TSizedHeapAllocator<32, FMemory>::ForAnyElementType&>().GetInitialCapacity())&)
+    1.92 MB  (com.benwmax.SailingSim) FMetalRHICommandContext::RHIBeginBreadcrumbGPU(FRHIBreadcrumbNode*)
+    1.92 MB  (com.benwmax.SailingSim) TRHILambdaCommand<FRHIComputeCommandList, FRHIComputeCommandList::BeginBreadcrumbGPU(FRHIBreadcrumbNode*, ERHIPipeline)::'lambda'(FRHICommandListBase&)>::ExecuteAndDestruct(FRHICommandListBase&)
+    1.88 MB  (com.benwmax.SailingSim) UE::Core::Private::Function::TFunctionRefCaller<FMetalRHIBuffer::UploadTransferBuffer(FRHICommandListBase&, TSharedPtr<FMetalBuffer, (ESPMode)1>&&, unsigned int)::$_0::operator()(FRHICommandListBase&)::'lambda'(FMetalRHICommandContext*), void, FMetalRHICommandContext*>::Call(void*, FMetalRHICommandContext*&)
