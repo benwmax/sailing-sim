@@ -134,8 +134,19 @@ namespace
 		return Tex;
 	}
 
+	/** Whether an upload can reach the texture. UpdateTextureRegions on a texture without a resource drops the update without
+	 *  calling its cleanup, so the caller's copy was never freed: every upload under -nullrhi, where FApp::CanEverRender is
+	 *  false and UpdateResource makes none (the automation runs). On the PC a full SailingSim.Visual run ran out of commit in
+	 *  SheetClearance (Nov 26): the editor grew 1.3 GB a boat on main and about twice that with bow wave 2, likely because
+	 *  the wake grid's faster FFT finished, and so uploaded, more of its 1-4 MB frames. */
+	bool CanUpload(const UTexture2D* Tex)
+	{
+		return Tex && Tex->GetResource();
+	}
+
 	void UploadFloats(UTexture2D* Tex, const TArray<float>& Values, int32 Width, int32 Height, int32 Channels)
 	{
+		if (!CanUpload(Tex)) return;
 		const int32 Bytes = Values.Num() * sizeof(float);
 		uint8* Copy = new uint8[Bytes];
 		FMemory::Memcpy(Copy, Values.GetData(), Bytes);
@@ -209,6 +220,12 @@ namespace
 	/** Enqueues the packed mips' upload (the render thread frees each block when done). */
 	void UploadPackedMips(UTexture2D* Tex, TArray<uint8*>& Mips, int32 Size)
 	{
+		if (!CanUpload(Tex))
+		{
+			for (uint8* Block : Mips) delete[] Block;
+			Mips.Reset();
+			return;
+		}
 		for (int32 Mip = 0, S = Size; Mip < Mips.Num(); ++Mip, S = FMath::Max(1, S / 2))
 		{
 			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, S, S);
@@ -223,6 +240,7 @@ namespace
 
 	void Upload(UTexture2D* Tex, const TArray<uint8>& Pixels, int32 Size)
 	{
+		if (!CanUpload(Tex)) return;
 		// Copy the pixels for the render thread; it frees them when the upload is done.
 		uint8* Copy = new uint8[Pixels.Num()];
 		FMemory::Memcpy(Copy, Pixels.GetData(), Pixels.Num());
@@ -244,6 +262,16 @@ namespace
 	int32 GPolarized = 0;
 	FAutoConsoleVariableRef CVarPolarized(TEXT("sailing.Polarized"), GPolarized,
 		TEXT("Polarized sunglasses on the water (1 on, 0 off): the sky's glare cut near Brewster's angle."));
+	// Bow wave 2 (docs/bow-wave/): the release switch. 0 here ships the bow as it was before it.
+	int32 GBowWave2 = 1;
+	FAutoConsoleVariableRef CVarBowWave2(TEXT("sailing.BowWave2"), GBowWave2,
+		TEXT("Bow wave 2 (1 on, 0 off): the bow's curl on the water as drawn, its spray from the curl's lip, foam where her bow wave presses on her side."));
+}
+
+bool AWaterSurface::BowWave2On()
+{
+	static SailingArgs::FCachedFlag ClassicBowWaveArg(TEXT("SailingClassicBowWave"));
+	return GBowWave2 != 0 && !ClassicBowWaveArg.Get();
 }
 
 AWaterSurface::AWaterSurface()
@@ -1358,6 +1386,23 @@ void AWaterSurface::UpdateHullClip()
 	}
 }
 
+float AWaterSurface::DrawnWakeHeightAt(double MapX, double MapY) const
+{
+	const TSharedPtr<const TArray<float>, ESPMode::ThreadSafe> Px = WakeFoamPixels;
+	const int32 N = WakeFoamN;
+	if (!Px.IsValid() || N < 2 || WakeFoamCell <= 0.f || Px->Num() < 4 * N * N) return 0.f;
+	// As M_WaterV4's V4_WPO samples it: rows north (X), columns east (Y), texel centres half a cell in.
+	const double Lx = (MapX - WakeFoamOrigin.X) / WakeFoamCell - 0.5, Ly = (MapY - WakeFoamOrigin.Y) / WakeFoamCell - 0.5;
+	if (Lx <= -0.5 || Ly <= -0.5 || Lx >= N - 0.5 || Ly >= N - 0.5) return 0.f;
+	const int32 R0 = FMath::Clamp(FMath::FloorToInt(Lx), 0, N - 1), C0 = FMath::Clamp(FMath::FloorToInt(Ly), 0, N - 1);
+	const int32 R1 = FMath::Min(R0 + 1, N - 1), C1 = FMath::Min(C0 + 1, N - 1);
+	const float Tx = float(FMath::Clamp(Lx - R0, 0.0, 1.0)), Ty = float(FMath::Clamp(Ly - C0, 0.0, 1.0));
+	const TArray<float>& P = *Px;
+	const float A = FMath::Lerp(P[4 * (R0 * N + C0)], P[4 * (R0 * N + C1)], Ty);
+	const float B = FMath::Lerp(P[4 * (R1 * N + C0)], P[4 * (R1 * N + C1)], Ty);
+	return FMath::Lerp(A, B, Tx);
+}
+
 void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 {
 	if (!Wake.IsValid() || !WakeGridMap || !WaterMaterial) return;
@@ -1435,6 +1480,7 @@ void AWaterSurface::UpdateWakeGrid(float DeltaSeconds)
 	for (int32 I = 0; I < Hulls.Num(); ++I) Hulls[I].Shape = &(*Shapes)[I];
 
 	FWakeGrid* Grid = &Wake;
+	Grid->bBowFoam = BowWave2On();
 	const FVector2D Centre = BoatPos;
 	const float Dt = WakeDtPending;
 	WakeDtPending = 0.f;
@@ -2006,12 +2052,26 @@ void AWaterSurface::UpdateSpray(float DeltaSeconds)
 		{
 			const float Rate = Dense * float(Speed - 2.0) * 14.f * Scale;
 			const int32 Peel = FMath::Min(int32(Rate * Dt + SprayRng.FRand()), FMath::RoundToInt(6.f * Dense));
+			// Bow wave 2 (docs/bow-wave/): the sheets peel from the curl's lip as the pawn drew it (where its crest stands, the
+			// formula's or the wake grid's, on the water as drawn), picked by the crest's share; without a curl (Low, far AI
+			// boats) from the deck edge on the bare waves, as before.
+			const TArray<FVector4>& BowLip = It->GetBowLip();
+			double LipSum = 0.0;
+			if (BowWave2On()) for (const FVector4& L : BowLip) LipSum += L.W;
 			for (int32 I = 0; I < Peel; ++I)
 			{
-				const float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
+				float S = SprayRng.FRand() < 0.5f ? -1.f : 1.f;
 				const double X = Hull.BowX * SprayRng.FRandRange(0.55f, 0.8f);
 				const Vec3 W = M.BodyToWorld(Vec3(X, Hull.CenterY + S * 0.9 * Hull.DeckHalfBeam(X), 0.0));
-				const FVector P(W.X, W.Y, Waves->Height(W.X, W.Y, T) + 0.02);
+				FVector P(W.X, W.Y, Waves->Height(W.X, W.Y, T) + 0.02);
+				if (LipSum > 0.05)
+				{
+					double Pick = double(SprayRng.FRand()) * LipSum;
+					int32 K = 0;
+					for (; K + 1 < BowLip.Num() && Pick > BowLip[K].W; ++K) Pick -= BowLip[K].W;
+					P = FVector(BowLip[K].X, BowLip[K].Y, BowLip[K].Z + 0.02);
+					S = FVector::DotProduct(FVector(P.X - Bow.X, P.Y - Bow.Y, 0.0), Side) < 0.0 ? -1.f : 1.f;
+				}
 				const FVector V = FVector(BowV.X, BowV.Y, 0.0) * 0.85f + Side * S * float(Speed) * SprayRng.FRandRange(0.15f, 0.3f)
 					+ FVector(0, 0, SprayRng.FRandRange(0.3f, 0.9f) * FMath::Sqrt(float(Speed) / 3.f));
 				Emit(P, V, SprayRng.FRandRange(0.15f, 0.35f) * Scale, ESprayKind::Sheet, SprayRng.FRandRange(0.25f, 0.45f));
@@ -2332,16 +2392,19 @@ void AWaterSurface::UpdateSeaMap()
 		{
 			SeaAtlas = MakeFloatMap(P->Width, P->Rows, PF_FloatRGBA, false);
 		}
-		const int32 Bytes = P->Pixels.Num() * int32(sizeof(FFloat16));
-		uint8* Copy = new uint8[Bytes];
-		FMemory::Memcpy(Copy, P->Pixels.GetData(), Bytes);
-		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, P->Width, P->Rows);
-		SeaAtlas->UpdateTextureRegions(0, 1, Region, P->Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Copy,
-			[](uint8* Data, const FUpdateTextureRegion2D* Rg)
-			{
-				delete[] Data;
-				delete Rg;
-			});
+		if (CanUpload(SeaAtlas))
+		{
+			const int32 Bytes = P->Pixels.Num() * int32(sizeof(FFloat16));
+			uint8* Copy = new uint8[Bytes];
+			FMemory::Memcpy(Copy, P->Pixels.GetData(), Bytes);
+			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, P->Width, P->Rows);
+			SeaAtlas->UpdateTextureRegions(0, 1, Region, P->Width * 4 * sizeof(FFloat16), 4 * sizeof(FFloat16), Copy,
+				[](uint8* Data, const FUpdateTextureRegion2D* Rg)
+				{
+					delete[] Data;
+					delete Rg;
+				});
+		}
 		WaterMaterial->SetTextureParameterValue(TEXT("SeaMap"), SeaAtlas);
 		WaterMaterial->SetVectorParameterValue(TEXT("SeaRect"), FLinearColor(float(P->OriginX), float(P->OriginY), float(P->Cell), float(P->Rows)));
 		WaterMaterial->SetVectorParameterValue(TEXT("SeaParams"), FLinearColor(float(P->Cols), float(P->Width), float(P->Rows), 1.f));

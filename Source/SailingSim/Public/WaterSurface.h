@@ -198,6 +198,15 @@ public:
 	/** Records the boat's stern/bow positions for wake foam (world meters), called by the boat each frame. */
 	void SetBoatForWake(const FVector2D& PositionM, float HeadingRad, float SpeedMs, float HeelRad);
 
+	/** Bow wave 2 (docs/bow-wave/): the height (m) the wake grid adds to the water at a map point, from the frame M_WaterV4
+	 *  draws (the last upload, sampled bilinearly at texel centres as the material does); 0 outside the grid or before its
+	 *  first frame. Lets the bow's curl and spray sit on the water as drawn, the solver's own bow wave included. */
+	float DrawnWakeHeightAt(double MapX, double MapY) const;
+	/** Bow wave 2's switch (docs/bow-wave/): the console's sailing.BowWave2 (default on, GBowWave2 in WaterSurface.cpp, the
+	 *  one line to turn it off for a release), off with -SailingClassicBowWave. Off, the curl, the bow spray and the wake
+	 *  grid's side foam are as before. */
+	static bool BowWave2On();
+
 	UPROPERTY(EditAnywhere, Category = "Water")
 	float FarPlaneSizeMeters = 40000.f;
 

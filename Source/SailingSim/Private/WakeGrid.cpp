@@ -55,7 +55,28 @@ namespace
 	void Fft2(TArray<std::complex<float>>& A, int32 N, float Sign)
 	{
 		WakeParallel(N, [&](int32 R) { Fft(A.GetData() + R * N, N, 1, Sign); });
-		WakeParallel(N, [&](int32 C) { Fft(A.GetData() + C, N, N, Sign); });
+		// The columns in blocks of 16, copied out to contiguous lines, transformed and copied back. Walked in place at a
+		// stride of N, every butterfly of every pass missed the cache (on Ultra's 512 grid the stride is 4 KB, so a column
+		// sits in one cache set): the PC's stutter trace (Nov 26) put the column pass at 27-32 ms of worker time a frame
+		// against 2 ms for the rows. The same arithmetic in the same order, so the result is bit-identical.
+		constexpr int32 kBlock = 16;
+		WakeParallel(FMath::DivideAndRoundUp(N, kBlock), [&](int32 B)
+		{
+			const int32 C0 = B * kBlock, Width = FMath::Min(kBlock, N - C0);
+			TArray<std::complex<float>> Lines;
+			Lines.SetNumUninitialized(Width * N);
+			for (int32 R = 0; R < N; ++R)
+			{
+				const std::complex<float>* Src = A.GetData() + R * N + C0;
+				for (int32 K = 0; K < Width; ++K) Lines[K * N + R] = Src[K];
+			}
+			for (int32 K = 0; K < Width; ++K) Fft(Lines.GetData() + K * N, N, 1, Sign);
+			for (int32 R = 0; R < N; ++R)
+			{
+				std::complex<float>* Dst = A.GetData() + R * N + C0;
+				for (int32 K = 0; K < Width; ++K) Dst[K] = Lines[K * N + R];
+			}
+		});
 	}
 }
 
@@ -65,7 +86,7 @@ void FWakeGrid::Init(int32 InN, float InCell)
 	N = InN;
 	Cell = InCell;
 	const int32 NN = N * N;
-	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir, &PrevStir, &NearStir, &StirMid, &PrevStirMid }) A->Init(0.f, NN);
+	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir, &PrevStir, &NearStir, &NearFroude, &StirMid, &PrevStirMid }) A->Init(0.f, NN);
 	Spectrum.SetNumZeroed(NN);
 	Omega.SetNumUninitialized(NN);
 	const float Dk = 2.f * UE_PI / (N * Cell);
@@ -164,13 +185,16 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 		for (int32 C = 0; C < N; ++C)
 		{
 			const FVector2D P = Corner + FVector2D((R + 0.5f) * Cell, (C + 0.5f) * Cell);
-			float D = 0.f, St = 0.f, Nr = 0.f, Mid = 0.f;
+			float D = 0.f, St = 0.f, Nr = 0.f, Mid = 0.f, Fr = 0.f;
 			for (const FHull& Hull : Hulls)
 			{
 				if (Hull.Shape && FVector2D::DistSquared(P, Hull.Position) < FMath::Square(float(Hull.Shape->BowX - Hull.Shape->SternX) + 2.f))
 				{
 					const float HullD = DisplacedDepth(Hull, P);
 					Nr = FMath::Max(Nr, FMath::Min(FMath::Abs(Hull.Speed) / 2.5f, 1.f));
+					// Bow wave 2 (docs/bow-wave/): her speed for her length (the waterline's, or 85% of her overall length).
+					const float Lwl = Hull.Shape->WaterlineHalfLength > 0.0 ? 2.f * float(Hull.Shape->WaterlineHalfLength) : 0.85f * float(Hull.Shape->BowX - Hull.Shape->SternX);
+					Fr = FMath::Max(Fr, FMath::Abs(Hull.Speed) / FMath::Sqrt(9.81f * FMath::Max(Lwl, 0.5f)));
 					D = FMath::Max(D, HullD);
 					// sailing-feedback #9: the lane she leaves goes with her speed (full from 2.5 m/s, about 5 kn), so a
 					// boat drifting or tied up leaves none.
@@ -186,6 +210,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			Depth[R * N + C] = D;
 			Stir[R * N + C] = St;
 			NearStir[R * N + C] = Nr;
+			NearFroude[R * N + C] = Fr;
 			StirMid[R * N + C] = Mid;
 		}
 	});
@@ -273,7 +298,20 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 			const float Kept = FMath::Clamp(Next, -0.6f, 0.6f);
 			const float Rate = FMath::Abs(Kept - Old) / Dt;
 			constexpr float kFoamRate = 0.25f, kFoamLife = 4.f;
-			const float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
+			float Churn = FMath::Max(0.f, Rate - kFoamRate) * 1.2f + (PrevDepth[I] > 0.04f && Depth[I] < 0.005f ? 4.f * PrevDepth[I] : 0.f);
+			// Bow wave 2 (docs/bow-wave/): her bow wave's crest standing against her side spills white once she is fast for her
+			// length: open water beside a cell under her, raised past 1.5 cm, from a length Froude number of 0.30 (a J/22 at
+			// about 4.5 kn) to full by 0.42 (6 kn, her hull speed). The grid's crest at her side is a few centimetres (4 cm at
+			// 6 kn on High: the curl, UpdateBowWave, draws the rest), so the rate is scaled to it: up to 0.85 foam on the crest
+			// beside her bow at 6 kn (0.1 at 5 kn), a narrow white band that she leaves along her track. M_WaterV4 draws wake
+			// foam only past about 0.4 (wakeBreak, over the bubbles' mean): the first rate (25, 0.28 at the most) showed
+			// nothing in the PC's bow stills (Nov 26).
+			if (bBowFoam && Depth[I] < 0.005f && NearFroude[I] > 0.3f && Kept > 0.015f)
+			{
+				const int32 Ru = FMath::Max(R - 1, 0), Rd = FMath::Min(R + 1, N - 1), Cl = FMath::Max(C - 1, 0), Cr = FMath::Min(C + 1, N - 1);
+				const float Beside = FMath::Max(FMath::Max(Depth[Ru * N + C], Depth[Rd * N + C]), FMath::Max(Depth[R * N + Cl], Depth[R * N + Cr]));
+				if (Beside > 0.02f) Churn += 75.f * (Kept - 0.015f) * FMath::SmoothStep(0.3f, 0.42f, NearFroude[I]);
+			}
 			float Foam = FMath::Clamp(FoamField[I] * FMath::Exp(-Dt / kFoamLife) + Churn * Dt * 2.f, 0.f, 1.f);
 			// sailing-feedback #9: the water a moving hull has just left (astern of her, never ahead) is stirred full of
 			// bubbles: a white, broken trail, thickest down her middle and thinning to nothing at her sides (StirMid, so the

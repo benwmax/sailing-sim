@@ -146,6 +146,78 @@ bool FWaterWakeGridTest::RunTest(const FString&)
 	return true;
 }
 
+/**
+ * Bow wave 2 (docs/bow-wave/): the crest her bow pushes up against her side grows with her speed, and once she is fast
+ * for her length (a length Froude number past 0.3, about 4.5 kn for a J/22) it spills white along her side. In light air
+ * the side stays clear; there is never foam ahead of her. The numbers are the solver's own (the curl, UpdateBowWave,
+ * draws the near-field crest above them): about 1 cm at 3 kn, 3 cm at 5 kn and 4 cm at 6 kn on the High grid, from
+ * the offline replica in docs/bow-wave/README.md; the bounds are loose around them.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterBowCrestTest, "SailingSim.Visual.BowCrest", WaterFlags)
+bool FWaterBowCrestTest::RunTest(const FString&)
+{
+	const FBoatConfig Config;
+	const FBoatModel Model(Config);
+	const FHullShape& Shape = Config.Hulls[0];
+	const double Canoe = Model.HullDepth();
+	// How deep her bottom is under a body-frame point (0 outside her), as the grid reads it.
+	auto Wet = [&](double X, double Y)
+	{
+		if (X < Shape.SternX || X > Shape.BowX || FMath::Abs(Y) > Shape.DeckHalfBeam(X)) return 0.0;
+		return FMath::Max(0.0, -Shape.BottomZ(X, Y, Canoe));
+	};
+	struct FResult { float Crest = 0.f, Foam = 0.f, FoamAhead = -1.f; };
+	auto SailAt = [&](float Speed)
+	{
+		FWakeGrid Grid;
+		Grid.Init(256, 0.25f);
+		FWakeGrid::FHull Hull;
+		Hull.Shape = &Shape;
+		Hull.CanoeDepth = float(Canoe);
+		Hull.Speed = Speed;
+		Hull.Position = FVector2D(0.0, 0.0);
+		TArray<FWakeGrid::FHull> Hulls = { Hull };
+		const float Dt = 1.f / 60.f;
+		for (int32 I = 0; I < 12 * 60; ++I)
+		{
+			Hulls[0].Position.X += Speed * Dt;
+			Grid.Follow(Hulls[0].Position);
+			Grid.Step(Dt, Hulls);
+		}
+		const int32 N = Grid.Size();
+		const double Cell = Grid.CellSize();
+		const TArray<float>& H = Grid.Heights();
+		const TArray<float>& Fm = Grid.Foam();
+		FResult Out;
+		// Her side over the forward half: open water with a cell of her (over 2 cm deep) beside it.
+		for (int32 R = 1; R < N - 1; ++R)
+		{
+			for (int32 C = 1; C < N - 1; ++C)
+			{
+				const FVector2D P = Grid.Origin() + FVector2D((R + 0.5) * Cell, (C + 0.5) * Cell) - Hulls[0].Position;
+				if (P.X < Shape.BowX - 3.5 || P.X > Shape.BowX + 0.25 || Wet(P.X, P.Y) >= 0.005) continue;
+				const double Beside = FMath::Max(FMath::Max(Wet(P.X - Cell, P.Y), Wet(P.X + Cell, P.Y)), FMath::Max(Wet(P.X, P.Y - Cell), Wet(P.X, P.Y + Cell)));
+				if (Beside <= 0.02) continue;
+				Out.Crest = FMath::Max(Out.Crest, H[R * N + C]);
+				Out.Foam = FMath::Max(Out.Foam, Fm[R * N + C]);
+			}
+		}
+		const FVector2D L = (Hulls[0].Position + FVector2D(Shape.BowX + 6.0, 0.0) - Grid.Origin()) / Cell;
+		const int32 Ra = FMath::FloorToInt(L.X), Ca = FMath::FloorToInt(L.Y);
+		if (Ra >= 0 && Ca >= 0 && Ra < N && Ca < N) Out.FoamAhead = Fm[Ra * N + Ca];
+		AddInfo(FString::Printf(TEXT("%.1f kn: crest at her bow's side %.3f m, foam there %.2f, foam 6 m ahead %.2f"), Speed / 0.5144f, Out.Crest, Out.Foam, Out.FoamAhead));
+		return Out;
+	};
+	const FResult Slow = SailAt(1.54f), Mid = SailAt(2.57f), Fast = SailAt(3.09f);
+	TestTrue(TEXT("Her bow wave's crest grows with her speed"), Mid.Crest > Slow.Crest && Fast.Crest > 2.f * Slow.Crest);
+	TestTrue(TEXT("At 6 kn the crest at her side is a few centimetres"), Fast.Crest > 0.02f && Fast.Crest < 0.25f);
+	// Enough to be drawn: M_WaterV4 shows wake foam from about 0.4 (offline 0.85; the first rate's 0.28 didn't show).
+	TestTrue(TEXT("At 6 kn it breaks white along her side"), Fast.Foam > 0.5f);
+	TestTrue(TEXT("At 3 kn her side stays mostly clear"), Slow.Foam < 0.5f * Fast.Foam);
+	TestTrue(TEXT("No foam ahead of her"), Fast.FoamAhead >= 0.f && Fast.FoamAhead < 0.05f);
+	return true;
+}
+
 namespace
 {
 	/**

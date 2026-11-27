@@ -36,6 +36,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "ProceduralMeshComponent.h"
+#include "WaterSurface.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Engine/Engine.h"
@@ -1877,9 +1878,18 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	// Spray hull (docs/spray-hull): the bow wave's curl. Past 1.5 m/s a sheet of water piles against each side of the bow and
 	// falls away outward and aft along the Kelvin wedge (19.5 degrees): highest a little aft of the stem, about a third of
 	// the speed head (V^2 / 2g), scaled with the hull, a lip that thickens at speed. Built every frame in world space on the
-	// waves' surface (the boat heels and pitches through it), as a strip per side: 10 stations along the bow by 6 across.
+	// waves' surface (the boat heels and pitches through it), as a strip per side: 20 stations along the bow by 8 across
+	// (bow wave 2: 10 by 6 drew the lip in visible facets close up).
 	// Not on Low; AI boats only within 120 m of the camera. M_BowWave: translucent water, its foam lip. -SailingNoBowWave.
-	constexpr int32 NS = 10, NU = 6;
+	// Bow wave 2 (docs/bow-wave/): the sheet sits on the water as M_WaterV4 draws it, the wake grid's own waves included
+	// (AWaterSurface::DrawnWakeHeightAt), so its outer edge meets the water instead of sinking under the grid's crest or
+	// standing off its trough. At her side its top is the higher of the formula's crest and the grid's: the grid gets the
+	// far wake right but its crest at her side is small (4 cm at 6 kn for the J/22, about 8% of the speed head, peaking
+	// 2-2.7 m aft of the stem; docs/bow-wave/), so near the stem the formula leads and further aft the grid's crest carries
+	// the lip. Its lip (BowLip) is where UpdateSpray peels the bow's sheets. Off (AWaterSurface::BowWave2On: sailing.BowWave2
+	// 0 or -SailingClassicBowWave): the sheet as before, 10 by 6 on the bare waves.
+	const bool bClassic = !AWaterSurface::BowWave2On();
+	const int32 NS = bClassic ? 10 : 20, NU = bClassic ? 6 : 8;
 	static SailingArgs::FCachedFlag NoBowWaveArg(TEXT("SailingNoBowWave"));
 	const ASailingGameMode* GM = GetWorld()->GetAuthGameMode<ASailingGameMode>();
 	const FBoatTelemetry& T = Boat.GetTelemetry();
@@ -1894,6 +1904,7 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	if (!bShow)
 	{
 		if (BowWave) BowWave->SetVisibility(false);
+		BowLip.Reset();
 		return;
 	}
 	if (!BowWave)
@@ -1927,6 +1938,9 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 	TArray<FLinearColor> Col;
 	TArray<int32> Tris;
 	V.Reserve(2 * NS * NU); UV.Reserve(2 * NS * NU); Col.Reserve(2 * NS * NU);
+	const AWaterSurface* Drawn = bClassic ? nullptr : Water.Get();
+	auto WakeAt = [Drawn](double X, double Y) { return Drawn ? double(Drawn->DrawnWakeHeightAt(X, Y)) : 0.0; };
+	BowLip.Reset();
 	// From where the bow meets the water (BowX is the stem's top: raked bows overhang it; the spray peels from 0.55-0.8 of it).
 	const double X0 = Hull.BowX * 0.8, X1 = Hull.BowX * 0.45;
 	for (int32 Side = 0; Side < 2; ++Side)
@@ -1971,6 +1985,11 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 			const Vec3 Off = DrawnBodyToWorld(Vec3(X, YHull + S, Zb));
 			FVector2D Out(Off.X - Root.X, Off.Y - Root.Y);
 			Out = Out.GetSafeNormal();
+			// Bow wave 2: the grid's crest beside her here, read 15 and 30 cm out (the cells under her are pressed down), and
+			// what the sheet adds over the drawn water to reach the higher crest. Classic: the formula over the bare waves.
+			const float Grid = Drawn ? float(FMath::Max(WakeAt(Root.X + Out.X * 0.15, Root.Y + Out.Y * 0.15), WakeAt(Root.X + Out.X * 0.3, Root.Y + Out.Y * 0.3))) : 0.f;
+			const float Crest = bClassic ? H : FMath::Max(H, Grid * Fade);
+			const float Extra = bClassic ? H : FMath::Max(Crest - Grid, 0.f);
 			const double Width = 0.12 * Scale + 0.36 * Aft;                    // out to the Kelvin wedge
 			for (int32 J = 0; J < NU; ++J)
 			{
@@ -1980,17 +1999,22 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 				const float Profile = FMath::Pow(1.f - U, 1.3f) + Lip * 0.35f * FMath::Sin(PI * FMath::Min(U / 0.45f, 1.f)) * (1.f - U);
 				const double Reach = 0.04 + U * Width + 0.04 * Lip * FMath::Sin(PI * U);
 				const double WX = Root.X + Out.X * Reach, WY = Root.Y + Out.Y * Reach;
-				const double Sea = Waves.Height(WX, WY, Time);
+				const double Sea = Waves.Height(WX, WY, Time) + WakeAt(WX, WY);
+				const double Top = Sea + double(Extra * Profile) + 0.01;
 				FVector P = SailingFrame::ToWorld(GetWorld(), WX, WY, 0.0);
-				P.Z = WaterSurfaceZ + (Sea + double(H * Profile) + 0.01) * CmPerMeter;
+				P.Z = WaterSurfaceZ + Top * CmPerMeter;
 				V.Add(P);
 				UV.Add(FVector2D(U, Tt));
 				// Fades: in from the stem, out aft, into the sea at the outer edge (the material) and softly at the root.
 				const float Ends = FMath::SmoothStep(0.f, 0.18f, Tt) * (1.f - Tt * Tt);
+				// Bow wave 2: the crest is where the sheet stands highest at her side, the formula's or the grid's (classic: the
+				// formula's rise alone).
+				const float CrestW = bClassic ? Rise : FMath::Clamp(Crest / FMath::Max(Head, 0.02f), 0.f, 1.f);
+				if (J == 1) BowLip.Add(FVector4(WX, WY, Top, double(CrestW * Fade * Ends * FMath::SmoothStep(0.1f, 0.35f, Tt))));
 				// bowwave-stem: M_BowWave's crest is a band across the sheet's width (in u), so over the first stations, where
 				// the sheet is only 15-30 cm wide, it whitened the whole of it: a flat white blob at the stem in a chop. The crest
 				// (G) builds in over the first third, where the sheet has widened (the curl tops over a little aft of the stem).
-				Col.Add(FLinearColor(Lip, Rise * FMath::SmoothStep(0.1f, 0.35f, Tt), Fine, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
+				Col.Add(FLinearColor(Lip, CrestW * FMath::SmoothStep(0.1f, 0.35f, Tt), Fine, Fade * Ends * FMath::SmoothStep(0.f, 0.2f, U + 0.05f)));
 			}
 		}
 		for (int32 I = 0; I + 1 < NS; ++I)
@@ -2024,7 +2048,9 @@ void ASailboatPawn::UpdateBowWave(float DeltaSeconds)
 			}
 		}
 	}
-	if (BowWave->GetNumSections() == 0)
+	// (Created again when sailing.BowWave2 is switched: the two sheets have different vertex counts.)
+	const FProcMeshSection* Section = BowWave->GetNumSections() > 0 ? BowWave->GetProcMeshSection(0) : nullptr;
+	if (!Section || Section->ProcVertexBuffer.Num() != V.Num())
 	{
 		BowWave->CreateMeshSection_LinearColor(0, V, Tris, N, UV, Col, Tan, false);
 	}

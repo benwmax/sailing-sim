@@ -1565,11 +1565,16 @@ void ASailingEnvironment::UpdateCloudLayers(const FVector& CameraPos)
 		struct { double X0, Y0; } Frame = { LastWeatherMap.OriginX(), LastWeatherMap.OriginY() };
 		TRACE_CPUPROFILER_EVENT_SCOPE(Sailing_WeatherMapUpload);
 		// The worker's half images go to the render thread as they are (each owned by its upload's callback), not copied.
-		TArray<FFloat16>* Half = new TArray<FFloat16>(MoveTemp(Done.Half));
-		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
-		WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 8, 8, reinterpret_cast<uint8*>(Half->GetData()),
-			[Half](uint8*, const FUpdateTextureRegion2D* R) { delete Half; delete R; });
-		if (CumulusTopTexture && Done.TopHalf.Num() == FWeatherMap::N * FWeatherMap::N)
+		// Only to a texture with a resource: without one (-nullrhi) UpdateTextureRegions drops the update and never calls
+		// the callback, so the image leaked (AWaterSurface's CanUpload).
+		if (WeatherMapTexture && WeatherMapTexture->GetResource())
+		{
+			TArray<FFloat16>* Half = new TArray<FFloat16>(MoveTemp(Done.Half));
+			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
+			WeatherMapTexture->UpdateTextureRegions(0, 1, Region, FWeatherMap::N * 8, 8, reinterpret_cast<uint8*>(Half->GetData()),
+				[Half](uint8*, const FUpdateTextureRegion2D* R) { delete Half; delete R; });
+		}
+		if (CumulusTopTexture && CumulusTopTexture->GetResource() && Done.TopHalf.Num() == FWeatherMap::N * FWeatherMap::N)
 		{
 			TArray<FFloat16>* TopHalf = new TArray<FFloat16>(MoveTemp(Done.TopHalf));
 			FUpdateTextureRegion2D* TopRegion = new FUpdateTextureRegion2D(0, 0, 0, 0, FWeatherMap::N, FWeatherMap::N);
@@ -2011,19 +2016,22 @@ void ASailingEnvironment::UpdateSkyline(const FVector& CameraPos)
 	{
 		bSkylinePending = false;
 		const TArray<float> Result = PendingSkyline.Get();
-		TArray<FFloat16Color>* Pixels = new TArray<FFloat16Color>();
-		Pixels->SetNum(kAzimuths);
-		for (int32 K = 0; K < kAzimuths; ++K)
+		if (SkylineTex && SkylineTex->GetResource()) // no renderer (-nullrhi): the upload would drop the pixels unfreed
 		{
-			FFloat16Color& P = (*Pixels)[K];
-			P.R = FFloat16(Result[K]);                       // elevation angle, rad
-			P.G = FFloat16(Result[kAzimuths + K] / 1000.f);  // distance, km
-			P.B = FFloat16(0.f);
-			P.A = FFloat16(1.f);
+			TArray<FFloat16Color>* Pixels = new TArray<FFloat16Color>();
+			Pixels->SetNum(kAzimuths);
+			for (int32 K = 0; K < kAzimuths; ++K)
+			{
+				FFloat16Color& P = (*Pixels)[K];
+				P.R = FFloat16(Result[K]);                       // elevation angle, rad
+				P.G = FFloat16(Result[kAzimuths + K] / 1000.f);  // distance, km
+				P.B = FFloat16(0.f);
+				P.A = FFloat16(1.f);
+			}
+			FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, kAzimuths, 1);
+			SkylineTex->UpdateTextureRegions(0, 1, Region, kAzimuths * sizeof(FFloat16Color), sizeof(FFloat16Color), reinterpret_cast<uint8*>(Pixels->GetData()),
+				[Pixels](uint8*, const FUpdateTextureRegion2D* Rg) { delete Pixels; delete Rg; });
 		}
-		FUpdateTextureRegion2D* Region = new FUpdateTextureRegion2D(0, 0, 0, 0, kAzimuths, 1);
-		SkylineTex->UpdateTextureRegions(0, 1, Region, kAzimuths * sizeof(FFloat16Color), sizeof(FFloat16Color), reinterpret_cast<uint8*>(Pixels->GetData()),
-			[Pixels](uint8*, const FUpdateTextureRegion2D* Rg) { delete Pixels; delete Rg; });
 	}
 	// Re-marched every 500 m (the parallax of a summit 45 km off is under a pixel per 500 m).
 	if (bSkylinePending || FVector::Dist2D(CameraPos, SkylineAt) < 50000.0) return;
