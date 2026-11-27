@@ -1,0 +1,20 @@
+#847 head aaacbcd8 17:42:04
+build ok, warnings: 2
+SailingSim: 483 passed, 0 failed, 483 total
+SailingSim.Smoke: 38 passed, 0 failed, 38 total
+lake log 'cannot attach' warnings: 0, of them edge/shore: 0
+world gate exit 0 19:04:10
+view           tier       fps  p99 ms  gpu ms  gate
+marina         High      54.5   19.04   17.29  ok
+coast-day      High      52.5   19.87   18.38  ok
+coast-night    High      57.4   18.27   16.21  ok
+helm-eye       High      55.4   19.22   17.13  ok
+slip           High      46.9   22.49   20.91  ok
+bridge         High      59.9   17.65   16.01  ok
+marina-night   High      55.5   18.76   17.18  ok
+far-coast      High      63.3   16.46   14.62  ok
+far-coast-night High      79.7   13.04   11.62  ok
+marseille-port High      52.6    20.9   17.63  ok
+stream-run     High      51.3   20.63   18.32  ok
+gate: pass
+[gate 1426 s] gate passed
