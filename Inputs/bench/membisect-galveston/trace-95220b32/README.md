@@ -20,7 +20,7 @@ level, one row about every second, MB), `tide-steps.txt` (the game log's tide st
 - **The earlier tide step** (-12 cm at 13:19:10) made the same burst (rows 436 to 440: +205, -152, +79, -79), with no
   net growth that time.
 
-**The same thing across the stationary run** (`../still-95220b32/`, launched 11:52:34 local, tide steps in its log):
+**The same thing across the stationary run** (`../still-95220b32/`, launched 05:52:34 local, tide steps in its log):
 
 | Tide step (local) | Minute from launch | Private-bytes step |
 |---|---|---|
