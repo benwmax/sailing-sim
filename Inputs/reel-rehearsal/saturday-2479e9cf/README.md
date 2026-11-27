@@ -1,7 +1,7 @@
 # Saturday capture on Windows-2479e9cf (the freeze's Development package), 4K, PC, Nov 27 2026
 
 `reel-saturday.ps1 -Package Windows-2479e9cf` (film mode, 3840x2160 Ultra, crew off), 22 takes, 12:23 to 15:53 local. Frames
-stay on the PC at `D:\deveel\saturday-Windows-2479e9cf\<take>ec` (73 GB; nothing deleted). Here: each take's first,
+stay on the PC at `D:\dev\reel\saturday-Windows-2479e9cf\<take>\rec` (73 GB; nothing deleted). Here: each take's first,
 middle and last frames, 1280 wide, WebP quality 80 (`<take>-first|mid|last.webp`; the two single-frame stills are `-only`).
 
 | Take | frames | warning and error lines in its log |
@@ -35,6 +35,8 @@ middle and last frames, 1280 wide, WebP quality 80 (`<take>-first|mid|last.webp`
 - The audio-sample lookups (`/Game/Audio/Samples/S_*`), which aren't in the project; those sounds are synthesized.
 - Two handled ensures at frame 0 (`LogOutputDevice: Error` lines with their callstacks), including
   `!IsComponentPSOPrecachingEnabled() || bPSOPrecacheCalled` (`PSOPrecache.cpp`, from `UGroomComponent::CreateSceneProxy`),
-  as in every package.
+  as in every package; and `OriginX <= OriginMax ...` (`DoubleFloat.cpp` line 19, from
+  `FDFMatrix::MakeToRelativeWorldMatrix` in the distance-field visualisation pass), the distance-field transform
+  precision ensure CLAUDE.md notes for uncooked runs.
 - No take stopped, timed out or came up short of its frame count. R08b's seeded logbook is kept on the PC and the
   package's own was restored. Bean's Saved was restored (7B5CA7BE).
