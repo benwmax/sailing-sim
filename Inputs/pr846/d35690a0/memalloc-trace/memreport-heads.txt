@@ -1,0 +1,10 @@
+== Pid27368_Lake-Windows-27-17.34.16.memreport
+Process Physical Memory: 4249.44 MB used, 5535.89 MB peak
+Process Virtual Memory: 15711.74 MB used, 17470.93 MB peak
+Physical Memory: 18819.64 MB used,  46653.59 MB free, 65473.23 MB total
+Total allocated from OS: 1993.585327mb
+== Pid27368_Lake-Windows-27-17.42.18.memreport
+Process Physical Memory: 4468.07 MB used, 5535.89 MB peak
+Process Virtual Memory: 17513.62 MB used, 17642.87 MB peak
+Physical Memory: 19073.04 MB used,  46400.19 MB free, 65473.23 MB total
+Total allocated from OS: 1949.913452mb

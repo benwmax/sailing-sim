@@ -1,0 +1,162 @@
+==== rhi.DumpMemory at 120 s ====
+RHI resource memory (not tracked by our allocator)
+        35.205MB  -  Bindless Resource Heap - STAT_BindlessResourceHeapMemory - STATGROUP_RHI - STATCAT_Advanced
+         1.441MB  -  Bindless Sampler Heap - STAT_BindlessSamplerHeapMemory - STATGROUP_RHI - STATCAT_Advanced
+      1024.000MB  -  Reserved Texture Memory (Committed) - STAT_ReservedCommittedTextureMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.000MB  -  Reserved Texture Memory (Uncommitted) - STAT_ReservedUncommittedTextureMemory - STATGROUP_RHI - STATCAT_Advanced
+       658.812MB  -  Reserved Buffer Memory (Committed) - STAT_ReservedCommittedBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+      9581.188MB  -  Reserved Buffer Memory (Uncommitted) - STAT_ReservedUncommittedBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.000MB  -  Misc Buffer Memory - STAT_MiscBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.000MB  -  Draw Indirect Buffer Memory - STAT_DrawIndirectBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        42.858MB  -  Byte Address Buffer Memory - STAT_ByteAddressBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        51.350MB  -  Structured Buffer Memory - STAT_StructuredBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        87.341MB  -  RayTracing Acceleration Structure Memory - STAT_RTAccelerationStructureMemory - STATGROUP_RHI - STATCAT_Advanced
+       273.136MB  -  Vertex Buffer Memory - STAT_VertexBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        26.332MB  -  Index Buffer Memory - STAT_IndexBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         1.008MB  -  Uniform Buffer Memory - STAT_UniformBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.016MB  -  Texture Cube Memory - STAT_TextureMemoryCube - STATGROUP_RHI - STATCAT_Advanced
+        20.836MB  -  Texture 3D Memory - STAT_TextureMemory3D - STATGROUP_RHI - STATCAT_Advanced
+       447.352MB  -  Texture 2D Memory - STAT_TextureMemory2D - STATGROUP_RHI - STATCAT_Advanced
+      3953.230MB  -  UAV Texture Memory - STAT_UAVTextureMemory - STATGROUP_RHI - STATCAT_Advanced
+         1.688MB  -  Render Target Cube Memory - STAT_RenderTargetMemoryCube - STATGROUP_RHI - STATCAT_Advanced
+         0.062MB  -  Render Target 3D Memory - STAT_RenderTargetMemory3D - STATGROUP_RHI - STATCAT_Advanced
+      1029.125MB  -  Render Target 2D Memory - STAT_RenderTargetMemory2D - STATGROUP_RHI - STATCAT_Advanced
+17234.980MB total
+==== rhi.DumpResourceMemory at 120 s (the command lists the top 50 only) ====
+RHIResources: Tracked RHIResources (13707 total with info, 39313 total tracked)
+RHIResources: Showing 50 of 12838 matched resources
+RHIResources: Name: Shadow.Virtual.PhysicalPagePool - Type: Texture - Size: 1024.000000000 MB - Flags: Resident | UAV | Reserved - Owner: None
+RHIResources: Name: TSR.History.Color - Type: Texture - Size: 1020.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VolumetricFog.LightScattering - Type: Texture - Size: 600.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VolumetricFog.LightScattering - Type: Texture - Size: 600.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Nanite.StreamingManager.ClusterPageData - Type: Buffer - Size: 592.000000000 MB - Flags: Resident | UAV | Reserved - Owner: None
+RHIResources: Name: Shadow.Virtual.HZBPhysicalPagePool - Type: Texture - Size: 170.687500000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TSR.History.Guide - Type: Texture - Size: 127.500000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TSR.History.Metadata - Type: Texture - Size: 127.500000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.RadianceCache.FinalRadianceAtlas - Type: Texture - Size: 72.250000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VirtualTexture_Physical - Type: Texture - Size: 65.062500000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.Radiosity.SceneIndirectLighting - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: TextureRenderTarget2D_2147480933 - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: Lumen.SceneDirectLighting - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: GPUScene.InstanceSceneData - Type: Buffer - Size: 64.000000000 MB - Flags: Resident | UAV | Reserved - Owner: None
+RHIResources: Name: Lumen.RadianceCache.RadianceProbeAtlasTextureSource - Type: Texture - Size: 64.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.Radiosity.TraceRadianceAtlas - Type: Texture - Size: 64.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TextureRenderTarget2D_2147480934 - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: Lumen.SceneFinalLighting - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.Reflections.FrontLayer.SpecularAndSecondMoment - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: FrontLayerTranslucency.SceneDepth - Type: Texture - Size: 63.750000000 MB - Flags: Resident | DS - Owner: None
+RHIResources: Name: FrontLayerTranslucency.GBufferA - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: VirtualTexture_Physical - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: SceneColor - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.Reflections.SpecularAndSecondMoment - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: FrontLayerTranslucency.SceneDepth - Type: Texture - Size: 63.750000000 MB - Flags: Resident | DS - Owner: None
+RHIResources: Name: Subsurface.QualityHistoryState - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.Reflections.FrontLayer.SpecularAndSecondMoment - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VirtualTexture_Physical - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: SLW.DepthPrepassOutput - Type: Texture - Size: 63.750000000 MB - Flags: Resident | DS - Owner: None
+RHIResources: Name: SceneColor - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: FinalizeMips - Type: Texture - Size: 53.375000000 MB - Flags: Resident | Streaming - Owner: /Game/Crew/MetaHumans/Common/Lookdev_UHM/Skin/Textures/Skin_Animated/T_head_wm_msk_Array.T_head_wm_msk_Array
+RHIResources: Name: TSR.Output - Type: Texture - Size: 40.312500000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.RadianceCache.DepthProbeAtlasTexture - Type: Texture - Size: 32.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.SceneDepth - Type: Texture - Size: 32.000000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: TA_Ground_Normal - Type: Texture - Size: 32.000000000 MB - Flags: Resident - Owner: /Game/Materials/Ground/TA_Ground_Normal.TA_Ground_Normal
+RHIResources: Name: StochasticLighting.DepthHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.BackfaceDiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: BackBuffer2 - Type: Texture - Size: 31.875000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.BackfaceDiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: StochasticLighting.DepthHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.DiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.RoughSpecularIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: StochasticLighting.NormalAndShadingInfoHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TSR.History.Moire - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.DiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: BackBuffer1 - Type: Texture - Size: 31.875000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: BackBuffer0 - Type: Texture - Size: 31.875000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.ShortRangeAO - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: StochasticLighting.NormalAndShadingInfoHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.ShortRangeAO - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Shown 50 entries. Size: 6343.81/7627.88 MB (83.17% of total non-transient)
+RHIResources: Total tracked resource size: 20789.469055176 MB
+RHIResources:     Non-Transient: 7627.875503540 MB
+RHIResources:     Transient: 13161.593551636 MB
+==== rhi.DumpMemory at 600 s ====
+RHI resource memory (not tracked by our allocator)
+        35.205MB  -  Bindless Resource Heap - STAT_BindlessResourceHeapMemory - STATGROUP_RHI - STATCAT_Advanced
+         1.441MB  -  Bindless Sampler Heap - STAT_BindlessSamplerHeapMemory - STATGROUP_RHI - STATCAT_Advanced
+      1024.000MB  -  Reserved Texture Memory (Committed) - STAT_ReservedCommittedTextureMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.000MB  -  Reserved Texture Memory (Uncommitted) - STAT_ReservedUncommittedTextureMemory - STATGROUP_RHI - STATCAT_Advanced
+       674.812MB  -  Reserved Buffer Memory (Committed) - STAT_ReservedCommittedBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+      9565.188MB  -  Reserved Buffer Memory (Uncommitted) - STAT_ReservedUncommittedBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.000MB  -  Misc Buffer Memory - STAT_MiscBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.000MB  -  Draw Indirect Buffer Memory - STAT_DrawIndirectBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        42.983MB  -  Byte Address Buffer Memory - STAT_ByteAddressBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        51.300MB  -  Structured Buffer Memory - STAT_StructuredBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        85.809MB  -  RayTracing Acceleration Structure Memory - STAT_RTAccelerationStructureMemory - STATGROUP_RHI - STATCAT_Advanced
+       272.952MB  -  Vertex Buffer Memory - STAT_VertexBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+        26.154MB  -  Index Buffer Memory - STAT_IndexBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.897MB  -  Uniform Buffer Memory - STAT_UniformBufferMemory - STATGROUP_RHI - STATCAT_Advanced
+         0.016MB  -  Texture Cube Memory - STAT_TextureMemoryCube - STATGROUP_RHI - STATCAT_Advanced
+        20.836MB  -  Texture 3D Memory - STAT_TextureMemory3D - STATGROUP_RHI - STATCAT_Advanced
+       461.352MB  -  Texture 2D Memory - STAT_TextureMemory2D - STATGROUP_RHI - STATCAT_Advanced
+      3953.230MB  -  UAV Texture Memory - STAT_UAVTextureMemory - STATGROUP_RHI - STATCAT_Advanced
+         1.688MB  -  Render Target Cube Memory - STAT_RenderTargetMemoryCube - STATGROUP_RHI - STATCAT_Advanced
+         0.062MB  -  Render Target 3D Memory - STAT_RenderTargetMemory3D - STATGROUP_RHI - STATCAT_Advanced
+      1029.125MB  -  Render Target 2D Memory - STAT_RenderTargetMemory2D - STATGROUP_RHI - STATCAT_Advanced
+17247.051MB total
+==== rhi.DumpResourceMemory at 600 s (the command lists the top 50 only) ====
+RHIResources: Tracked RHIResources (13716 total with info, 39341 total tracked)
+RHIResources: Showing 50 of 12846 matched resources
+RHIResources: Name: Shadow.Virtual.PhysicalPagePool - Type: Texture - Size: 1024.000000000 MB - Flags: Resident | UAV | Reserved - Owner: None
+RHIResources: Name: TSR.History.Color - Type: Texture - Size: 1020.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VolumetricFog.LightScattering - Type: Texture - Size: 600.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VolumetricFog.LightScattering - Type: Texture - Size: 600.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Nanite.StreamingManager.ClusterPageData - Type: Buffer - Size: 592.000000000 MB - Flags: Resident | UAV | Reserved - Owner: None
+RHIResources: Name: Shadow.Virtual.HZBPhysicalPagePool - Type: Texture - Size: 170.687500000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TSR.History.Guide - Type: Texture - Size: 127.500000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TSR.History.Metadata - Type: Texture - Size: 127.500000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.RadianceCache.FinalRadianceAtlas - Type: Texture - Size: 72.250000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VirtualTexture_Physical - Type: Texture - Size: 65.062500000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: GPUScene.InstanceSceneData - Type: Buffer - Size: 64.000000000 MB - Flags: Resident | UAV | Reserved - Owner: None
+RHIResources: Name: Lumen.Radiosity.SceneIndirectLighting - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.SceneFinalLighting - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.SceneDirectLighting - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.RadianceCache.RadianceProbeAtlasTextureSource - Type: Texture - Size: 64.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TextureRenderTarget2D_2147480934 - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: TextureRenderTarget2D_2147480933 - Type: Texture - Size: 64.000000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: Lumen.Radiosity.TraceRadianceAtlas - Type: Texture - Size: 64.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.Reflections.SpecularAndSecondMoment - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: SceneColor - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: FrontLayerTranslucency.SceneDepth - Type: Texture - Size: 63.750000000 MB - Flags: Resident | DS - Owner: None
+RHIResources: Name: Lumen.Reflections.FrontLayer.SpecularAndSecondMoment - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: SLW.DepthPrepassOutput - Type: Texture - Size: 63.750000000 MB - Flags: Resident | DS - Owner: None
+RHIResources: Name: VirtualTexture_Physical - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: VirtualTexture_Physical - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: FrontLayerTranslucency.SceneDepth - Type: Texture - Size: 63.750000000 MB - Flags: Resident | DS - Owner: None
+RHIResources: Name: FrontLayerTranslucency.GBufferA - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: SceneColor - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Subsurface.QualityHistoryState - Type: Texture - Size: 63.750000000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.Reflections.FrontLayer.SpecularAndSecondMoment - Type: Texture - Size: 63.750000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: FinalizeMips - Type: Texture - Size: 53.375000000 MB - Flags: Resident | Streaming - Owner: /Game/Crew/MetaHumans/Common/Lookdev_UHM/Skin/Textures/Skin_Animated/T_head_wm_msk_Array.T_head_wm_msk_Array
+RHIResources: Name: TSR.Output - Type: Texture - Size: 40.312500000 MB - Flags: Resident | RT | UAV - Owner: None
+RHIResources: Name: Lumen.RadianceCache.DepthProbeAtlasTexture - Type: Texture - Size: 32.000000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.SceneDepth - Type: Texture - Size: 32.000000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: TA_Ground_Normal - Type: Texture - Size: 32.000000000 MB - Flags: Resident - Owner: /Game/Materials/Ground/TA_Ground_Normal.TA_Ground_Normal
+RHIResources: Name: StochasticLighting.NormalAndShadingInfoHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.RoughSpecularIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.BackfaceDiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: StochasticLighting.DepthHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: StochasticLighting.NormalAndShadingInfoHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.ShortRangeAO - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.RoughSpecularIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.ShortRangeAO - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.DiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.BackfaceDiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: Lumen.ScreenProbeGather.DiffuseIndirect - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: BackBuffer2 - Type: Texture - Size: 31.875000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: BackBuffer1 - Type: Texture - Size: 31.875000000 MB - Flags: Resident | RT - Owner: None
+RHIResources: Name: StochasticLighting.DepthHistory - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Name: TSR.History.Moire - Type: Texture - Size: 31.875000000 MB - Flags: Resident | UAV - Owner: None
+RHIResources: Shown 50 entries. Size: 6343.81/7640.54 MB (83.03% of total non-transient)
+RHIResources: Total tracked resource size: 20795.284133911 MB
+RHIResources:     Non-Transient: 7640.541732788 MB
+RHIResources:     Transient: 13154.742401123 MB
