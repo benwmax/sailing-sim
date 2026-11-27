@@ -26,6 +26,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "EngineUtils.h"
+#include "UObject/UObjectArray.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -1500,9 +1501,26 @@ void ASailingGameMode::Tick(float DeltaSeconds)
 		if (const APawn* Pawn = PC ? PC->GetPawn() : nullptr)
 		{
 			const FVector Pos = SailingFrame::ToMapCm(GetWorld(), Pawn->GetActorLocation()) / CmPerMeter;
-			SAIL_LOG(Display, TEXT("SailingBench: at %.0f s: boat at %.1f N %.1f E, %.1f m since the last line"), Elapsed, Pos.X, Pos.Y,
-				NextPosLog > 0.f ? FVector::Dist2D(Pos, LastPosLog) : 0.0);
+			const double SinceLast = NextPosLog > 0.f ? FVector::Dist2D(Pos, LastPosLog) : 0.0;
+			SAIL_LOG(Display, TEXT("SailingBench: at %.0f s: boat at %.1f N %.1f E, %.1f m since the last line"), Elapsed, Pos.X, Pos.Y, SinceLast);
 			LastPosLog = Pos;
+			// docs/long-sail-soak: the memory row (written now and then, so a crash mid-soak still leaves the rows up to it).
+			MemTravelledM += SinceLast;
+			const FPlatformMemoryStats Mem = FPlatformMemory::GetStats();
+			FTextureMemoryStats TexMem;
+			RHIGetTextureMemoryStats(TexMem);
+			int32 Chunks = 0;
+			for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It) Chunks = It->GetNumChunks();
+			SailingSoak::FMemRow Row;
+			Row.T = Elapsed;
+			Row.TravelledM = MemTravelledM;
+			Row.UsedMB = Mem.UsedPhysical / 1048576.0;
+			MemRows.Add(Row);
+			if (MemCsv.IsEmpty()) MemCsv = TEXT("t_s,boat_n_m,boat_e_m,travelled_m,used_mb,peak_mb,tex_mb,uobjects,tiles_resident,tile_mb,chunks,recentres\n");
+			MemCsv += FString::Printf(TEXT("%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%d,%d,%.1f,%d,%d\n"), Elapsed, Pos.X, Pos.Y, MemTravelledM, Row.UsedMB,
+				Mem.PeakUsedPhysical / 1048576.0, (TexMem.StreamingMemorySize + TexMem.NonStreamingMemorySize) / 1048576.0,
+				GUObjectArray.GetObjectArrayNumMinusAvailable(), Streamer.NumResident(), Streamer.ResidentBytes() / 1e6, Chunks, Recentres);
+			if (MemRows.Num() % 10 == 1) FFileHelper::SaveStringToFile(MemCsv, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.mem.csv"), *ShotName)));
 		}
 		NextPosLog += 60.f;
 	}
@@ -1651,6 +1669,19 @@ void ASailingGameMode::FinishBenchmark()
 	Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"mem_used_mb\":%.0f,\"mem_peak_mb\":%.0f,\"tex_mem_mb\":%.0f}"),
 		Mem.UsedPhysical / 1048576.0, Mem.PeakUsedPhysical / 1048576.0, TexMem.StreamingMemorySize / 1048576.0 + TexMem.NonStreamingMemorySize / 1048576.0);
 
+	// docs/long-sail-soak: the growth after the warm-up, against time and distance, and its verdict.
+	if (MemRows.Num() > 0)
+	{
+		const SailingSoak::FMemFit Fit = SailingSoak::Fit(MemRows);
+		float BudgetMBh = 50.f;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingMemBudget="), BudgetMBh);
+		const TCHAR* Verdict = Fit.Rows < 3 ? TEXT("too-short") : (Fit.MBPerHour <= BudgetMBh ? TEXT("flat") : TEXT("growing"));
+		Summary = Summary.LeftChop(1) + FString::Printf(TEXT(",\"soak_mem\":{\"rows\":%d,\"mb_per_hour\":%.1f,\"mb_per_100km\":%.1f,\"first_mb\":%.0f,\"last_mb\":%.0f,\"peak_mb\":%.0f,\"travelled_km\":%.1f,\"budget_mb_per_hour\":%.0f,\"verdict\":\"%s\"}}"),
+			Fit.Rows, Fit.MBPerHour, Fit.MBPer100Km, Fit.FirstMB, Fit.LastMB, Fit.PeakMB, MemTravelledM / 1000.0, BudgetMBh, Verdict);
+		FFileHelper::SaveStringToFile(MemCsv, *(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Bench/%s.mem.csv"), *ShotName)));
+		SAIL_LOG(Display, TEXT("SailingBench memory: %s, %+.1f MB/h and %+.1f MB per 100 km after the warm-up (%d rows, %.1f km)"), Verdict,
+			Fit.MBPerHour, Fit.MBPer100Km, Fit.Rows, MemTravelledM / 1000.0);
+	}
 	SAIL_LOG(Display, TEXT("SailingBench result: %s"), *Summary);
 	FFileHelper::SaveStringToFile(Summary, *(FPaths::ProjectSavedDir() / TEXT("Bench/bench.json")));
 	if (bBenchTrace)
