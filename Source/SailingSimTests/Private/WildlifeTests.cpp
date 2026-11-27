@@ -457,4 +457,94 @@ bool FSailingWildlifePassesTest::RunTest(const FString&)
 	return true;
 }
 
+// A raft a boat is sailing at waits for her and lifts as she arrives (Nov 26 reel rehearsal: at 2.5 kn a raft 400 m off often
+// left on its own first), and a placed raft (-SailingBirdRaft) sits where it was put until a boat flushes it.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWildlifeRaftWaitsTest, "SailingSim.Wildlife.RaftWaits", WildlifeTestsLocal::Flags)
+bool FSailingWildlifeRaftWaitsTest::RunTest(const FString&)
+{
+	using namespace WildlifeTestsLocal;
+	FWildlifeTable T;
+	if (!LoadTable(TableJson({ Bird(TEXT("ducks"), TEXT("raft"), TEXT("\"open_water\""), 20, 40, 60.0) }), T, *this)) return false;
+	FWildlifeHabitatMap Map;
+	Map.Build(RoundLake(), 0.0, 0.0);
+	FWildlifeConditions C = Noon();
+	C.WindKn = 0.0;   // rafts sit still: she steers at where they sat
+	const double Dt = 1.0 / 30.0;
+	const double Speed = 1.3;   // the J/22 running in 6 kn
+	auto SittingWithin = [](const FBirdFlocks& F, double N0, double E0, double R)
+	{
+		int32 N = 0;
+		for (const FBirdDraw& D : F.Draw()) N += D.State == EBirdState::OnWater && FMath::Sqrt(FMath::Square(D.North - N0) + FMath::Square(D.East - E0)) < R;
+		return N;
+	};
+	// Sailing at the nearest raft 300-500 m out, every time she gets there before it leaves (seeds 1-24).
+	int32 Runs = 0, Flushed = 0;
+	for (int32 Seed = 1; Seed <= 24; ++Seed)
+	{
+		FBirdFlocks Flocks;
+		Flocks.Reset(T, static_cast<uint64_t>(Seed));
+		Flocks.SetDensityScale(4.0);
+		FBirdObservers Cam = At(0.0, 0.0);
+		Cam.Boats.clear();
+		for (int32 K = 0; K < 30 * 5; ++K) Flocks.Update(Dt, C, Cam, Map);
+		double RN = 0.0, RE = 0.0, Best = 1e9;
+		for (const FBirdDraw& D : Flocks.Draw())
+		{
+			if (D.State != EBirdState::OnWater || D.DistanceM < 300.0 || D.DistanceM > 500.0 || D.DistanceM > Best) continue;
+			if (SittingWithin(Flocks, D.North, D.East, 40.0) >= 5) { RN = D.North; RE = D.East; Best = D.DistanceM; }
+		}
+		if (Best > 1e8) continue;
+		++Runs;
+		const double Bearing = FMath::Atan2(RE, RN);
+		const int32 Before = Flocks.Stats().Flushes;
+		double BN = 0.0, BE = 0.0;
+		for (int32 K = 0; K < int32((Best + 50.0) / Speed / Dt); ++K)
+		{
+			BN += Speed * FMath::Cos(Bearing) * Dt;
+			BE += Speed * FMath::Sin(Bearing) * Dt;
+			Flocks.Update(Dt, C, At(BN, BE, Bearing, Speed), Map);
+			if (Flocks.Stats().Flushes > Before)
+			{
+				// hers: she is at the raft, not passing another
+				Flushed += FMath::Sqrt(FMath::Square(BN - RN) + FMath::Square(BE - RE)) < 120.0;
+				break;
+			}
+		}
+	}
+	AddInfo(FString::Printf(TEXT("%d of %d rafts sailed at flushed as she arrived"), Flushed, Runs));
+	TestTrue(TEXT("rafts to sail at"), Runs >= 12);
+	TestEqual(TEXT("every raft she sailed at waited for her"), Flushed, Runs);
+
+	// A placed raft: there from the first update, sitting half an hour with nobody near, then flushed by a boat.
+	{
+		FBirdFlocks Flocks;
+		Flocks.Reset(T, 5);
+		Flocks.SetDensityScale(0.0);   // nothing else on the lake
+		TestFalse(TEXT("no such bird"), Flocks.PlaceRaft("swans", 300.0, 0.0));
+		TestTrue(TEXT("placed"), Flocks.PlaceRaft("ducks", 300.0, 0.0, 12));
+		TestTrue(TEXT("and one on land"), Flocks.PlaceRaft("ducks", 3500.0, 0.0));
+		FBirdObservers Cam = At(0.0, 0.0);
+		Cam.Boats.clear();
+		Flocks.Update(Dt, C, Cam, Map);
+		TestEqual(TEXT("two places asked"), int32(Flocks.PlacedRafts().size()), 2);
+		if (Flocks.PlacedRafts().size() == 2)
+		{
+			TestEqual(TEXT("the lake one sits"), Flocks.PlacedRafts()[0].State, 1);
+			TestEqual(TEXT("the land one can't"), Flocks.PlacedRafts()[1].State, -1);
+		}
+		TestEqual(TEXT("12 on the water at the spot from the first update"), SittingWithin(Flocks, 300.0, 0.0, 40.0), 12);
+		for (int32 K = 0; K < 5 * 60 * 30; ++K) Flocks.Update(0.2, C, Cam, Map);
+		TestEqual(TEXT("all 12 still there half an hour on"), SittingWithin(Flocks, 300.0, 0.0, 40.0), 12);
+		double BN = 0.0;
+		for (int32 K = 0; K < int32(300.0 / Speed / Dt) && Flocks.Stats().Flushes == 0; ++K)
+		{
+			BN += Speed * Dt;
+			Flocks.Update(Dt, C, At(BN, 0.0, 0.0, Speed), Map);
+		}
+		TestEqual(TEXT("flushed by her"), Flocks.Stats().Flushes, 1);
+		TestTrue(TEXT("as she arrived"), BN > 300.0 - 60.0 - 40.0 && BN < 300.0);
+	}
+	return true;
+}
+
 #endif

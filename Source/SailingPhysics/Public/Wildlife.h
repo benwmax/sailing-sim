@@ -255,6 +255,20 @@ namespace Sailing
 		/** Density multiplier over every bird (1 = the start values; tuning knob, -SailingWildlifeScale). */
 		void SetDensityScale(double S) { DensityScale = S; }
 
+		/** A film and test aid (-SailingBirdRaft): one resting flock of the table's bird BirdId at a map spot (north, east m),
+		 *  Count birds (0: a usual flock for the bird), laid right after each first fill (so the others are laid as without it)
+		 *  and kept until a boat flushes it; flushed, it settles on as usual and stays there. False when the table has no such
+		 *  bird. Call after Reset. */
+		bool PlaceRaft(const std::string& BirdId, double North, double East, int Count = 0);
+		struct FRaftPlace
+		{
+			int Bird = -1;
+			double North = 0.0, East = 0.0;
+			int Count = 0;
+			int State = 0;   // 0 waiting for the first fill, 1 placed, -1 refused (no water there for it to sit on)
+		};
+		const std::vector<FRaftPlace>& PlacedRafts() const { return Rafts; }
+
 		/** Steps the flocks by Dt seconds of sim time; Map must cover the camera (rebuild it when the camera nears its edge). */
 		void Update(double Dt, const FWildlifeConditions& C, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map);
 
@@ -317,6 +331,7 @@ namespace Sailing
 			bool bFollowBoat = false;
 			bool bFirstFill = false;             // placed when the camera arrived (not flown in)
 			bool bPassing = false;               // on its way past the player's boat (its goal is beside her)
+			bool bPlaced = false;                // a placed raft (PlaceRaft): stays until flushed
 			int Side = 1;                        // echelon side for lines
 			std::vector<FMember> Members;
 			std::vector<FPathPoint> Path;        // the leader's track, newest last, every PathStep seconds
@@ -334,6 +349,7 @@ namespace Sailing
 		std::vector<FFlock> Flocks;
 		std::vector<FBirdDraw> Drawn;
 		std::vector<FBirdSplash> NewSplashes;
+		std::vector<FRaftPlace> Rafts;    // PlaceRaft's, laid after each first fill
 		std::vector<double> Expected;     // per table bird, refreshed every few seconds
 		std::vector<double> Stay;         // per table bird, the mean seconds a flock of it has counted (births = expected / stay)
 		std::vector<double> PathCum;      // StepMembers' scratch: arc length back along a leader's track to each point
@@ -347,13 +363,16 @@ namespace Sailing
 		FStats St;
 
 		void RefreshExpected(const FWildlifeConditions& C, const FWildlifeHabitatMap& Map, const FBirdObservers& Obs);
-		bool Spawn(int BirdIndex, const FWildlifeConditions& C, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map, double MinM, double MaxM);
+		bool Spawn(int BirdIndex, const FWildlifeConditions& C, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map, double MinM, double MaxM,
+			const FRaftPlace* Place = nullptr);
 		void StepFlock(FFlock& F, double Dt, const FWildlifeConditions& C, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map);
 		void StepLeader(FFlock& F, double Dt, const FWildlifeConditions& C, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map);
 		void StepMembers(FFlock& F, double Dt, const FWildlifeHabitatMap& Map);
 		/** Flushes a resting flock when a boat is inside its flush distance (or always with bForce); true when it lifted. */
 		void EndStay(const FFlock& F);
 		bool CheckFlush(FFlock& F, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map, bool bForce = false);
+		/** A boat inside kWaitAheadM headed to pass within the flock's flush distance (plus a lane): the raft waits for her. */
+		bool BoatClosingOn(const FFlock& F, const FBirdObservers& Obs) const;
 		const FBirdObservers::FBoat* PlayerBoat(const FBirdObservers& Obs) const;
 		/** Where a flock of this bird may sit (the cells it rests in: water, or shallow water for waders). */
 		bool CanRestAt(const FWildBird& B, const FWildlifeHabitatMap& Map, double North, double East) const;

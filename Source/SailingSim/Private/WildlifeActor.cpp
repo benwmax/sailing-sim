@@ -160,6 +160,23 @@ void AWildlifeActor::BeginPlay()
 	// dither): a grey square or body wherever an instance is, to tell the drawing from the bird materials.
 	bPlainDebug = FParse::Param(SailingArgs::Dev(), TEXT("SailingDebugBirdsPlain"));
 	for (const Sailing::FWildBird& B : Table.Birds) Looks.Add(Sailing::BirdLookFor(B.Id, B.Style));
+	// -SailingBirdRaft=<bird id>,<north m>,<east m>[,<count>]: one resting flock placed at a map spot (map metres, like
+	// -SailingStartAt), there from the first frame and kept until a boat flushes it (films and checks of the flush).
+	FString RaftArg;
+	if (FParse::Value(SailingArgs::Dev(), TEXT("SailingBirdRaft="), RaftArg, false))
+	{
+		TArray<FString> Parts;
+		RaftArg.TrimQuotes().ParseIntoArray(Parts, TEXT(","));
+		const bool bPlaced = Parts.Num() >= 3 && Flocks.PlaceRaft(TCHAR_TO_UTF8(*Parts[0].TrimStartAndEnd()), FCString::Atod(*Parts[1]),
+			FCString::Atod(*Parts[2]), Parts.Num() > 3 ? FCString::Atoi(*Parts[3]) : 0);
+		if (!bPlaced)
+		{
+			FString Ids;
+			for (const Sailing::FWildBird& B : Table.Birds) Ids += (Ids.IsEmpty() ? TEXT("") : TEXT(", ")) + FString(UTF8_TO_TCHAR(B.Id.c_str()));
+			SAIL_LOG(Warning, TEXT("Wildlife: -SailingBirdRaft=%s wants <bird id>,<north m>,<east m>[,<count>] with a bird of %s: %s"),
+				*RaftArg, *Lake.FileName, *Ids);
+		}
+	}
 
 	// The harbours the tables' marina, docks and boats habitats mean: 100 m cells round every dock, deck, moored boat and the
 	// club's marina (the shore bake's own words for them).
@@ -607,6 +624,16 @@ void AWildlifeActor::Tick(float DeltaSeconds)
 	Flocks.Update(Dt, Conditions(CameraMap), Obs, *Map);
 	const double UpdateMs = (FPlatformTime::Seconds() - T0) * 1000.0;
 	DrawBirds(CameraMap);
+	if (!bRaftsLogged && !Flocks.PlacedRafts().empty() && Flocks.PlacedRafts()[0].State != 0)
+	{
+		bRaftsLogged = true;
+		for (const Sailing::FBirdFlocks::FRaftPlace& R : Flocks.PlacedRafts())
+		{
+			const FString Id = UTF8_TO_TCHAR(Table.Birds[size_t(R.Bird)].Id.c_str());
+			if (R.State > 0) SAIL_LOG(Display, TEXT("Wildlife: placed a raft of %s at %.0f, %.0f (stays until a boat flushes it)"), *Id, R.North, R.East);
+			else SAIL_LOG(Warning, TEXT("Wildlife: no raft of %s at %.0f, %.0f: it can't sit there (land, or too deep for a wader)"), *Id, R.North, R.East);
+		}
+	}
 	if (GetWorld()->GetTimeSeconds() > NextLog)
 	{
 		NextLog = GetWorld()->GetTimeSeconds() + 10.0;
