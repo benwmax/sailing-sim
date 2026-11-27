@@ -1,0 +1,35 @@
+{
+  "_doc": "Stage 1 of the Florida-to-Bahamas map (docs/world-bimini): Biscayne Bay to Bimini across the Gulf Stream, about 50 nm, as one streamed world. Composed by Tools/coast/compose_world.py (build_coast.py MiamiBimini) from three bakes: MiamiBiscayne (the frame, 10 m), Bimini (10 m) and FloridaStraits (200 m, deep tiles in 5 cm steps). The Gulf Stream: Tools/coast/gulf_stream.py MiamiBimini -> MiamiBimini.stream. Positions are lat/lon (NAD83).",
+  "name": "MiamiBimini",
+  "display": "Miami to Bimini, across the Gulf Stream",
+  "docs": "world-bimini",
+  "alias": "bimini-crossing",
+  "compose": ["MiamiBiscayne", "FloridaStraits", "Bimini"],
+  "frame": "MiamiBiscayne",
+  "ocean": true,
+  "chart": "enc",
+  "center": [25.7275, -80.2305],
+  "gulf_stream": {
+    "vmax_ms": 1.8,
+    "core_frac": 0.25,
+    "section_north_m": 0.0,
+    "_note": "the analytic Florida Current's numbers (gulf_stream.py DEFAULTS); replaced by model monthly means with --nc once the Mac fetches them"
+  },
+  "passage": [
+    ["Dinner Key", 25.7240, -80.2270],
+    ["Biscayne Channel", 25.6700, -80.1700],
+    ["Off Cape Florida", 25.6600, -80.1350],
+    ["Off Fowey Rocks", 25.5950, -80.0850],
+    ["The Gulf Stream's axis", 25.6400, -79.9000],
+    ["Mid-Straits", 25.6800, -79.6500],
+    ["Off North Bimini", 25.7150, -79.3300],
+    ["Bimini Harbour entrance", 25.7050, -79.3020],
+    ["Alice Town", 25.7230, -79.2950]
+  ],
+  "launch": [
+    ["Dinner Key, off the moorings", 25.7240, -80.2270, 120.0],
+    ["Off Fowey Rocks, bound for Bimini", 25.5950, -80.0850, 75.0],
+    ["Mid-Straits, in the Gulf Stream", 25.70, -79.75, 90.0],
+    ["Bimini Harbour entrance", 25.7050, -79.3020, 270.0]
+  ]
+}

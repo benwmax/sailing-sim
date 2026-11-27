@@ -1,0 +1,33 @@
+{
+  "_doc": "Stage 1 of the Florida-to-Bahamas map (docs/world-bimini): North and South Bimini, Gun Cay and Cat Cay on the edge of the Great Bahama Bank. 10 m cells from the NOAA ENC cells that reach Bimini (chart 11469, 'Fowey Rocks, Hillsboro Inlet to Bimini Islands'), flat low land (no free lidar; islands are a few metres high), Virginia Key's datums for MLLW until a Bimini tide model is baked (FES2022, AVISO: commercial use allowed). The Bahamas side is coarse: reefs, the harbour and the cays need hand work (docs/world-bimini/README.md). Positions are approximate (gazetteers and the US chart), checked by the bake's checkpoints.",
+  "name": "Bimini",
+  "display": "Bimini and the Great Bahama Bank edge",
+  "docs": "world-bimini",
+  "alias": "bimini",
+  "cell": 10.0,
+  "center": [25.7270, -79.2980],
+  "center_note": "Alice Town, North Bimini",
+  "bbox": [-79.36, 25.52, -79.18, 25.84],
+  "ellipsoid": "NAD83",
+  "chart": "enc",
+  "ocean": true,
+  "elevation": [],
+  "datum": {"name": "MLLW (chart datum); heights in meters above it"},
+  "tides": {"source": "noaa", "datum_station": "8723214", "stations": ["8723214"], "current": false, "reference": false,
+            "note": "no CO-OPS harmonic station in the Bahamas: Virginia Key stands in (Bimini's range is similar, about 0.8 m springs) until FES2022 constituents are baked for Bimini"},
+  "check": [
+    ["Alice Town, North Bimini", 25.7270, -79.2980],
+    ["Gun Cay Light", 25.5740, -79.2980]
+  ],
+  "launch": [
+    ["Bimini Harbour, off Alice Town", 25.7230, -79.2950, 0.0],
+    ["Bimini Harbour entrance", 25.7050, -79.3020, 270.0],
+    ["Off North Rock", 25.8000, -79.2700, 180.0],
+    ["Gun Cay cut", 25.5750, -79.3050, 90.0]
+  ],
+  "passage": [
+    ["Off North Bimini", 25.7150, -79.3300],
+    ["Bimini Harbour entrance", 25.7050, -79.3020],
+    ["Alice Town", 25.7230, -79.2950]
+  ]
+}
