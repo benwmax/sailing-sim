@@ -13,6 +13,7 @@
 #include "GroundDress.h"
 #include "WorldKit.h"
 #include "FarRing.h"
+#include "ObjectStreaming.h"
 #include "Components/StaticMeshComponent.h"
 #include "Async/Async.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
@@ -154,6 +155,7 @@ void ALakeTerrainActor::BeginPlay()
 	PlaceUnderstory();
 	PlaceBuildings();
 	PlaceBridgesAndDocks();
+	StartObjects();
 	bTreesPlaced = true;
 	// The instanced meshes by count (the render thread culls every instance: the coast's visibility cost).
 	{
@@ -184,6 +186,7 @@ void ALakeTerrainActor::EndPlay(const EEndPlayReason::Type Reason)
 	if (TreeTileJobTile != INDEX_NONE) TreeTileJob.Wait();
 	FarLoader.Reset();
 	FarArrived.Reset();
+	HouseTileStream.Cancel();
 	Super::EndPlay(Reason);
 }
 
@@ -368,6 +371,14 @@ int32 ALakeTerrainActor::TileComponent(int32 Tile, uint8 Band, int32 Model)
 {
 	const int32 Key = (Tile * 4 + Band) * TreeModels.Num() + Model;
 	if (const int32* Found = TileComps.Find(Key)) return *Found;
+	// World objects in tiles (docs/world-object-tiles): a tile component of this band and model that emptied behind the
+	// camera is taken first (reuse, never rebuild: a long sail turns the same few over).
+	if (TArray<int32>* Free = FreeTileComps.Find(int32(Band) * TreeModels.Num() + Model); Free && Free->Num() > 0)
+	{
+		const int32 Reused = Free->Pop(EAllowShrinking::No);
+		TileComps.Add(Key, Reused);
+		return Reused;
+	}
 	// A clone of the band's template component (TreeMid / TreeFar: mesh, lighting, shadow, cull and custom-data settings).
 	UInstancedStaticMeshComponent* Template = Band == 2 ? TreeMid[Model].Get() : TreeFar[Model].Get();
 	UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this, NAME_None, RF_NoFlags, Template);
@@ -433,6 +444,8 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		for (UInstancedStaticMeshComponent* C : TreeProxy) C->SetRemoveSwap();
 		// The tile components of a placement before (SetTreeFraction) go; the tiles are made again as trees enter them.
 		for (const TPair<int32, int32>& P : TileComps) if (Keep.IsValidIndex(P.Value) && Keep[P.Value]) Keep[P.Value]->DestroyComponent();
+		for (const TPair<int32, TArray<int32>>& P : FreeTileComps) for (const int32 Id : P.Value) if (Keep.IsValidIndex(Id) && Keep[Id]) Keep[Id]->DestroyComponent();
+		FreeTileComps.Reset();
 		TileComps.Reset();
 		TreeTileIds.Reset();
 		TreeTile.SetNumUninitialized(ModelTrees.Num());
@@ -450,8 +463,10 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 	const double R2 = FMath::Square(NearTreesM()), RM2 = FMath::Square(MidTreesM());
 	// World streaming: on a streamed world the trees past the far crowns' cull (9 km) leave the components altogether
 	// (band 0), so a long coast's trees do not pile up in them.
+	// World objects in tiles: on every world now (the far crowns stop drawing at 9 km anyway), so the components hold only the
+	// trees around the camera (-SailingWholeWorldObjects: the streamed worlds only, as before).
 	const FWorldStreamer* St = GetStreamer();
-	const double RF2 = St && St->IsStreamed() ? FMath::Square(9500.0) : 1e300;
+	const double RF2 = (St && St->IsStreamed()) || SailingObjects::Enabled() ? FMath::Square(SailingObjects::TreeKeepM) : 1e300;
 	TArray<int32> Movers;
 	TArray<uint8> NewBands;
 	for (int32 T = 0; T < ModelTrees.Num(); ++T)
@@ -460,10 +475,12 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		const uint8 Band = D2 < R2 ? 1 : (D2 < RM2 && TreeMid.Num() > 0 ? 2 : (D2 < RF2 ? 3 : 0));
 		if (Band != TreeBand[T]) { Movers.Add(T); NewBands.Add(Band); }
 	}
+	TSet<int32> Touched;   // tile components that lost trees: the empty ones go back to the pool below
 	for (const int32 T : Movers)
 	{
 		const int32 Id = TreeComp[T];
 		if (Id == INDEX_NONE) continue;
+		if (Id >= TreeModels.Num()) Touched.Add(Id);
 		TArray<int32>& S = CompTrees[Id];
 		const int32 Slot = TreeSlot[T], Last = S.Num() - 1;
 		TreeComps[Id]->RemoveInstance(Slot);
@@ -509,7 +526,31 @@ void ALakeTerrainActor::UpdateModelTrees(const FVector2D& Camera)
 		for (int32 K = 0; K < A.Trees.Num(); ++K) { TreeComp[A.Trees[K]] = P.Key; TreeSlot[A.Trees[K]] = First + K; CompTrees[P.Key].Add(A.Trees[K]); }
 		if (C->GetInstanceCount() == A.X.Num()) CompPlacedAt[P.Key] = Camera;
 	}
+	if (SailingObjects::Enabled()) ReleaseEmptyTileComponents(Touched);
 	if (Adds.Num() > 64) SAIL_LOG(Display, TEXT("Trees: %d components (%d tiles)"), TreeComps.Num(), TileComps.Num());
+}
+
+void ALakeTerrainActor::ReleaseEmptyTileComponents(const TSet<int32>& Touched)
+{
+	if (Touched.Num() == 0 || TreeModels.Num() == 0) return;
+	TArray<int32> Empty;
+	for (const TPair<int32, int32>& P : TileComps)
+	{
+		if (Touched.Contains(P.Value) && CompTrees.IsValidIndex(P.Value) && CompTrees[P.Value].Num() == 0) Empty.Add(P.Key);
+	}
+	for (const int32 Key : Empty)
+	{
+		const int32 Id = TileComps.FindAndRemoveChecked(Key);
+		const int32 Model = Key % TreeModels.Num(), Band = (Key / TreeModels.Num()) % 4;
+		FreeTileComps.FindOrAdd(Band * TreeModels.Num() + Model).Add(Id);
+	}
+}
+
+int32 ALakeTerrainActor::GetTreeTileComponentsFree() const
+{
+	int32 N = 0;
+	for (const TPair<int32, TArray<int32>>& P : FreeTileComps) N += P.Value.Num();
+	return N;
 }
 
 void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
@@ -662,8 +703,9 @@ void ALakeTerrainActor::Tick(float DeltaSeconds)
 			for (TPair<FIntPoint, TUniquePtr<FChunk>>& P : Chunks) if (P.Value->Mesh) P.Value->Mesh->SetCullDistance(ChunkCullCm);
 		}
 	}
-	{ SAILING_PERF_SCOPE(Trees); UpdateTreeTiles(CamMap); UpdateModelTrees(CamMap); }
+	{ SAILING_PERF_SCOPE(Trees); UpdateTreeTiles(CamMap); DropTreeTiles(); UpdateModelTrees(CamMap); }
 	UpdateFarRing(CamMap);   // inside the Terrain slice
+	UpdateObjects(CamMap);   // and the houses' and docks' cells (docs/world-object-tiles)
 
 	// Perf 1 fix 7: a chunk's wanted detail changes only as the camera moves, so look again after 20 m or half a second
 	// (every frame while chunks are queued or building).
@@ -967,6 +1009,113 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 	}
 }
 
+void ALakeTerrainActor::StartObjects()
+{
+	// World objects in tiles (docs/world-object-tiles): the cells around the launch spot are drawn now, as everything was
+	// before; the rest come and go with the camera (UpdateObjects).
+	bObjectsStarted = true;
+	if (HouseCells.IsEmpty() && HouseTileStream.IsEmpty()) return;
+	FVector2D At = FVector2D::ZeroVector;
+	FLaunchSpot Spot;
+	if (const ASailingGameMode* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ASailingGameMode>() : nullptr; GM && GM->GetLaunchSpot(Spot)) At = FVector2D(Spot.X, Spot.Y);
+	const double T0 = FPlatformTime::Seconds();
+	HouseCells.Start(At);
+	HouseTileStream.Start(At);
+	const double Ms = (FPlatformTime::Seconds() - T0) * 1000.0;
+	int32 AllCells = 0;
+	for (int32 K = 0; K < HouseCells.NumKinds(); ++K) AllCells += HouseCells.CellsOf(K)->Num();
+	SAIL_LOG(Display, TEXT("World objects: %d of %d house and dock cells drawn (%lld of %lld objects), %d of %d baked house tiles, around (%.0f, %.0f) in %.1f ms"),
+		HouseCells.NumCellsLive(), AllCells, HouseCells.NumInstancesLive(), HouseCells.NumObjects(), HouseTileStream.NumLive(), HouseTileStream.NumTiles(), At.X, At.Y, Ms);
+}
+
+void ALakeTerrainActor::UpdateObjects(const FVector2D& Camera)
+{
+	if (!bObjectsStarted) return;
+	const int32 Before = GetObjectCellsDropped();
+	HouseCells.Update(Camera, 2);
+	HouseTileStream.Update(Camera, 4);
+	if (GetObjectCellsDropped() != Before)
+	{
+		SAIL_LOG(Display, TEXT("World objects: %d cells drawn, %d made and %d dropped so far, %d pooled components, %lld instances"),
+			GetObjectCellsLive(), GetObjectCellsMade(), GetObjectCellsDropped(), GetObjectComponents(), GetObjectInstancesLive());
+	}
+}
+
+UStaticMeshComponent* ALakeTerrainActor::MakeHouseTileComponent()
+{
+	// As SpawnKitTiles makes a baked tile's component (Static, kept with this actor: it follows the tide). Once the kept
+	// classes are in (docs/tide-memory, PR #846) this is a USailingKeptMeshComponent, as the kit tiles there are.
+	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+	C->SetMobility(EComponentMobility::Static);
+	C->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
+	C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	KeepWithActor(C);   // marks it a tide follower too
+	return C;
+}
+
+int32 ALakeTerrainActor::WorldTileOf(const FVector2D& P) const
+{
+	const FWorldStreamer* St = GetStreamer();
+	if (!St) return INDEX_NONE;
+	int32 Row = 0, Col = 0;
+	St->GetIndex().TileOf(P.X, P.Y, Row, Col);
+	return St->GetIndex().Find(Row, Col);
+}
+
+void ALakeTerrainActor::DropTreeTiles()
+{
+	// World objects in tiles (docs/world-object-tiles): on a streamed world the model trees of a height tile the streamer has
+	// dropped (32 km behind the boat) are let go, and the tile is placed again if it comes back. Before, every tile's trees
+	// stayed in the list for the rest of the sail, so a long passage kept them all.
+	const FWorldStreamer* St = GetStreamer();
+	if (!St || !St->IsStreamed() || !SailingObjects::Enabled() || TreeBand.Num() != ModelTrees.Num() || TreeWorldTile.Num() != ModelTrees.Num()) return;
+	const double Now = FPlatformTime::Seconds();
+	const bool bRetry = TreeDropRetryAt > 0.0 && Now >= TreeDropRetryAt;
+	if (!bTreeDropCheck && !bRetry && St->GetGeneration() == TreeDropGeneration) return;
+	bTreeDropCheck = false;
+	TreeDropGeneration = St->GetGeneration();
+	TreeDropRetryAt = 0.0;
+	TSet<int32> Gone;
+	for (const int32 K : TreeTilesPlaced) if (!St->IsResident(K)) Gone.Add(K);
+	if (Gone.Num() == 0) return;
+	// A tile with trees still in a component waits (the camera can be far from the boat: photo mode, a capture).
+	TSet<int32> Busy;
+	for (int32 T = 0; T < ModelTrees.Num(); ++T) if (TreeBand[T] != 0 && Gone.Contains(TreeWorldTile[T])) Busy.Add(TreeWorldTile[T]);
+	for (const int32 K : Busy) Gone.Remove(K);
+	if (Busy.Num() > 0) TreeDropRetryAt = Now + 1.0;
+	if (Gone.Num() == 0) return;
+	// Compacted in place; the trees in the components keep theirs through the renumbering (none of the dropped is in one).
+	TArray<int32> NewIndex;
+	NewIndex.Init(INDEX_NONE, ModelTrees.Num());
+	int32 W = 0;
+	for (int32 T = 0; T < ModelTrees.Num(); ++T)
+	{
+		if (Gone.Contains(TreeWorldTile[T])) continue;
+		NewIndex[T] = W;
+		if (W != T)
+		{
+			ModelTrees[W] = ModelTrees[T];
+			TreeBand[W] = TreeBand[T];
+			TreeComp[W] = TreeComp[T];
+			TreeSlot[W] = TreeSlot[T];
+			TreeTile[W] = TreeTile[T];
+			TreeWorldTile[W] = TreeWorldTile[T];
+		}
+		++W;
+	}
+	const int32 Removed = ModelTrees.Num() - W;
+	ModelTrees.SetNum(W);
+	TreeBand.SetNum(W);
+	TreeComp.SetNum(W);
+	TreeSlot.SetNum(W);
+	TreeTile.SetNum(W);
+	TreeWorldTile.SetNum(W);
+	for (TArray<int32>& InComp : CompTrees) for (int32& Tree : InComp) Tree = NewIndex[Tree];
+	for (const int32 K : Gone) TreeTilesPlaced.Remove(K);
+	TreesDropped += Removed;
+	SAIL_LOG(Display, TEXT("Trees: %d let go with %d dropped tiles (%d model trees now, %d dropped so far)"), Removed, Gone.Num(), ModelTrees.Num(), TreesDropped);
+}
+
 void ALakeTerrainActor::RemoveTreesInHouses(const FLakeData& Lake, TArray<FTreeInstance>& Trees)
 {
 	if (Lake.Houses.Num() == 0) return;
@@ -1001,6 +1150,11 @@ void ALakeTerrainActor::RemoveTreesInHouses(const FLakeData& Lake, TArray<FTreeI
 
 void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, TArray<FTreeInstance>& Trees, ETreeRegion Region)
 {
+	AddYardTrees(Lake, Lake.Terrain, Trees, Region, nullptr);
+}
+
+void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, const FLakeTerrain& Terrain, TArray<FTreeInstance>& Trees, ETreeRegion Region, const FBox2D* Within)
+{
 	// Near-shore phase 3 (audit item 7: the residential shore's trees repeat their species and sizes, the canopy one
 	// height): young yard trees, a second height class (a third to two-thirds grown) under the lidar's mature crowns, one
 	// to three round each full-detail house, most on the side toward the water (what the lake sees), from its lot's own palette (four on the lake, two on the coast: a street of
@@ -1024,6 +1178,7 @@ void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, TArray<FTreeInstance
 	for (const FLakeHouse& H : Lake.Houses)
 	{
 		if (!H.bFullDetail || H.bCommercial) continue;
+		if (Within && !Within->IsInside(FVector2D(H.X, H.Y))) continue;
 		const uint32 Seed = Hash(uint32(FMath::RoundToInt32(H.X * 10.0)) * 73856093u ^ uint32(FMath::RoundToInt32(H.Y * 10.0)) * 19349663u);
 		const int32 N = 1 + int32(Rand(Seed, 1) * 2.4f);
 		// Which way the water lies, if it's within 80 m.
@@ -1033,7 +1188,7 @@ void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, TArray<FTreeInstance
 			for (int32 A = 0; A < 8; ++A)
 			{
 				const double Az = A * UE_DOUBLE_PI / 4.0;
-				if (Lake.Terrain.HeightAt(H.X + FMath::Cos(Az) * D, H.Y + FMath::Sin(Az) * D) < -0.05) { WaterAz = float(Az); break; }
+				if (Terrain.HeightAt(H.X + FMath::Cos(Az) * D, H.Y + FMath::Sin(Az) * D) < -0.05) { WaterAz = float(Az); break; }
 			}
 		}
 		double Extent = 6.0;
@@ -1046,7 +1201,7 @@ void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, TArray<FTreeInstance
 			const float Az = WaterAz >= 0.f && Rand(Seed, 80 + K) < 0.65f ? WaterAz + (Rand(Seed, 10 + K) - 0.5f) * 2.f : 2.f * UE_PI * Rand(Seed, 10 + K);
 			const float R = float(Extent) + 4.f + 10.f * Rand(Seed, 20 + K);
 			const FVector2D P(H.X + FMath::Cos(Az) * R, H.Y + FMath::Sin(Az) * R);
-			const double Ground = Lake.Terrain.HeightAt(P.X, P.Y);
+			const double Ground = Terrain.HeightAt(P.X, P.Y);
 			if (Ground < 0.5) continue;
 			const FIntPoint C = CellOf(P);
 			if (Taken.Contains(C)) continue;
@@ -1067,7 +1222,7 @@ void ALakeTerrainActor::AddYardTrees(const FLakeData& Lake, TArray<FTreeInstance
 			Taken.Add(C);
 		}
 	}
-	SAIL_LOG(Display, TEXT("Trees: %d young yard trees"), Trees.Num() - Before);
+	if (!Within) SAIL_LOG(Display, TEXT("Trees: %d young yard trees"), Trees.Num() - Before);
 }
 
 void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
@@ -1083,7 +1238,15 @@ void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
 		if (!TreeTileJob.IsReady()) return;
 		TArray<FTreeInstance> New = TreeTileJob.Consume();
 		TreeTilesPlaced.Add(TreeTileJobTile);
+		// World objects in tiles: the trees remember their height tile, so they go with it (DropTreeTiles).
+		const bool bTrack = TreeWorldTile.Num() == ModelTrees.Num() && SailingObjects::Enabled();
+		if (bTrack)
+		{
+			for (int32 K = 0; K < New.Num(); ++K) TreeWorldTile.Add(TreeTileJobTile);
+		}
+		else TreeWorldTile.Reset();
 		TreeTileJobTile = INDEX_NONE;
+		bTreeDropCheck = true;
 		if (New.Num() > 0 && TreeBand.Num() == ModelTrees.Num())
 		{
 			const int32 First = ModelTrees.Num();
@@ -1119,7 +1282,9 @@ void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
 	Index.Corner(Index.GetTiles()[Next], X0, Y0);
 	const double TileM = Index.GetTileM();
 	TreeTileJobTile = Next;
-	TreeTileJob = Async(EAsyncExecution::ThreadPool, [Terrain = Lake->Terrain, Lake, X0, Y0, TileM, Fraction = TreeFraction, Band = CrownBand, Region = TreeRegionFor(Lake->FileName)]()
+	const bool bObjects = SailingObjects::Enabled();
+	TreeTileJob = Async(EAsyncExecution::ThreadPool, [Terrain = Lake->Terrain, Lake, X0, Y0, TileM, Fraction = TreeFraction, Band = CrownBand, Region = TreeRegionFor(Lake->FileName),
+		Crowns = CrownsByTile, Tile = Next, bObjects]()
 	{
 		TArray<FTreeInstance> Out;
 		const FLakeTerrain Window = Terrain.WindowAround(X0 + 0.5 * TileM, Y0 + 0.5 * TileM, 0.5 * TileM);
@@ -1129,7 +1294,22 @@ void ALakeTerrainActor::UpdateTreeTiles(const FVector2D& Camera)
 			if (I.Position.X < X0 || I.Position.Y < Y0 || I.Position.X >= X0 + TileM || I.Position.Y >= Y0 + TileM) return true;
 			return Band.IsValid() && Band->Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0)));
 		});
+		// World objects in tiles (docs/world-object-tiles): the tile's own lidar crowns, which the start placed only on the
+		// tiles resident then.
+		if (const TArray<int32>* Ids = Crowns.IsValid() ? Crowns->Find(Tile) : nullptr)
+		{
+			TArray<FLakeCrown> Mine;
+			Mine.Reserve(Ids->Num());
+			for (const int32 Id : *Ids) Mine.Add(Lake->Crowns[Id]);
+			AppendCrownTrees(Window, Mine, Fraction, Out, Region);
+		}
 		RemoveTreesInHouses(*Lake, Out);
+		// And the young yard trees round the tile's houses (the start's were kept on the resident tiles only).
+		if (bObjects && Lake->Houses.Num() > 0)
+		{
+			const FBox2D Within(FVector2D(X0, Y0), FVector2D(X0 + TileM, Y0 + TileM));
+			AddYardTrees(*Lake, Window, Out, Region, &Within);
+		}
 		return Out;
 	});
 }
@@ -1155,10 +1335,15 @@ void ALakeTerrainActor::PlaceTrees()
 	}
 	// World streaming: on a streamed world these are the trees of the tiles resident now; the others are placed as their
 	// tiles arrive (UpdateTreeTiles).
+	TreeWorldTile.Reset();
 	if (const FWorldStreamer* St = GetStreamer(); St && St->IsStreamed())
 	{
+		// A placement again (SetTreeFraction): a tile's trees still on their way would come on top of these.
+		if (TreeTileJobTile != INDEX_NONE) { TreeTileJob.Wait(); TreeTileJob = {}; TreeTileJobTile = INDEX_NONE; }
+		TreeTilesPlaced.Reset();
 		for (int32 K = 0; K < int32(St->GetIndex().GetTiles().size()); ++K) if (St->IsResident(K)) TreeTilesPlaced.Add(K);
-		if (Lake->Crowns.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicTrees")))
+		const bool bCrowns = Lake->Crowns.Num() > 0 && !FParse::Param(SailingArgs::Dev(), TEXT("SailingClassicTrees"));
+		if (bCrowns)
 		{
 			TSharedPtr<TSet<FIntPoint>> Band = MakeShared<TSet<FIntPoint>>();
 			for (const FLakeCrown& C : Lake->Crowns)
@@ -1167,6 +1352,27 @@ void ALakeTerrainActor::PlaceTrees()
 				for (int32 Dx = -2; Dx <= 2; ++Dx) for (int32 Dy = -2; Dy <= 2; ++Dy) Band->Add(Cell + FIntPoint(Dx, Dy));
 			}
 			CrownBand = Band;
+		}
+		// World objects in tiles (docs/world-object-tiles): the crowns and yard trees are placed by height tile too. The ones
+		// above stand everywhere on the coast; only the resident tiles' are kept now, and each other tile's are placed with its
+		// canopy trees as it arrives (and let go when it is dropped: DropTreeTiles).
+		if (SailingObjects::Enabled())
+		{
+			if (bCrowns)
+			{
+				TSharedPtr<TMap<int32, TArray<int32>>> ByTile = MakeShared<TMap<int32, TArray<int32>>>();
+				for (int32 K = 0; K < Lake->Crowns.Num(); ++K)
+				{
+					const int32 Tile = WorldTileOf(FVector2D(Lake->Crowns[K].X, Lake->Crowns[K].Y));
+					if (Tile != INDEX_NONE) ByTile->FindOrAdd(Tile).Add(K);
+				}
+				CrownsByTile = ByTile;
+			}
+			const int32 Before = Trees.Num();
+			Trees.RemoveAll([&](const FTreeInstance& I) { return !TreeTilesPlaced.Contains(WorldTileOf(I.Position)); });
+			SAIL_LOG(Display, TEXT("Trees: %d of %d on the %d resident tiles (the rest come with their tiles)"), Trees.Num(), Before, TreeTilesPlaced.Num());
+			TreeWorldTile.Reserve(Trees.Num());
+			for (const FTreeInstance& I : Trees) TreeWorldTile.Add(WorldTileOf(I.Position));
 		}
 	}
 
@@ -1781,17 +1987,33 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		TMap<FIntPoint, FKitGeometry> Tiles;
 		int32 Procedural = 0;
 		const FString Prefix = TEXT("Houses_") + Lake.SourceFor(TEXT("houses"));   // a composed world bakes nothing of its own: its member's tiles
+		// World objects in tiles (docs/world-object-tiles): the baked tiles are loaded as they come within the ring of the
+		// camera and let go behind it (UpdateObjects), not all at the start. The procedural ones (a world not baked yet)
+		// stay as they were.
+		const bool bStreamTiles = SailingObjects::Enabled();
+		if (bStreamTiles) HouseTileStream.Init([this]() { return MakeHouseTileComponent(); }, &ObjectComps, SailingObjects::NoCullRing(), UWorldKitLibrary::HouseTileM);
+		int32 Streamed = 0;
 		for (const auto& KV : ByTile)
 		{
+			const FString Name = FKitGeometry::TileAssetName(Prefix, KV.Key);
+			const bool bBaked = FPackageName::DoesPackageExist(TEXT("/Game/World/Baked/") + Name);
+			if (bBaked && bStreamTiles)
+			{
+				const FVector2D Center((KV.Key.X + 0.5) * UWorldKitLibrary::HouseTileM, (KV.Key.Y + 0.5) * UWorldKitLibrary::HouseTileM);
+				HouseTileStream.Add(Center, FString::Printf(TEXT("/Game/World/Baked/%s.%s"), *Name, *Name));
+				++Streamed;
+				continue;
+			}
 			FKitGeometry& G = Tiles.Add(KV.Key);
-			if (!FPackageName::DoesPackageExist(TEXT("/Game/World/Baked/") + FKitGeometry::TileAssetName(Prefix, KV.Key)))
+			if (!bBaked)
 			{
 				BuildHouseGeometry(Lake, KV.Value, G);
 				++Procedural;
 			}
 		}
 		const int32 Baked = SpawnKitTiles(this, Tiles, Prefix, false, [](EKitLook L) { return KitMaterial(L); }, HouseTileMeshes);
-		SAIL_LOG(Display, TEXT("Houses: %d from the G2 footprints in %d tiles (%d baked, %d procedural)"), Lake.Houses.Num(), Tiles.Num(), Baked, Procedural);
+		SAIL_LOG(Display, TEXT("Houses: %d from the G2 footprints in %d tiles (%d baked, %d procedural, %d baked streamed in rings of %.0f/%.0f km)"),
+			Lake.Houses.Num(), Tiles.Num() + Streamed, Baked, Procedural, Streamed, HouseTileStream.GetRing().LoadM / 1000.0, HouseTileStream.GetRing().KeepM / 1000.0);
 	}
 	static const TCHAR* Names[] = { TEXT("SM_House_Gable"), TEXT("SM_House_Hip"), TEXT("SM_House_Flat") };
 	TArray<UInstancedStaticMeshComponent*> Ism;
@@ -1852,7 +2074,6 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	TArray<float> NearD[NumNear], DockD[2];
 	// Environment E1: every house and private dock carries its wear seed after its own floats (FWearSeed::Slot).
 	const EWearSite Site = WearSiteFor(Lake);
-	constexpr int32 Stride = FWearSeed::TotalFloats;
 	static_assert(FWearSeed::Slot == 10, "the houses' paint fills slots 0-9");
 	auto AppendWear = [](TArray<float>& D, const FWearSeed& W)
 	{
@@ -1949,26 +2170,35 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 		D[Kind].Append({ Wall.R, Wall.G, Wall.B, float(Pat), Height, float((H >> 16) % 97) / 97.f, Roof.R, Roof.G, Roof.B, float(B.Ground) });
 		AppendWear(D[Kind], FWearSeed::Make(FWearSeed::IdAt(FVector2D(B.X, B.Y)), Site, EWearWater::Dry, float(B.YawDeg)));
 	}
-	for (int32 K = 0; K < 3; ++K)
+	// World objects in tiles (docs/world-object-tiles): each list goes to its component's cells, drawn only near the camera
+	// (UpdateObjects); the components above stay empty, as the templates of their cells. -SailingWholeWorldObjects puts every
+	// one in at the start, as before.
+	const bool bCells = SailingObjects::Enabled();
+	auto Fill = [this, bCells](UInstancedStaticMeshComponent* C, TArray<FTransform>& Xs, const TArray<float>& Ds)
 	{
-		Ism[K]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), X[K]), false, true);
-		for (int32 I = 0; I < X[K].Num(); ++I) Ism[K]->SetCustomData(I, TArrayView<const float>(&D[K][Stride * I], Stride), false);
-		Ism[K]->MarkRenderStateDirty();
-	}
+		constexpr int32 Floats = FWearSeed::TotalFloats;   // each object's floats: paint, then its wear seed
+		if (bCells)
+		{
+			// The lists are in the map frame (cm), which is this actor's own frame (it stands at the map's origin).
+			const int32 Kind = HouseCells.AddKind(C);
+			for (int32 I = 0; I < Xs.Num(); ++I) HouseCells.Add(Kind, Xs[I], TConstArrayView<float>(&Ds[Floats * I], Floats));
+			return;
+		}
+		C->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Xs), false, true);
+		for (int32 I = 0; I < Xs.Num(); ++I) C->SetCustomData(I, TArrayView<const float>(&Ds[Floats * I], Floats), false);
+		C->MarkRenderStateDirty();
+	};
+	if (bCells) HouseCells.Init(this, [this](USceneComponent* C) { KeepWithActor(C); }, &ObjectComps);
+	for (int32 K = 0; K < 3; ++K) Fill(Ism[K], X[K], D[K]);
 	int32 NearCount = 0;
 	for (int32 N = 0; N < NumNear && bNear; ++N)
 	{
-		NearIsm[N]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), NearX[N]), false, true);
-		for (int32 I = 0; I < NearX[N].Num(); ++I) NearIsm[N]->SetCustomData(I, TArrayView<const float>(&NearD[N][Stride * I], Stride), false);
-		NearIsm[N]->MarkRenderStateDirty();
+		Fill(NearIsm[N], NearX[N], NearD[N]);
 		NearCount += NearX[N].Num();
 	}
 	for (int32 Which = 0; Which < 2; ++Which)
 	{
-		if (!DockIsm[Which]) continue;
-		DockIsm[Which]->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), DockX[Which]), false, true);
-		for (int32 I = 0; I < DockX[Which].Num(); ++I) DockIsm[Which]->SetCustomData(I, TArrayView<const float>(&DockD[Which][Stride * I], Stride), false);
-		DockIsm[Which]->MarkRenderStateDirty();
+		if (DockIsm[Which]) Fill(DockIsm[Which], DockX[Which], DockD[Which]);
 	}
 	SAIL_LOG(Display, TEXT("Buildings: %d ranch, %d two-storey, %d blocks; %d near the water modelled, %d private docks"),
 		X[0].Num(), X[1].Num(), X[2].Num(), NearCount, DockX[0].Num() + DockX[1].Num());

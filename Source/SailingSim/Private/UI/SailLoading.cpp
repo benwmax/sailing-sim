@@ -195,7 +195,7 @@ float SSailLoading::Progress(FString& Stage) const
 	float Shore = 1.f;
 	for (TActorIterator<ALakeTerrainActor> It(W); It; ++It)
 	{
-		const int32 P = It->GetPendingChunks();
+		const int32 P = It->GetPendingChunks() + It->GetPendingObjectTiles();   // and the houses near the start (docs/world-object-tiles)
 		const_cast<SSailLoading*>(this)->InitialChunks = FMath::Max(InitialChunks, P);
 		Shore = InitialChunks > 0 ? 1.f - float(P) / float(InitialChunks) : (P > 0 ? 0.f : 1.f);
 	}

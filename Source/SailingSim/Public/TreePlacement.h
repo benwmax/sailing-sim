@@ -60,6 +60,10 @@ SAILINGSIM_API void PlaceTreeInstances(const Sailing::FLakeTerrain& Terrain, flo
  */
 SAILINGSIM_API void PlaceCrownTrees(const Sailing::FLakeTerrain& Terrain, TConstArrayView<FLakeCrown> Crowns, float Fraction, TArray<FTreeInstance>& Out,
 	ETreeRegion Region = ETreeRegion::Classic);
+/** The crowns' own trees alone (PlaceCrownTrees without the canopy map): a streamed world's height tile gets its share as
+ *  it arrives (docs/world-object-tiles). Any thread: it reads only Terrain (a copy) and Crowns. */
+SAILINGSIM_API void AppendCrownTrees(const Sailing::FLakeTerrain& Terrain, TConstArrayView<FLakeCrown> Crowns, float Fraction, TArray<FTreeInstance>& Out,
+	ETreeRegion Region = ETreeRegion::Classic);
 
 /**
  * T1 (round 12, Inputs/clouds-trees/plan.md): each tree's own look, a pure function of its position (the shared portable

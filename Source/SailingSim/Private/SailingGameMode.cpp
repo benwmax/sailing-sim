@@ -1625,6 +1625,20 @@ void ASailingGameMode::FinishBenchmark()
 				Streamer.IsStreamed() ? TEXT("true") : TEXT("false"), Streamer.NumResident(), Streamer.ResidentBytes() / 1e6, Streamer.NumLoads(), Streamer.NumDrops(),
 				Streamer.LongestTickMs(), Recentres, LongestRecentreMs, WindowMarches, Chunks, Made, Dropped, FarDropped, At.X, At.Y);
 		}
+		// World objects in tiles (docs/world-object-tiles): the houses' and docks' cells, their pooled components, and the
+		// model trees with their tile components, at the end of the run.
+		{
+			int32 Live = 0, Made = 0, Dropped = 0, Comps = 0, Trees = 0, TreeComps = 0, TreeFree = 0, TreesDropped = 0;
+			int64 Instances = 0;
+			for (TActorIterator<ALakeTerrainActor> It(GetWorld()); It; ++It)
+			{
+				Live = It->GetObjectCellsLive(); Made = It->GetObjectCellsMade(); Dropped = It->GetObjectCellsDropped(); Comps = It->GetObjectComponents();
+				Instances = It->GetObjectInstancesLive(); Trees = It->GetModelTrees(); TreeComps = It->GetTreeTileComponents();
+				TreeFree = It->GetTreeTileComponentsFree(); TreesDropped = It->GetTreesDropped();
+			}
+			Summary = Summary.LeftChop(2) + FString::Printf(TEXT(",\"object_cells\":%d,\"object_made\":%d,\"object_dropped\":%d,\"object_components\":%d,\"object_instances\":%lld,\"model_trees\":%d,\"tree_tile_components\":%d,\"tree_tile_components_free\":%d,\"trees_dropped\":%d}}"),
+				Live, Made, Dropped, Comps, Instances, Trees, TreeComps, TreeFree, TreesDropped);
+		}
 	}
 	// Perf 1: the threads' own times (game thread without its waits) and the game thread's named slices.
 	if (const FString Threads = ThreadTimes.JsonFields(); !Threads.IsEmpty())

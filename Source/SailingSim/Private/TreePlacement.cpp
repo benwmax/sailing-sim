@@ -127,6 +127,12 @@ void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown>
 	}
 	Out.RemoveAll([&](const FTreeInstance& I) { return Band.Contains(FIntPoint(FMath::FloorToInt32(I.Position.X / 100.0), FMath::FloorToInt32(I.Position.Y / 100.0))); });
 	const int32 Filled = Out.Num();
+	AppendCrownTrees(T, Crowns, Fraction, Out, Region);
+	SAIL_LOG(Display, TEXT("Trees: %d lidar crowns placed, %d canopy-map trees outside their band"), Out.Num() - Filled, Filled);
+}
+
+void AppendCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown> Crowns, float Fraction, TArray<FTreeInstance>& Out, ETreeRegion Region)
+{
 	for (int32 K = 0; K < Crowns.Num(); ++K)
 	{
 		const FLakeCrown& C = Crowns[K];
@@ -180,7 +186,6 @@ void PlaceCrownTrees(const Sailing::FLakeTerrain& T, TConstArrayView<FLakeCrown>
 		I.Variant = uint8(TreeRand(Seed + 6) < 0.5f ? 0 : 1);
 		Out.Add(I);
 	}
-	SAIL_LOG(Display, TEXT("Trees: %d lidar crowns placed, %d canopy-map trees outside their band"), Out.Num() - Filled, Filled);
 }
 
 FTreeLook TreeLookFor(const FTreeInstance& Tree)

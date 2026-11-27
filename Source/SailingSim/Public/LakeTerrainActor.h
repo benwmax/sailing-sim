@@ -6,6 +6,7 @@
 #include "TreePlacement.h"
 #include "FarRing.h"
 #include "LakeTerrain.h"
+#include "ObjectStreaming.h"
 #include <memory>
 #include "LakeTerrainActor.generated.h"
 
@@ -59,6 +60,26 @@ public:
 	int32 GetFarTiles() const { return FarTiles.Num(); }
 	/** World streaming: the far ring's tiles within reach of the camera are in (or the world has none). */
 	bool IsFarRingSettled() const { return !FarLoader.Data() || (FarLoader.IsDone() && FarArrived.Num() == 0); }
+
+	/**
+	 * World objects in tiles (docs/world-object-tiles): the houses, private docks and the G2 houses' baked tiles are drawn in
+	 * cells near the camera and let go behind it, and the model trees leave their components past 9.5 km on every world;
+	 * on a streamed world the trees of a height tile that is dropped are let go too (and placed again if it comes back).
+	 */
+	/** Cells and tiles within the rings not drawn yet (the loading screen waits for them). */
+	int32 GetPendingObjectTiles() const { return HouseCells.NumPending() + HouseTileStream.NumPending(); }
+	/** Cells drawn now, made and dropped so far (the house and dock instances, then the baked house tiles). */
+	int32 GetObjectCellsLive() const { return HouseCells.NumCellsLive() + HouseTileStream.NumLive(); }
+	int32 GetObjectCellsMade() const { return HouseCells.NumCellsMade() + HouseTileStream.NumMade(); }
+	int32 GetObjectCellsDropped() const { return HouseCells.NumCellsDropped() + HouseTileStream.NumDropped(); }
+	/** The pools' components: they are reused from cell to cell, so this stops growing once the ring is full. */
+	int32 GetObjectComponents() const { return HouseCells.NumComponents() + HouseTileStream.NumComponents(); }
+	int64 GetObjectInstancesLive() const { return HouseCells.NumInstancesLive(); }
+	/** The model trees now, their tile components (in use and pooled) and the trees let go with their height tiles. */
+	int32 GetModelTrees() const { return ModelTrees.Num(); }
+	int32 GetTreeTileComponents() const { return TreeComps.Num() > TreeModels.Num() ? TreeComps.Num() - TreeModels.Num() : 0; }
+	int32 GetTreeTileComponentsFree() const;
+	int32 GetTreesDropped() const { return TreesDropped; }
 
 private:
 	TArray<TWeakObjectPtr<USceneComponent>> Kept;
@@ -222,10 +243,32 @@ private:
 	static void RemoveTreesInHouses(const struct FLakeData& Lake, TArray<struct FTreeInstance>& Trees);
 	/** Near-shore phase 3: young yard trees round the full-detail houses, from each lot's palette (-SailingNoYardTrees). */
 	static void AddYardTrees(const struct FLakeData& Lake, TArray<struct FTreeInstance>& Trees, ETreeRegion Region);
+	/** The same on a worker: heights from Terrain (a copy, never Lake.Terrain), only the houses whose centre is in Within. */
+	static void AddYardTrees(const struct FLakeData& Lake, const Sailing::FLakeTerrain& Terrain, TArray<struct FTreeInstance>& Trees, ETreeRegion Region, const FBox2D* Within);
 	int32 DriftCursor = 0;
 	void UpdateModelTrees(const FVector2D& Camera);
 	FTransform TreeTransform(const struct FTreeInstance& I, bool bNear, const FVector2D& Camera, FTransform* OutProxy) const;
 	int32 TileComponent(int32 Tile, uint8 Band, int32 Model);
+	/** World objects in tiles: the houses' and docks' cells, the baked house tiles, and their pooled components. */
+	FTiledInstances HouseCells;
+	FTiledMeshes HouseTileStream;
+	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> ObjectComps;
+	bool bObjectsStarted = false;
+	void StartObjects();
+	void UpdateObjects(const FVector2D& Camera);
+	UStaticMeshComponent* MakeHouseTileComponent();
+	/** The crown tiles' components that emptied, by (band, model), for the next tile of the same band and model to take. */
+	TMap<int32, TArray<int32>> FreeTileComps;
+	void ReleaseEmptyTileComponents(const TSet<int32>& Touched);
+	/** Streamed worlds: each model tree's height tile (FTileIndex), the lidar crowns by height tile, and the trees let go. */
+	TArray<int32> TreeWorldTile;
+	TSharedPtr<const TMap<int32, TArray<int32>>> CrownsByTile;
+	int32 WorldTileOf(const FVector2D& P) const;
+	void DropTreeTiles();
+	int32 TreesDropped = 0;
+	bool bTreeDropCheck = false;      // a tile's trees arrived: look again
+	uint32 TreeDropGeneration = 0;    // the streamer's generation last looked at
+	double TreeDropRetryAt = 0.0;     // a tile whose trees were still drawn waits a second
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingMeshes;
 	/** Graphics G6: the G2 houses' tiles (baked Nanite, or procedural where a tile has no bake). */
 	UPROPERTY(Transient) TArray<TObjectPtr<UPrimitiveComponent>> HouseTileMeshes;
