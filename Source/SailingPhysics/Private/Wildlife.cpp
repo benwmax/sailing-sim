@@ -13,6 +13,8 @@ namespace Sailing
 		constexpr double kPathStep = 0.2;        // seconds between the leader's track points
 		constexpr size_t kPathPoints = 220;      // 44 s of track: the longest line's tail
 		constexpr int kMaxMembers = 40;          // a flock drawn bigger than this is drawn as 40 (rafts of 800 franklins)
+		static_assert(kMaxMembers < 256, "FBirdDraw::Key keeps a member's place in 8 bits");
+		constexpr double kCloseInSpeed = 1.5;   // a bird flies to its slot at most this many times as fast as its flock
 		constexpr double kFadeSeconds = 3.0;
 		constexpr double kRefreshSeconds = 5.0;  // how often the expected counts are worked out again
 		constexpr double kCatchUpSeconds = 25.0; // a shortfall in a bird's flocks is made up over about this long
@@ -684,7 +686,8 @@ namespace Sailing
 		if (Place && !CanRestAt(B, Map, Place->North, Place->East)) return false;
 		FFlock F;
 		F.Bird = I;
-		F.Seed = HashCombine(BaseSeed, NextFlockId++);
+		F.Id = NextFlockId++;
+		F.Seed = HashCombine(BaseSeed, F.Id);
 		F.Rng.Reseed(F.Seed);
 		bool bRest = Place || (P.RestShare > 0.0 && F.Rng.Uniform01() < P.RestShare);
 		double SN = 0.0, SE = 0.0;
@@ -1176,12 +1179,15 @@ namespace Sailing
 				if (M.StateT < M.TakeOffDelay) { bAllLanded = false; continue; }
 				const double T = M.StateT - M.TakeOffDelay;
 				const double V = P.CruiseMs * Smooth(0.0, 2.5, T);
-				M.N += V * std::cos(M.Heading) * Dt;
-				M.E += V * std::sin(M.Heading) * Dt;
-				M.Up += std::min(2.0, 0.8 * T) * Dt;
 				const double Join = Smooth(1.5, 4.0, T);
-				M.N += (TN - M.N) * std::min(1.0, Join * 1.5 * Dt);
-				M.E += (TE - M.E) * std::min(1.0, Join * 1.5 * Dt);
+				double SN = V * std::cos(M.Heading) * Dt + (TN - M.N) * std::min(1.0, Join * 1.5 * Dt);
+				double SE = V * std::sin(M.Heading) * Dt + (TE - M.E) * std::min(1.0, Join * 1.5 * Dt);
+				// (joining the flock's line no faster than a bird closes in on its slot in the air)
+				const double StepM = std::sqrt(SN * SN + SE * SE), MaxStep = kCloseInSpeed * std::max(F.Speed, P.CruiseMs) * Dt;
+				if (StepM > MaxStep) { SN *= MaxStep / StepM; SE *= MaxStep / StepM; }
+				M.N += SN;
+				M.E += SE;
+				M.Up += std::min(2.0, 0.8 * T) * Dt;
 				M.Up += (TU - M.Up) * std::min(1.0, Join * 1.0 * Dt);
 				M.Heading = WrapPi(M.Heading + WrapPi(std::atan2(M.E - OldE, M.N - OldN) - M.Heading) * std::min(1.0, 3.0 * Dt));
 				if (T > 4.0) M.State = EBirdState::Flying;
@@ -1250,12 +1256,18 @@ namespace Sailing
 				continue;
 			}
 
-			// fly to the slot: close in quickly, follow tightly once there
+			// fly to the slot: close in quickly, follow tightly once there, but never faster than half as fast again as the
+			// flock flies: a slot that jumps (a circle opening into a line) is flown to, not zipped to (birds 60 m off
+			// their slots crossed at 70 to 160 m/s, Nov 27)
 			const double GN = TN - M.N, GE = TE - M.E;
 			const double Gap = std::sqrt(GN * GN + GE * GE);
 			const double Rate = Gap > 5.0 ? 1.2 : 6.0;
-			M.N += (TN - M.N) * std::min(1.0, Rate * Dt);
-			M.E += (TE - M.E) * std::min(1.0, Rate * Dt);
+			const double Step = std::min(Gap * std::min(1.0, Rate * Dt), kCloseInSpeed * std::max(F.Speed, P.CruiseMs) * Dt);
+			if (Gap > 1e-9)
+			{
+				M.N += GN / Gap * Step;
+				M.E += GE / Gap * Step;
+			}
 			M.Up += (TU - M.Up) * std::min(1.0, 2.0 * Dt);
 			if (Dt > 0.0)
 			{
@@ -1377,8 +1389,9 @@ namespace Sailing
 			F.bDrawn = false;
 			const FWildBird& B = Table.Birds[size_t(F.Bird)];
 			const FBirdStyleParams& P = BirdStyleParams(B.Style);
-			for (const FMember& M : F.Members)
+			for (size_t MI = 0; MI < F.Members.size(); ++MI)
 			{
+				const FMember& M = F.Members[MI];
 				++St.Birds;
 				const bool bDown = M.State == EBirdState::OnWater || M.State == EBirdState::Standing ||
 					(M.State == EBirdState::TakingOff && M.StateT < M.TakeOffDelay);
@@ -1403,6 +1416,7 @@ namespace Sailing
 				D.Style = B.Style;
 				D.State = bDown ? (B.Style == EBirdStyle::Wading ? EBirdState::Standing : EBirdState::OnWater) : M.State;
 				D.DistanceM = float(Dist);
+				D.Key = (F.Id << 8) | uint64_t(MI);   // (kMaxMembers is under 256)
 				D.bInView = !Obs.bHasView || Dist < 1e-3 ||
 					(DN * Obs.ViewNorth + DE * Obs.ViewEast + DU * Obs.ViewUp) >= Obs.ViewCosHalf * Dist;
 				All.push_back(D);

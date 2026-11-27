@@ -222,6 +222,8 @@ namespace Sailing
 		float DistanceM = 0.0f;      // from the camera
 		bool bBody = false;          // within the near or mid budget (a body); else a camera-facing quad
 		bool bInView = true;         // inside the camera's view cone (always, without a view)
+		uint64_t Key = 0;            // this bird's own number while it lives (its flock's id and its place in it): the
+		                             // renderer keeps a bird on one instance by it, so the instance's motion is the bird's
 	};
 
 	/** A plunge or a landing on the water, for splashes (Phase 2 draws them). */
@@ -315,6 +317,7 @@ namespace Sailing
 		struct FFlock
 		{
 			int Bird = 0;
+			uint64_t Id = 0;                     // from NextFlockId, never reused
 			uint64_t Seed = 0;
 			FPortableRandom Rng;
 			double N = 0.0, E = 0.0, Up = 10.0;   // the leader, or the centre of a circling or resting flock

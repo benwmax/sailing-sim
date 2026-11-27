@@ -57,6 +57,15 @@ the distance-field, Lumen and ray-tracing scenes. Sending every instance of ever
 0.85 ms of game thread at Ultra 4K on the lake (540 quads; Nov 26, 50cc95bc), GPU +0.12 to 0.23 ms. Plan budget 0.5 ms GPU and
 0.3 ms game thread on High; the logic's update is 0.05 to 0.25 ms at the 99th percentile in `scripts/wildlife-check.sh`.
 
+Each bird keeps its instance (`AWildlifeActor::FBirdPool`, by `FBirdDraw::Key`, its flock's id and its place in the
+flock) for as long as a pool draws it, and each instance is sent with what it held the frame before, so TSR and motion
+blur see the bird's own motion. A new bird takes the lowest free instance and is sent as a jump (its previous transform
+its own), as is every instance when the render's origin moves. Before (Nov 27 reel take, Ultra, TSR): instances were
+handed out nearest first each frame, so they jumped between birds, had no motion vectors, and TSR left every near bird
+fuzzy with smeared wings; with AA off the same frames were hard-edged. A bird flies to its slot in the flock no faster
+than 1.5 times the flock's speed (opening out of a circle, joining the line after a take-off): before, birds 60 m from
+their slots crossed at 40 to 160 m/s.
+
 ## Running it
 
 - `scripts/wildlife-check.sh [World|all] [--months 1,4,7,10] [--hour 10] [--sail] [--tier 2] [--spot N] [--species]`
@@ -73,8 +82,8 @@ the distance-field, Lumen and ray-tracing scenes. Sending every instance of ever
   with bpy), then `UnrealEditor-Cmd.exe <SailingSim.uproject> -run=pythonscript -script="scripts/import_birds.py <out>"
   -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`. `/Game/Wildlife` is in
   `Config/DefaultGame.ini`'s `DirectoriesToAlwaysCook` (loaded by path: without it a package draws no birds).
-- Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.View`, `.Passes`,
-  `.RaftWaits`, `.Sprites`.
+- Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.Keys`, `.View`,
+  `.Passes`, `.RaftWaits`, `.Sprites`.
 - Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density;
   `-SailingDebugBirds[=<k>]` draws every bird k times its size (10) and whole, to find them in a still, and pins three
   quads (30, 60, 120 m ahead, 3 deg up) and three bodies (40, 80, 160 m, just over the horizon) in the view whatever the

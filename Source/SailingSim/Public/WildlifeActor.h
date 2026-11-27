@@ -98,9 +98,27 @@ private:
 	int32 FarPool = 0;
 	TArray<int32> StylePool;
 	int32 DrawnQuads = 0, DrawnBodies = 0, DrawnInView = 0;
-	// What DrawBirds last sent (it sends only the drawn instances and, after a move, the parked ones again).
-	int32 SentQuads = 0;
-	TArray<int32> SentBodies;
+	/** One pool's instances held to their birds (Sailing::FBirdDraw::Key) from frame to frame: a bird keeps its instance
+	 *  while it is drawn in that pool, so the instance moves as the bird does and the renderer's motion vectors (TSR, motion
+	 *  blur) are the bird's own. Handed out nearest first, the instances jumped between birds every frame and TSR smeared
+	 *  every near bird (the reel's AA test, Nov 27: hard-edged with AA off). */
+	struct FBirdPool
+	{
+		struct FBird
+		{
+			uint64 Key = 0;
+			FTransform Xf;                // map frame, cm
+			float Data[FarFloats] = {};   // its per-instance floats (a body uses the first MidFloats)
+		};
+		TArray<FBird> Now;                // this frame's birds in the pool, in draw order
+		TMap<uint64, int32> SlotOf;       // last frame's birds and their instances
+		TArray<uint64> Holder;            // each instance's bird last frame (0 none)
+		TArray<FTransform> Last;          // each instance's transform last frame (map frame, cm)
+		int32 Sent = 0;                   // instances sent last frame (every held one is below it)
+	};
+	FBirdPool FarSlots;
+	TArray<FBirdPool> BodySlots;             // by EBirdStyle
+	// What DrawBirds last sent (it sends only the instances held this frame or the last and, after a move, the parked ones).
 	bool bParkedSent = false;
 	FVector ParkedAtCm = FVector::ZeroVector;
 	FVector ParkedOriginCm = FVector::ZeroVector;
