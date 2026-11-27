@@ -1,0 +1,11 @@
+head d35690a0 15:31:48
+build ok, warnings: 0
+SailingSim.Coast: 24 passed, 0 failed, 24 total
+SailingSim.Smoke: 38 passed, 0 failed, 38 total
+/Users/ben/myProjects/sailing-sim/Artifacts/claude-6e6e/fix/p846/t-coast.txt:Success  SailingSim.Coast.KeptKeepsProxy
+/Users/ben/myProjects/sailing-sim/Artifacts/claude-6e6e/fix/p846/t-coast.txt-Success  SailingSim.Coast.KeptStaticFollowsTide
+/Users/ben/myProjects/sailing-sim/Artifacts/claude-6e6e/fix/p846/t-coast.txt-Success  SailingSim.Coast.Landmarks
+/Users/ben/myProjects/sailing-sim/Artifacts/claude-6e6e/fix/p846/t-coast.txt-Success  SailingSim.Coast.LightsFlashTheirCharacteristics
+/Users/ben/myProjects/sailing-sim/Artifacts/claude-6e6e/fix/p846/t-coast.txt-Success  SailingSim.Coast.LongPassageStable
+/Users/ben/myProjects/sailing-sim/Artifacts/claude-6e6e/fix/p846/t-coast.txt-Success  SailingSim.Coast.MarseilleCassis
+/Users/ben/myProjects/sailing-sim/Artifacts/claude-6e6e/fix/p846/t-coast.txt-Success  SailingSim.Coast.MarseilleLights
