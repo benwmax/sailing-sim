@@ -1,0 +1,8 @@
+2026.11.27-07.19.08:268 the followers stand at -10 cm (frame 1)
+2026.11.27-07.28.31:277 the followers stand at -12 cm (frame 28246)
+2026.11.27-07.48.42:023 the followers stand at -14 cm (frame 89238)
+2026.11.27-07.52.29:907 the followers stand at -16 cm (frame 100529)
+2026.11.27-07.56.03:044 the followers stand at -18 cm (frame 111323)
+2026.11.27-08.01.18:599 the followers stand at -20 cm (frame 127656)
+2026.11.27-08.06.10:679 the followers stand at -22 cm (frame 142863)
+2026.11.27-08.12.04:624 the followers stand at -24 cm (frame 161106)
