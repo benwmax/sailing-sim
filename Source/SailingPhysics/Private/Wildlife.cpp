@@ -21,6 +21,13 @@ namespace Sailing
 		constexpr double kPassMaxM = 120.0;
 		constexpr double kRefPixel = 1.0 / 960.0;   // BirdSeenScale's reference pixel: 2 tan(45 deg) / 1920 (rad)
 		constexpr double kRestLife = 600.0, kCircleLife = 240.0, kTravelLife = 180.0;   // mean stays (s), by what they start doing
+		// A raft a boat is sailing at waits for her: one whose stay runs out while a boat inside kWaitAheadM is headed to pass
+		// within its flush distance plus kWaitLaneM stays on (looked at again every kWaitSeconds), so it lifts when she gets
+		// there. Without it, at 2.5 kn a raft 400 m off left first about 4 times in 10 (Nov 26 reel rehearsal).
+		constexpr double kWaitAheadM = 500.0;
+		constexpr double kWaitLaneM = 60.0;
+		constexpr double kWaitSeconds = 15.0;
+		constexpr double kPlacedLife = 1e9;      // a placed raft (-SailingBirdRaft) stays until a boat flushes it
 
 		double WrapPi(double A)
 		{
@@ -582,6 +589,23 @@ namespace Sailing
 		ExpectedT = 1e9;
 		bFilled = false;
 		St = FStats();
+		Rafts.clear();
+	}
+
+	bool FBirdFlocks::PlaceRaft(const std::string& BirdId, double North, double East, int Count)
+	{
+		for (size_t I = 0; I < Table.Birds.size(); ++I)
+		{
+			if (Table.Birds[I].Id != BirdId) continue;
+			FRaftPlace R;
+			R.Bird = int(I);
+			R.North = North;
+			R.East = East;
+			R.Count = Count;
+			Rafts.push_back(R);
+			return true;
+		}
+		return false;
 	}
 
 	int FBirdFlocks::GroupSize(const FWildBird& B, FPortableRandom& R) const
@@ -651,17 +675,25 @@ namespace Sailing
 		F.GoalE = GE;
 	}
 
-	bool FBirdFlocks::Spawn(int I, const FWildlifeConditions& /*C*/, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map, double MinM, double MaxM)
+	bool FBirdFlocks::Spawn(int I, const FWildlifeConditions& /*C*/, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map, double MinM, double MaxM,
+		const FRaftPlace* Place)
 	{
 		const FWildBird& B = Table.Birds[size_t(I)];
 		const FBirdStyleParams& P = BirdStyleParams(B.Style);
+		// a placed raft sits where it was asked to, or nowhere (on land, or a wader out of its depth)
+		if (Place && !CanRestAt(B, Map, Place->North, Place->East)) return false;
 		FFlock F;
 		F.Bird = I;
 		F.Seed = HashCombine(BaseSeed, NextFlockId++);
 		F.Rng.Reseed(F.Seed);
-		bool bRest = P.RestShare > 0.0 && F.Rng.Uniform01() < P.RestShare;
+		bool bRest = Place || (P.RestShare > 0.0 && F.Rng.Uniform01() < P.RestShare);
 		double SN = 0.0, SE = 0.0;
-		if (bRest)
+		if (Place)
+		{
+			SN = Place->North;
+			SE = Place->East;
+		}
+		else if (bRest)
 		{
 			// on the water (or standing in the shallows and at the water's edge for waders), inside the bird's habitats
 			uint32_t Where = B.Habitats & (B.Style == EBirdStyle::Wading ? uint32_t(HabShallows | HabShore | HabHarbour)
@@ -678,12 +710,13 @@ namespace Sailing
 		F.Side = F.Rng.Uniform01() < 0.5 ? -1 : 1;
 		F.bResting = bRest;
 		F.bCircling = !bRest && F.Rng.Uniform01() < P.CircleShare;
-		F.Life = Exponential(F.Rng, bRest ? kRestLife : (F.bCircling ? kCircleLife : kTravelLife));
+		F.Life = Place ? kPlacedLife : Exponential(F.Rng, bRest ? kRestLife : (F.bCircling ? kCircleLife : kTravelLife));
 		F.Speed = P.CruiseMs;
 		F.TargetUp = F.bCircling ? P.CircleAltM * F.Rng.Uniform(0.7, 1.3) : F.Rng.Uniform(P.AltMinM, P.AltMaxM);
 		F.Up = bRest ? 0.0 : F.TargetUp + Map.TopAt(SN, SE);
-		F.Fade = bFilled ? 0.0 : 1.0;
+		F.Fade = bFilled && !Place ? 0.0 : 1.0;
 		F.bFirstFill = !bFilled;
+		F.bPlaced = Place != nullptr;
 		NewGoal(F, Map, F.Rng.Uniform(800.0, 2500.0));
 		// some travellers come by the boat: their first goal is beside her, 40 to 120 m off (met, not only seen far off)
 		const FBirdObservers::FBoat* Player = PlayerBoat(Obs);
@@ -708,7 +741,7 @@ namespace Sailing
 			}
 		}
 		F.Heading = std::atan2(F.GoalE - F.E, F.GoalN - F.N);
-		const int Count = GroupSize(B, F.Rng);
+		const int Count = Place && Place->Count > 0 ? std::min(kMaxMembers, Place->Count) : GroupSize(B, F.Rng);
 		const double Span = B.SizeM;
 		const double Spacing = (P.SpacingSpans + 1.0) * Span;
 		const double R = Spacing * std::sqrt(double(Count));
@@ -802,6 +835,8 @@ namespace Sailing
 				for (int K = 0; K < Want; ++K) Spawn(I, C, Obs, Map, NearM, FarM);
 			}
 			bFilled = true;
+			// then the placed rafts (after the fill, so the rest are laid as they would be without them)
+			for (FRaftPlace& R : Rafts) R.State = Spawn(R.Bird, C, Obs, Map, 0.0, 0.0, &R) ? 1 : -1;
 		}
 		else
 		{
@@ -855,8 +890,24 @@ namespace Sailing
 	void FBirdFlocks::EndStay(const FFlock& F)
 	{
 		// flocks from the first fill were met partway through their stay: their ages say less
-		if (F.bFirstFill || F.Bird < 0 || F.Bird >= int(Stay.size())) return;
+		if (F.bFirstFill || F.bPlaced || F.Bird < 0 || F.Bird >= int(Stay.size())) return;
 		Stay[size_t(F.Bird)] += 0.15 * (F.Age - Stay[size_t(F.Bird)]);
+	}
+
+	bool FBirdFlocks::BoatClosingOn(const FFlock& F, const FBirdObservers& Obs) const
+	{
+		const FWildBird& B = Table.Birds[size_t(F.Bird)];
+		const double Flush = B.FlushM > 0.0 ? B.FlushM : BirdStyleParams(B.Style).FlushM;
+		for (const FBirdObservers::FBoat& Boat : Obs.Boats)
+		{
+			if (Boat.SpeedMs < 0.3) continue;
+			// the raft in her frame: how far ahead, and how far off the line she is sailing
+			const double DN = F.N - Boat.North, DE = F.E - Boat.East;
+			const double Along = DN * std::cos(Boat.HeadingRad) + DE * std::sin(Boat.HeadingRad);
+			const double Across = -DN * std::sin(Boat.HeadingRad) + DE * std::cos(Boat.HeadingRad);
+			if (Along > 0.0 && Along < kWaitAheadM && std::fabs(Across) < Flush + kWaitLaneM) return true;
+		}
+		return false;
 	}
 
 	bool FBirdFlocks::CheckFlush(FFlock& F, const FBirdObservers& Obs, const FWildlifeHabitatMap& Map, bool bForce)
@@ -1266,6 +1317,8 @@ namespace Sailing
 			F.Fade = std::min(1.0, F.Fade + Dt / kFadeSeconds);
 		}
 		CheckFlush(F, Obs, Map);
+		// a raft a boat is sailing at waits for her (it lifts as she arrives, a flush, not just before)
+		if (F.Life <= 0.0 && !F.bLeaving && F.bResting && !F.bFlushed && BoatClosingOn(F, Obs)) F.Life = kWaitSeconds;
 		if (F.Life <= 0.0 && !F.bLeaving)
 		{
 			// time to go: rafts take off, circlers break off, everyone heads out of the camera's 2 km

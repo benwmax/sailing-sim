@@ -11,7 +11,10 @@ right birds for the month, more at dawn and dusk for the ones that feed then, fe
 night. Each flies its style: pelicans in lines just over the waves, gulls hanging in the wind and resting on the water,
 terns and gannets circling and plunging, cormorants fast and low, shearwaters banking over the wave tops, vultures and
 raptors circling high, herons standing in the shallows, swallows and swifts zigzagging low, ducks and coots in rafts.
-Resting birds take off when a boat comes inside their flush distance and land again 200 to 400 m on. About a third of
+Resting birds take off when a boat comes inside their flush distance and land again 200 to 400 m on. A raft whose stay
+runs out while a boat is sailing at it (inside 500 m, headed to pass within its flush distance plus 60 m) waits for her,
+so sailing at a raft ends in a flush: at 2.5 kn a raft 400 m off used to leave on its own first about 4 times in 10 (the
+Nov 26 reel rehearsal sailed 680 s at rafts without one flush). About a third of
 the travelling flocks fly past within 40 to 120 m of your boat (the games players praise for wildlife put it near the
 player); when you arrive, the ones on their way are already partway in, 80 m to 1 km out, so the first comes by within
 seconds at most spots, not after the two or three minutes a flock from 2 km takes.
@@ -71,7 +74,7 @@ the distance-field, Lumen and ray-tracing scenes. Sending every instance of ever
   -unattended -nosplash -nosound -stdout`, which ends with `Birds: done`. `/Game/Wildlife` is in
   `Config/DefaultGame.ini`'s `DirectoriesToAlwaysCook` (loaded by path: without it a package draws no birds).
 - Tests: `SailingSim.Wildlife.Tables`, `.Habitats`, `.Day`, `.Counts`, `.Flush`, `.Repeatable`, `.View`, `.Passes`,
-  `.Sprites`.
+  `.RaftWaits`, `.Sprites`.
 - Args: `-SailingNoWildlife` leaves the birds out; `-SailingWildlifeScale=<f>` scales every bird's density;
   `-SailingDebugBirds[=<k>]` draws every bird k times its size (10) and whole, to find them in a still, and pins three
   quads (30, 60, 120 m ahead, 3 deg up) and three bodies (40, 80, 160 m, just over the horizon) in the view whatever the
@@ -81,6 +84,14 @@ the distance-field, Lumen and ray-tracing scenes. Sending every instance of ever
   place and size as the engine holds them.
 - The log's `Wildlife:` line every 10 s gives the birds drawn in view and the nearest one on screen (species, distance,
   compass bearing and elevation from the camera): aim a still with `-SailingCamYaw`/`-SailingCamPitch` from it.
+- `-SailingBirdRaft=<bird id>,<north m>,<east m>[,<count>]` (quote it: it has commas) puts one resting flock of a table's
+  bird (`american_white_pelican`, `double_crested_cormorant`, `lake_waterfowl`, ... from `<World>.wildlife.json`) at a
+  map spot in the same metres as `-SailingStartAt`, `count` birds (up to 40; a usual flock without it). It is laid right
+  after the first fill (the other birds are where they would be without it), is there from the first frame and stays
+  until a boat flushes it; flushed, it settles 200 to 400 m on and stays there. The log says `Wildlife: placed a raft of
+  ...`, or why not (on land, or too deep for a wader). For films and checks of the flush: put it about 250 m ahead on her
+  course. The first fill is laid round the camera's first position, so the natural rafts move with the camera's start
+  (a scout from another camera place or height does not find the take's rafts); a placed raft does not.
 
 ## Open
 

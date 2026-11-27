@@ -109,5 +109,6 @@ private:
 	int32 Markers = 0;                       // -SailingDebugBirds: birds pinned in the view (the pools' last slots)
 	int32 MarkerQuad = -1;                   // the nearest pinned quad's instance (-1 none)
 	bool bPlainDebug = false;                // -SailingDebugBirdsPlain: the engine's default material on every bird
+	bool bRaftsLogged = false;               // -SailingBirdRaft's result logged
 	double NextLog = 0.0;
 };
