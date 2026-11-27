@@ -47,12 +47,21 @@ public:
 	/** The turbulent lane a hull leaves (0..1, set by her speed): her wake's smooth track, where the stirred water damps the
 	 * wind's ripples for a few lengths astern (sailing-feedback #9). */
 	const TArray<float>& Slick() const { return SlickField; }
+	/** Bow wave 3 (docs/bow-wave/): how the water bunches into her waves' crests, the Jacobian of the surface's horizontal
+	 *  displacement (Tessendorf's choppy waves on the grid's own spectrum: water moves toward each crest and away from each
+	 *  trough, as in a Gerstner wave). 1 on flat water, under 1 on a crest (sharper), over 1 in a trough; 0 or less would
+	 *  be a fold. M_WaterV4 reads it (the wake texture's A) to sharpen her waves' crests and to let them tip the chop into
+	 *  whitecaps. */
+	const TArray<float>& Fold() const { return FoldField; }
 	/** Height (m) at a map point (0 outside). */
 	float HeightAt(const FVector2D& Point) const;
 
 	/** Bow wave 2 (docs/bow-wave/): foam where a hull's bow wave presses up beside her once she is fast for her length
 	 *  (AWaterSurface sets it from AWaterSurface::BowWave2On before each step). */
 	bool bBowFoam = true;
+	/** Bow wave 3 (docs/bow-wave/): make the fold (Fold); off, it stays 1 and the step skips its transform (AWaterSurface sets
+	 *  it from AWaterSurface::BowWave3On before each step). */
+	bool bFold = true;
 
 private:
 	void StepOnce(float Dt, const TArray<FHull>& Hulls);
@@ -62,13 +71,14 @@ private:
 	int32 N = 0;
 	float Cell = 0.2f;
 	FVector2D Corner = FVector2D::ZeroVector;
-	TArray<float> H, Velocity, Pressure, Depth, PrevDepth, FoamField, SlickField, SlickScratch;
+	TArray<float> H, Velocity, Pressure, Depth, PrevDepth, FoamField, SlickField, SlickScratch, FoldField;
 	TArray<float> Stir, PrevStir;             // per cell, this step and the last: how hard a hull over it stirs the water (0..1, her speed)
 	TArray<float> StirMid, PrevStirMid;       // as Stir, fading to 0 toward her sides: where her bubble trail starts
 	TArray<float> NearStir;                   // per cell, this step: the fastest hull within reach of it (0..1, as Stir)
 	TArray<float> NearFroude;                 // per cell, this step: the highest length Froude number of a hull within reach
 	TArray<float> Omega;                      // per mode, rad/s (deep water)
 	TArray<std::complex<float>> Spectrum;     // scratch
+	TArray<std::complex<float>> Displacement; // scratch: the horizontal displacement, X real and Y imaginary (bow wave 3)
 	float Accumulator = 0.f;
 	bool bHasDepth = false;
 	bool bPlaced = false;

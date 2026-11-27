@@ -218,6 +218,88 @@ bool FWaterBowCrestTest::RunTest(const FString&)
 	return true;
 }
 
+/**
+ * Bow wave 3 (docs/bow-wave/): her waves' crests are sharpened the way a Gerstner wave's are, by moving the water toward
+ * each crest (FWakeGrid::Fold, the Jacobian of that displacement). On a crest it is under 1, in a trough over 1, and it
+ * averages 1. In flat water her own waves never fold (it stays well above 0): only with the chop on top can they tip into
+ * a whitecap (M_WaterV4). The numbers from the offline replica (docs/bow-wave/README.md): 0.84 at her bow at 6 kn, on
+ * the crest beside her, and 0.68 at the lowest in her wake.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWaterWakeFoldTest, "SailingSim.Visual.WakeFold", WaterFlags)
+bool FWaterWakeFoldTest::RunTest(const FString&)
+{
+	const FBoatConfig Config;
+	const FBoatModel Model(Config);
+	const FHullShape& Shape = Config.Hulls[0];
+	const double Canoe = Model.HullDepth();
+	auto Wet = [&](double X, double Y)
+	{
+		if (X < Shape.SternX || X > Shape.BowX || FMath::Abs(Y) > Shape.DeckHalfBeam(X)) return 0.0;
+		return FMath::Max(0.0, -Shape.BottomZ(X, Y, Canoe));
+	};
+	struct FFolds { float BowMin = 9.f, BowMinHeight = 0.f, OpenMin = 9.f, CrestMean = 0.f, TroughMean = 0.f, Mean = 0.f; };
+	auto SailAt = [&](float Speed)
+	{
+		FWakeGrid Grid;
+		Grid.Init(256, 0.25f);
+		FWakeGrid::FHull Hull;
+		Hull.Shape = &Shape;
+		Hull.CanoeDepth = float(Canoe);
+		Hull.Speed = Speed;
+		Hull.Position = FVector2D(0.0, 0.0);
+		TArray<FWakeGrid::FHull> Hulls = { Hull };
+		const float Dt = 1.f / 60.f;
+		for (int32 I = 0; I < 12 * 60; ++I)
+		{
+			Hulls[0].Position.X += Speed * Dt;
+			Grid.Follow(Hulls[0].Position);
+			Grid.Step(Dt, Hulls);
+		}
+		const int32 N = Grid.Size();
+		const double Cell = Grid.CellSize();
+		const TArray<float>& H = Grid.Heights();
+		const TArray<float>& J = Grid.Fold();
+		FFolds Out;
+		double Crest = 0.0, Trough = 0.0, All = 0.0;
+		int32 NCrest = 0, NTrough = 0, NAll = 0;
+		for (int32 R = 8; R < N - 8; ++R)
+		{
+			for (int32 C = 8; C < N - 8; ++C)
+			{
+				const FVector2D P = Grid.Origin() + FVector2D((R + 0.5) * Cell, (C + 0.5) * Cell) - Hulls[0].Position;
+				if (Wet(P.X, P.Y) >= 0.005) continue;
+				const int32 I = R * N + C;
+				const double Beside = FMath::Max(FMath::Max(Wet(P.X - Cell, P.Y), Wet(P.X + Cell, P.Y)), FMath::Max(Wet(P.X, P.Y - Cell), Wet(P.X, P.Y + Cell)));
+				// Her bow: the open water from just ahead of the stem to 3.5 m aft, within 3 m of her centreline.
+				if (P.X > Shape.BowX - 3.5 && P.X < Shape.BowX + 0.25 && FMath::Abs(P.Y) < 3.0 && J[I] < Out.BowMin)
+				{
+					Out.BowMin = J[I];
+					Out.BowMinHeight = H[I];
+				}
+				if (Beside >= 0.005) continue;
+				Out.OpenMin = FMath::Min(Out.OpenMin, J[I]);
+				All += J[I]; ++NAll;
+				if (H[I] > 0.01f) { Crest += J[I]; ++NCrest; }
+				if (H[I] < -0.01f) { Trough += J[I]; ++NTrough; }
+			}
+		}
+		Out.CrestMean = NCrest > 0 ? float(Crest / NCrest) : 1.f;
+		Out.TroughMean = NTrough > 0 ? float(Trough / NTrough) : 1.f;
+		Out.Mean = NAll > 0 ? float(All / NAll) : 0.f;
+		AddInfo(FString::Printf(TEXT("%.1f kn: fold at her bow %.3f (on water %.3f m high), lowest in open water %.3f, crests %.3f (%d cells), troughs %.3f (%d), mean %.4f"),
+			Speed / 0.5144f, Out.BowMin, Out.BowMinHeight, Out.OpenMin, Out.CrestMean, NCrest, Out.TroughMean, NTrough, Out.Mean));
+		return Out;
+	};
+	const FFolds Slow = SailAt(1.54f), Fast = SailAt(3.09f);
+	TestTrue(TEXT("At 6 kn the crest beside her bow is bunched"), Fast.BowMin > 0.7f && Fast.BowMin < 0.95f);
+	TestTrue(TEXT("The bunching is on the crest"), Fast.BowMinHeight > 0.01f);
+	TestTrue(TEXT("At 3 kn it is gentler"), Slow.BowMin > Fast.BowMin);
+	TestTrue(TEXT("Crests bunch and troughs spread"), Fast.CrestMean < 0.99f && Fast.TroughMean > 1.01f);
+	TestTrue(TEXT("The water is moved, not made: the fold averages 1"), FMath::Abs(Fast.Mean - 1.f) < 0.01f);
+	TestTrue(TEXT("Her own waves never fold in flat water"), Fast.OpenMin > 0.5f && Slow.OpenMin > 0.5f);
+	return true;
+}
+
 namespace
 {
 	/**

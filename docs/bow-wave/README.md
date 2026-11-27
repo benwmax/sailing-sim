@@ -2,7 +2,7 @@
 
 Bean asked for a bow wave that splits more realistically and in more detail. The research and the full plan are in the
 Claude Doc "Bow wave and wake: research and plan". Phases 1 to 3 go into the Dec 11 release (Bean's choice, Nov 25);
-phases 4 to 6 come after it. This page covers phases 1 and 2.
+phases 4 to 6 come after it. This page covers phases 1 to 3.
 
 ## What was wrong (phase 1 findings)
 
@@ -99,8 +99,52 @@ show the lee bow from a chase boat. They have not been screened for the bow yet.
 - how wide the white band is, and how long it lasts astern
 - where the spray leaves the bow, and how high it goes
 
-## Next: phase 3
+## Phase 3: sharper crests
 
-Sharper crests: horizontal displacement from the wake grid (one more complex FFT a step), foam where the surface folds,
-and a 16-bit wake texture. This needs `make_materials.py`, so the pull request needs Bean's `bean-approved` label, and
-it waits for the lake wind streaks PR (#837), which changes the same material.
+In a real wake the crests are sharp and the troughs round, because the water moves toward each crest as it rises. A
+linear height field draws them as sine waves. Tessendorf's choppy waves fix that from the same spectrum: each mode's
+water moves by i k/|k| times its height (for h = A cos kx, -A sin kx, toward the crest, as in a Gerstner wave).
+
+- **The solver:** `FWakeGrid` makes the displacement from the step's own spectrum (one more inverse FFT a step, both
+  directions packed as one complex field) and its Jacobian, `FWakeGrid::Fold`: 1 on flat water, under 1 on a crest,
+  over 1 in a trough. It takes the spectrum of height plus hull pressure, which is nearly flat under her, so the hull's
+  hollow doesn't push the water around her sides. `kChop` is 1 (a Gerstner wave's own orbit).
+- **The texture:** the wake texture's unused A channel carries the fold, and the texture is now half floats: half the
+  upload at 30 Hz (2 MB a frame on Ultra instead of 4), with heights still to a fraction of a millimetre.
+- **The water material:** `M_WaterV4` steepens the wake's slopes by 1 / fold, so crests catch the light as narrow
+  bright lines and troughs go smooth. The fold also multiplies the long waves' (J), so where her crests cross the
+  chop's they tip it into whitecaps sooner, and the foam gathers on her crests as it does on the waves'.
+- **The bow's curl breaks.** The PC's bow-facing stills of phase 2 (Nov 26, `Inputs/bench/pr839/fc9a8be/bow-path/`)
+  showed the curl's lip as a line a few centimetres wide, more gap than foam, that hardly read from 7 m. Near her hull
+  speed a J/22 spills a white crest a hand or two wide just aft of the stem, and the broken water tumbles down the
+  wave's outer face in streaks running aft. `M_BowWave` takes `Breaking` (the pawn sets 1 on its material instance
+  while the switch is on): from about 5 kn, growing with the lip to full by 7 kn, the crest holds its white further aft
+  of the stem (its rise had fallen off so fast that the lip's foam seldom passed half), widens and stands a little
+  further out, most of its gaps close, and it is torn into streaks about 3 cm across that drift aft; the face outboard
+  of it carries streaks of the same. Offline (the material's code in numpy on the J/22's sheet) the white past half is
+  a band about 2 cm wide on average over the sheet's length at 6 kn and 7 cm at 7 kn, strongest in the first half metre,
+  against none before. Breaking 0 is the sheet exactly as before. On the PC (Nov 26, `Inputs/bench/bow-wave-839/phase3/`):
+  a torn white crest in several strands from just aft of the stem, streaks down the face, no blob, 3 kn unchanged; the
+  white band is about 1.5 to 2 m long, about what a real J/22's is.
+
+Offline, at 6 kn: the water moves up to 9 cm, the fold is 0.84 on the crest beside her bow (about 2.9 m aft of the
+stem, where the crest is 2.7 cm high) and 0.68 at the lowest in her wake. It averages 1, and is 0.96 on crests and 1.04
+in troughs. At 3 kn the lowest is 0.83 and the bow's 0.96. In flat water her waves never fold (that would take 0 or
+less), so phase 2's pressed-crest foam stays the only foam at her bow there. In a breeze her crests now add to the
+chop's caps.
+
+The vertices don't move: the water's finest vertex spacing is 0.5 m, twice the grid's cell, so moving them by a few
+centimetres wouldn't show. The sharpening is in the shading, and phase 4's dense patch near the boat is where the
+geometry gets it.
+
+**Switch and compare:** the console's `sailing.BowWave3` (default 1; `GBowWave3` in `WaterSurface.cpp`, one line for
+the release) and `-SailingClassicBowWave3` for one run. Off, the grid makes no fold (1 in the texture's A, and the step
+skips its transform), so the material draws her crests as before, and the curl's crest doesn't break; the half-float
+texture stays.
+
+**Test:** `SailingSim.Visual.WakeFold` checks the fold at her bow at 6 kn (0.7 to 0.95, on the crest), that it is gentler
+at 3 kn, that crests bunch and troughs spread, that it averages 1, and that her waves never fold in flat water.
+
+Phase 3 changes `make_materials.py` (`build_water_v4`, `build_bow_wave`), so its pull request needs the Mac's rebuilt
+`M_WaterV4` and `M_BowWave` and Bean's `bean-approved` label. The lake wind streaks (#837), which change the same material,
+are already in.

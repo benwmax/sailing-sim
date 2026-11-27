@@ -930,9 +930,31 @@ float c01 = frac(sin(dot(ci + float2(0, 1), float2(39.35, 11.13))) * 43758.5), c
 float nc = lerp(lerp(c00, c10, cf.x), lerp(c01, c11, cf.x), cf.y);
 float clump = smoothstep(0.45f, 0.85f, nc);
 float gap = smoothstep(0.18f, 0.42f, nc + 0.25f * (nz - 0.5f));
-float crest = exp(-pow((u - 0.16f - 0.05f * clump) / (0.06f + 0.08f * clump), 2.0f)) * VC.g;
-float lipLine = crest * gap * (0.4f + 0.45f * VC.r + 0.5f * clump) * smoothstep(0.25f, 0.6f, nz + 0.35f * VC.r);
+// Bow wave 3 (docs/bow-wave/; Breaking 1, set by the pawn while AWaterSurface::BowWave3On): from about 5 kn the crest
+// breaks. The PC's bow-facing stills of bow wave 2 (Nov 26) showed a lip a few centimetres wide, more gap than foam, that
+// hardly read from 7 m: the crest's rise (G) falls off quickly aft of the stem, so the lip's foam seldom passed half.
+// Near her hull speed a J/22 spills a white crest just aft of the stem, torn into clumps, and the broken water tumbles
+// down the wave's outer face in streaks running aft. brk follows the lip (R: none under 4 kn, 0.8 at 6 kn, full by
+// 7): the crest holds its white further aft (G x 2.2), widens and stands a little further out, most of its gaps close,
+// it is torn by a fine streaky noise (cells about 3 cm across and 13 long, drifting aft), and the face outboard of it
+// carries streaks of the same. Offline (this code in numpy on the J/22's sheet) the white past half is a band about 2 cm
+// wide on average over the sheet's length at 6 kn and 7 cm at 7 kn, against none before. Breaking 0 is the sheet exactly
+// as before.
+float brk = Breaking * smoothstep(0.1f, 0.6f, VC.r);
+float2 bq = float2(u * 16.0f, t * 9.0f - Time * 5.0f);
+float2 bi = floor(bq), bf = frac(bq);
+bf = bf * bf * (3.0f - 2.0f * bf);
+float b00 = frac(sin(dot(bi, float2(27.17, 91.31))) * 43758.5), b10 = frac(sin(dot(bi + float2(1, 0), float2(27.17, 91.31))) * 43758.5);
+float b01 = frac(sin(dot(bi + float2(0, 1), float2(27.17, 91.31))) * 43758.5), b11 = frac(sin(dot(bi + float2(1, 1), float2(27.17, 91.31))) * 43758.5);
+float nb = lerp(lerp(b00, b10, bf.x), lerp(b01, b11, bf.x), bf.y);
+gap = lerp(gap, 0.65f + 0.35f * gap, brk);
+float rise = lerp(VC.g, saturate(VC.g * 2.2f), brk);
+float crest = exp(-pow((u - 0.16f - 0.05f * clump - 0.04f * brk) / (0.06f + 0.08f * clump + 0.08f * brk), 2.0f)) * rise;
+float lipLine = crest * gap * (0.4f + 0.45f * VC.r + 0.5f * clump + 0.6f * brk) * smoothstep(0.25f, 0.6f, nz + 0.35f * VC.r + 0.3f * brk)
+    * lerp(1.0f, 0.55f + 0.6f * nb, brk);
 float foam = saturate(lipLine * 1.4f + crest * gap * 0.25f * nz + (1.0f - u) * 0.12f * VC.r * nz);
+float face = smoothstep(0.16f, 0.26f, u) * (1.0f - smoothstep(0.4f, 0.7f, u));
+foam = saturate(foam + 0.9f * brk * rise * face * smoothstep(0.45f, 0.85f, nb) * (0.5f + 0.5f * gap));
 // A thin film of moving water, not a body: mostly the sky's reflection (Fresnel: clear from above, mirror-like at grazing
 // angles, strongest along the curling top edge), a faint dark-water tint, gone where it meets the sea and soft at its root.
 float fres = 0.04f + 0.96f * pow(1.0f - saturate(abs(dot(normalize(N), normalize(V)))), 5.0f);
@@ -967,7 +989,8 @@ return lerp(float3(0.01f, 0.018f, 0.016f), float3(0.92f, 0.94f, 0.93f), foam);
 
 def build_bow_wave():
     """M_BowWave (docs/spray-hull): the bow wave's curl standing off each side of the bow, a lit translucent sheet of water
-    with a foam crest (ASailboatPawn::UpdateBowWave builds the mesh on the waves each frame)."""
+    with a foam crest (ASailboatPawn::UpdateBowWave builds the mesh on the waves each frame). Breaking (bow wave 3,
+    docs/bow-wave/): 1 breaks the crest white at speed; the pawn sets it on its material instance, 0 is the old sheet."""
     mat = new_material("M_BowWave")
     mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
     mat.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
@@ -978,7 +1001,8 @@ def build_bow_wave():
            "WP": node(mat, unreal.MaterialExpressionWorldPosition, -900, 250),
            "Time": node(mat, unreal.MaterialExpressionTime, -900, 400),
            "N": node(mat, unreal.MaterialExpressionVertexNormalWS, -900, 500),
-           "V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 600)}
+           "V": node(mat, unreal.MaterialExpressionCameraVectorWS, -900, 600),
+           "Breaking": scalar(mat, "Breaking", 0.0, -900, 700)}
     c = custom(mat, BOW_WAVE_CODE, list(ins.keys()), unreal.CustomMaterialOutputType.CMOT_FLOAT3, -500, 100,
                extra_outputs=[("Rough", unreal.CustomMaterialOutputType.CMOT_FLOAT1), ("Opacity", unreal.CustomMaterialOutputType.CMOT_FLOAT1)])
     for name, n in ins.items():
@@ -3770,12 +3794,20 @@ float wakeSlick = 0.0;
 {
     float e = 1.0 / WakeGridRect.w;
     float2 uv = float2(wg.y, wg.x);
-    float3 c = WakeGrid.SampleLevel(WakeGridSampler, uv, 0).rgb;
+    float4 c = WakeGrid.SampleLevel(WakeGridSampler, uv, 0);
     wakeSlick = c.b;
     float hx = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(0.0, e), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(0.0, e), 0).r;
     float hy = WakeGrid.SampleLevel(WakeGridSampler, uv + float2(e, 0.0), 0).r - WakeGrid.SampleLevel(WakeGridSampler, uv - float2(e, 0.0), 0).r;
     float cell = WakeGridRect.z / WakeGridRect.w;
-    sx += hx / (2.0 * cell); sy += hy / (2.0 * cell);
+    // Bow wave 3 (docs/bow-wave/): her waves' water moves toward their crests (FWakeGrid::Fold, A: the Jacobian of that
+    // displacement, under 1 on a crest), so a crest is steeper than the height alone says, by 1 / fold along it, and a
+    // trough flatter: sharp crests and rounded troughs, as a real wake has. The fold also joins the long waves' (J), so
+    // where her crests cross the chop's they tip it into whitecaps sooner (Jt, the cap table's threshold, the foam's
+    // gathering); in flat water her own never fold (0.68 at the lowest at 6 kn).
+    float wakeFold = clamp(c.a, 0.05, 2.0);
+    float wakeSharp = 1.0 / max(wakeFold, 0.5);
+    sx += hx / (2.0 * cell) * wakeSharp; sy += hy / (2.0 * cell) * wakeSharp;
+    J *= wakeFold;
     wakeFoam = c.g;
 }
 float om = 0.0;

@@ -12,6 +12,10 @@ namespace
 	// every step, a flat white sheet wider than her beam (docs/frigate-import/).
 	constexpr float kMaxDepth = 2.3f;
 	constexpr int32 kSponge = 8;       // cells of absorbing border
+	// Bow wave 3 (docs/bow-wave/): how far the water moves toward a crest, as a share of the linear wave's own orbit (1: a
+	// Gerstner wave's; Tessendorf's lambda). Her waves are a few centimetres high, so it moves a few centimetres and the
+	// Jacobian stays above 0.6 in flat water (0.84 at the J/22's bow at 6 kn, 0.68 in her wake): no folds of her own.
+	constexpr float kChop = 1.f;
 
 	/** docs/frame-pacing/ (PC Insights, Nov 26 2026): the wake's solve runs on a worker and fans every pass out over all the
 	 *  workers. At normal priority a burst filled them just as the render thread's visibility tasks were queued, and those
@@ -87,7 +91,9 @@ void FWakeGrid::Init(int32 InN, float InCell)
 	Cell = InCell;
 	const int32 NN = N * N;
 	for (TArray<float>* A : { &H, &Velocity, &Pressure, &Depth, &PrevDepth, &FoamField, &SlickField, &SlickScratch, &Stir, &PrevStir, &NearStir, &NearFroude, &StirMid, &PrevStirMid }) A->Init(0.f, NN);
+	FoldField.Init(1.f, NN);
 	Spectrum.SetNumZeroed(NN);
+	Displacement.SetNumZeroed(NN);
 	Omega.SetNumUninitialized(NN);
 	const float Dk = 2.f * UE_PI / (N * Cell);
 	for (int32 R = 0; R < N; ++R)
@@ -248,6 +254,7 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 	WakeParallel(N, [&](int32 R)
 	{
 		const int32 Rm = (N - R) % N;
+		const int32 Kr = R < N / 2 ? R : R - N;    // the mode's wavenumber along X, in grid units
 		for (int32 C = 0; C < N; ++C)
 		{
 			const int32 I = R * N + C, Im = Rm * N + (N - C) % N;
@@ -269,9 +276,38 @@ void FWakeGrid::StepOnce(float Dt, const TArray<FHull>& Hulls)
 				V1 = Decay * (V * Cs - (W * W * Q + 0.5f * kAlpha * V) * (Sn / Wd));
 			}
 			Out[I] = (Q1 + std::complex<float>(0.f, 1.f) * V1) * Norm;
+			// Bow wave 3: the horizontal displacement, i k/|k| q per mode (with this transform's signs, for h = A cos kx it is
+			// -A sin kx: toward the crest), X and Y packed as one field's real and imaginary parts, (i kx - ky) / |k| q. None
+			// for the mean or the Nyquist rows and columns (no direction to give them).
+			if (!bFold) continue;
+			const int32 Kc = C < N / 2 ? C : C - N;
+			if (W < 1e-4f || R == N / 2 || C == N / 2) Displacement[I] = 0.f;
+			else
+			{
+				const float Kn = FMath::Sqrt(float(Kr * Kr + Kc * Kc));
+				Displacement[I] = Q1 * std::complex<float>(-float(Kc) / Kn, float(Kr) / Kn) * Norm;
+			}
 		}
 	});
 	Fft2(Out, N, 1.f);
+	// Bow wave 3: its Jacobian, by central differences (one-sided at the edges). Off: flat (1).
+	if (!bFold) FoldField.Init(1.f, N * N);
+	else
+	{
+		Fft2(Displacement, N, 1.f);
+		WakeParallel(N, [&](int32 R)
+		{
+			const int32 Ru = FMath::Max(R - 1, 0), Rd = FMath::Min(R + 1, N - 1);
+			for (int32 C = 0; C < N; ++C)
+			{
+				const int32 Cl = FMath::Max(C - 1, 0), Cr = FMath::Min(C + 1, N - 1);
+				const float Sx = kChop / (float(Rd - Ru) * Cell), Sy = kChop / (float(Cr - Cl) * Cell);
+				const std::complex<float> Dn = Displacement[Rd * N + C] - Displacement[Ru * N + C];
+				const std::complex<float> De = Displacement[R * N + Cr] - Displacement[R * N + Cl];
+				FoldField[R * N + C] = (1.f + Dn.real() * Sx) * (1.f + De.imag() * Sy) - (De.real() * Sy) * (Dn.imag() * Sx);
+			}
+		});
+	}
 
 	WakeParallel(N, [&](int32 R)
 	{
