@@ -118,6 +118,9 @@ UInstancedStaticMeshComponent* AWildlifeActor::MakeIsm(const TCHAR* Name, UStati
 	TArray<FTransform> Hidden;
 	Hidden.Init(FTransform(FQuat::Identity, Here, FVector::ZeroVector), Count);
 	Ism->AddInstances(Hidden, false, true);
+	// Each instance keeps its previous transform (DrawBirds sends it beside the new one), so the renderer's motion vectors
+	// follow the birds; the pools never change size after this.
+	Ism->SetHasPerInstancePrevTransforms(true);
 	return Ism;
 }
 
@@ -427,16 +430,9 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 	// Built in the map frame (cm), put in the render's world just before they are sent (SailingFrame::ToWorldTransforms).
 	// Unused instances wait at the camera at zero scale.
 	const FTransform Parked(FQuat::Identity, CameraMapCm, FVector::ZeroVector);
-	TArray<FTransform> FarXf;
-	FarXf.Init(Parked, FarPool);
-	TArray<TArray<FTransform>> BodyXf;
-	BodyXf.SetNum(StyleIsms.Num());
-	TArray<int32> BodyCount;
-	BodyCount.Init(0, StyleIsms.Num());
-	for (int32 S = 0; S < StyleIsms.Num(); ++S) if (StyleIsms[S]) BodyXf[S].Init(Parked, StylePool[S]);
-	int32 Quads = 0;
-	float Data[FarFloats];
-	float Body[MidFloats];
+	BodySlots.SetNum(StyleIsms.Num());
+	FarSlots.Now.Reset();
+	for (FBirdPool& P : BodySlots) P.Now.Reset();
 	DrawnInView = 0;
 	NearestInView.Reset();
 	const double SizeScale = DebugSize > 0.0 ? DebugSize : 1.0;
@@ -449,7 +445,7 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		const double SizeM = D.SizeM * SizeScale * Sailing::BirdSeenScale(D.DistanceM, PixelAngle);
 		const int32 S = int32(D.Style);
 		// A body: within the near and mid budgets, with a mesh for its style, and big enough on screen for its wings to show.
-		const bool bBody = D.bBody && StyleIsms.IsValidIndex(S) && StyleIsms[S] && BodyCount[S] < StylePool[S] - Markers &&
+		const bool bBody = D.bBody && StyleIsms.IsValidIndex(S) && StyleIsms[S] && BodySlots[S].Now.Num() < StylePool[S] - Markers &&
 			SizeM >= BodyMinPixels * PixelAngle * FMath::Max(double(D.DistanceM), 1.0);
 		if (D.bInView)
 		{
@@ -464,8 +460,10 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		}
 		if (bBody)
 		{
-			const int32 K = BodyCount[S]++;
-			BodyXf[S][K] = BodyTransform(At, D.HeadingRad, D.PitchRad, D.BankRad, SizeM);
+			FBirdPool::FBird& B = BodySlots[S].Now.AddDefaulted_GetRef();
+			B.Key = D.Key;
+			B.Xf = BodyTransform(At, D.HeadingRad, D.PitchRad, D.BankRad, SizeM);
+			float* Body = B.Data;
 			Body[0] = D.WingPhase;
 			Body[1] = D.WingAmp;
 			Body[2] = D.Fold;
@@ -473,17 +471,19 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 			Body[4] = L.Upper[0]; Body[5] = L.Upper[1]; Body[6] = L.Upper[2];
 			Body[7] = L.Under[0]; Body[8] = L.Under[1]; Body[9] = L.Under[2];
 			Body[10] = L.Tips;
-			StyleIsms[S]->SetCustomData(K, MakeArrayView(Body, MidFloats), false);
 			continue;
 		}
-		if (Quads >= FarPool - Markers) continue;
+		if (FarSlots.Now.Num() >= FarPool - Markers) continue;
+		FBirdPool::FBird& Q = FarSlots.Now.AddDefaulted_GetRef();
+		Q.Key = D.Key;
 		double SpanScale = 1.0, Cover = 1.0, Widen = 1.0;
-		FarXf[Quads] = FarQuad(At, CameraMapCm, D.HeadingRad, D.BankRad, SizeM, PixelAngle, SpanScale, Cover, &Widen);
+		Q.Xf = FarQuad(At, CameraMapCm, D.HeadingRad, D.BankRad, SizeM, PixelAngle, SpanScale, Cover, &Widen);
 		if (DebugSize > 0.0) Cover = 1.0;
 		// The side the camera sees: from below the underside, from above the back.
 		const float Below = float(FMath::Clamp(0.5 + (D.Up - CameraMapCm.Z / 100.0) / FMath::Max(double(D.DistanceM) * 0.1, 1.0), 0.0, 1.0));
 		float Dihedral = 0.f, Crank = 0.f;
 		WildlifeActorLocal::WingShape(D.Style, Dihedral, Crank);
+		float* Data = Q.Data;
 		Data[0] = D.WingPhase;
 		Data[1] = D.WingAmp;
 		Data[2] = D.Fold;
@@ -495,16 +495,72 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		Data[10] = Crank;
 		Data[11] = float(SpanScale);
 		Data[12] = float(Widen);
-		FarIsm->SetCustomData(Quads, MakeArrayView(Data, FarFloats), false);
-		++Quads;
 	}
-	DrawnQuads = Quads;
+	DrawnQuads = FarSlots.Now.Num();
 	DrawnBodies = 0;
-	for (int32 S = 0; S < StyleIsms.Num(); ++S) DrawnBodies += BodyCount[S];
+	for (const FBirdPool& P : BodySlots) DrawnBodies += P.Now.Num();
+
+	// Each pool's birds onto their instances (FBirdPool): a bird the pool drew last frame keeps its instance, a new one takes
+	// the lowest free, the rest wait parked. Prev is what an instance held the frame before when it still holds the same
+	// bird, else its own transform (a jump: a new bird, a bird gone, or the render's origin moved), so the renderer's
+	// motion vectors are the birds' own motion and nothing streaks across the screen from a jump.
+	const FVector RenderOrigin = SailingFrame::OriginCm(GetWorld());
+	const bool bOriginMoved = bParkedSent && !RenderOrigin.Equals(ParkedOriginCm);
+	static_assert(MidFloats <= FarFloats, "FBirdPool::FBird keeps a body's floats in a quad's array");
+	TArray<int32> Slots;
+	TArray<bool> Taken;
+	auto Place = [&](FBirdPool& P, UInstancedStaticMeshComponent* Ism, int32 Pool, int32 Floats, TArray<FTransform>& Xf, TArray<FTransform>& Prev)
+	{
+		Xf.Init(Parked, Pool);
+		Prev.Init(Parked, Pool);
+		P.Holder.SetNumZeroed(Pool);
+		P.Last.SetNum(Pool);
+		Taken.Init(false, Pool);
+		Slots.SetNumUninitialized(P.Now.Num());
+		for (int32 I = 0; I < P.Now.Num(); ++I)
+		{
+			const int32* Was = P.SlotOf.Find(P.Now[I].Key);
+			Slots[I] = (Was && *Was < Pool - Markers) ? *Was : INDEX_NONE;
+			if (Slots[I] != INDEX_NONE) Taken[Slots[I]] = true;
+		}
+		// (The budget above keeps a pool's birds within Pool - Markers, so a free one is always below that.)
+		P.SlotOf.Reset();
+		int32 Free = 0, Used = 0;
+		for (int32 I = 0; I < P.Now.Num(); ++I)
+		{
+			if (Slots[I] == INDEX_NONE)
+			{
+				while (Taken[Free]) ++Free;
+				Slots[I] = Free;
+				Taken[Free] = true;
+			}
+			const int32 K = Slots[I];
+			const FBirdPool::FBird& B = P.Now[I];
+			Xf[K] = B.Xf;
+			Prev[K] = (P.Holder[K] == B.Key && !bOriginMoved) ? P.Last[K] : B.Xf;
+			Ism->SetCustomData(K, MakeArrayView(B.Data, Floats), false);
+			P.SlotOf.Add(B.Key, K);
+			Used = FMath::Max(Used, K + 1);
+		}
+		for (int32 K = 0; K < Pool; ++K) P.Holder[K] = 0;
+		for (int32 I = 0; I < P.Now.Num(); ++I) P.Holder[Slots[I]] = P.Now[I].Key;
+		return Used;
+	};
+	TArray<FTransform> FarXf, FarPrev;
+	const int32 QuadsUsed = Place(FarSlots, FarIsm, FarPool, FarFloats, FarXf, FarPrev);
+	TArray<TArray<FTransform>> BodyXf, BodyPrev;
+	BodyXf.SetNum(StyleIsms.Num());
+	BodyPrev.SetNum(StyleIsms.Num());
+	TArray<int32> BodiesUsed;
+	BodiesUsed.Init(0, StyleIsms.Num());
+	for (int32 S = 0; S < StyleIsms.Num(); ++S)
+	{
+		if (StyleIsms[S]) BodiesUsed[S] = Place(BodySlots[S], StyleIsms[S], StylePool[S], MidFloats, BodyXf[S], BodyPrev[S]);
+	}
 
 	// -SailingDebugBirds: a few birds pinned in the view whatever the flocks do, dark backs and pale undersides, each about
 	// 3.5 deg across: quads 30, 60 and 120 m ahead 3 deg over the horizon (12 deg apart), a body each 40, 80 and 160 m
-	// ahead just over it (above the camera's height, so over the water).
+	// ahead just over it (above the camera's height, so over the water). They follow the camera: sent as jumps.
 	MarkerQuad = -1;
 	if (Markers > 0 && Cam)
 	{
@@ -517,7 +573,7 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 			const FVector QuadAt = CameraMapCm + QuadDir * Ahead * 100.0;
 			double SpanScale = 1.0, Cover = 1.0, Widen = 1.0;
 			const int32 Q = FarPool - Markers + K;
-			FarXf[Q] = FarQuad(QuadAt, CameraMapCm, FMath::DegreesToRadians(View.Yaw), 0.0, 0.06 * Ahead, PixelAngle, SpanScale, Cover, &Widen);
+			FarXf[Q] = FarPrev[Q] = FarQuad(QuadAt, CameraMapCm, FMath::DegreesToRadians(View.Yaw), 0.0, 0.06 * Ahead, PixelAngle, SpanScale, Cover, &Widen);
 			const float Marker[FarFloats] = { 0.f, 0.f, 0.f, 1.f, 0.5f, 0.05f, 0.05f, 0.05f, 0.f, 0.12f, 0.35f, float(SpanScale), float(Widen) };
 			FarIsm->SetCustomData(Q, MakeArrayView(Marker, FarFloats), false);
 			if (K == 0) MarkerQuad = Q;
@@ -525,17 +581,16 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 			const double BodyAhead = 40.0 * double(1 << K);
 			const FVector BodyAt = CameraMapCm + FRotator(0.5, View.Yaw + 12.0 * K - 6.0, 0.0).Vector() * BodyAhead * 100.0;
 			const int32 B = StylePool[BodyStyle] - Markers + K;
-			BodyXf[BodyStyle][B] = BodyTransform(BodyAt, FMath::DegreesToRadians(View.Yaw + 30.0), 0.0, 0.2, 0.06 * BodyAhead);
+			BodyXf[BodyStyle][B] = BodyPrev[BodyStyle][B] = BodyTransform(BodyAt, FMath::DegreesToRadians(View.Yaw + 30.0), 0.0, 0.2, 0.06 * BodyAhead);
 			const float Look[MidFloats] = { 0.25f, 1.f, 0.f, 1.f, 0.05f, 0.05f, 0.05f, 0.85f, 0.85f, 0.85f, 0.f };
 			StyleIsms[BodyStyle]->SetCustomData(B, MakeArrayView(Look, MidFloats), false);
 		}
 	}
 
-	// Into the render's world (its origin follows the boat on a streamed world), and sent: only the instances drawn this
+	// Into the render's world (its origin follows the boat on a streamed world), and sent: only the instances held this
 	// frame or the last (a style with no body either frame is left alone), every parked one again once the camera has
 	// moved 500 m or the origin has. Sending every instance of every pool each frame cost up to 0.85 ms of game thread on
 	// the PC at Ultra (Nov 26, 540 quads on the lake), the logic only 0.04 to 0.25 of it.
-	const FVector RenderOrigin = SailingFrame::OriginCm(GetWorld());
 	const bool bFullSend = Markers > 0 || !bParkedSent || FVector::Dist(CameraMapCm, ParkedAtCm) > 50000.0 || !RenderOrigin.Equals(ParkedOriginCm);
 	if (bFullSend)
 	{
@@ -543,19 +598,22 @@ void AWildlifeActor::DrawBirds(const FVector& CameraMapCm)
 		ParkedAtCm = CameraMapCm;
 		ParkedOriginCm = RenderOrigin;
 	}
-	SentBodies.SetNum(StyleIsms.Num());
-	auto SendDrawn = [this, bFullSend](UInstancedStaticMeshComponent* Target, TArray<FTransform>& Out, int32 DrawnNow, int32& SentBefore)
+	auto Send = [this, bFullSend](UInstancedStaticMeshComponent* Target, FBirdPool& P, TArray<FTransform>& Out, TArray<FTransform>& Prev, int32 UsedNow)
 	{
-		const int32 Count = bFullSend ? Out.Num() : FMath::Min(Out.Num(), FMath::Max(DrawnNow, SentBefore));
-		SentBefore = DrawnNow;
+		const int32 Count = bFullSend ? Out.Num() : FMath::Min(Out.Num(), FMath::Max(UsedNow, P.Sent));
+		P.Sent = UsedNow;
+		P.Last = Out;
 		if (Count <= 0) return;
 		Out.SetNum(Count, EAllowShrinking::No);
-		Target->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), Out), true, true, true);
+		Prev.SetNum(Count, EAllowShrinking::No);
+		// (bTeleport is only the physics' here: the motion vectors come from the previous transforms alone, UE 5.8)
+		Target->BatchUpdateInstancesTransforms(0, SailingFrame::ToWorldTransforms(GetWorld(), Out),
+			SailingFrame::ToWorldTransforms(GetWorld(), Prev), true, true, false);
 	};
-	SendDrawn(FarIsm, FarXf, Quads, SentQuads);
+	Send(FarIsm, FarSlots, FarXf, FarPrev, QuadsUsed);
 	for (int32 S = 0; S < StyleIsms.Num(); ++S)
 	{
-		if (StyleIsms[S]) SendDrawn(StyleIsms[S], BodyXf[S], BodyCount[S], SentBodies[S]);
+		if (StyleIsms[S]) Send(StyleIsms[S], BodySlots[S], BodyXf[S], BodyPrev[S], BodiesUsed[S]);
 	}
 }
 

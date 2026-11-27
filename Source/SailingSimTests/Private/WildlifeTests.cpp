@@ -3,6 +3,9 @@
 #include "Misc/Paths.h"
 #include "LakeData.h"
 #include "Wildlife.h"
+#include <cmath>
+#include <unordered_map>
+#include <utility>
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -327,6 +330,62 @@ bool FSailingWildlifeRepeatableTest::RunTest(const FString&)
 		bSame &= A.Draw()[I].North == B.Draw()[I].North && A.Draw()[I].East == B.Draw()[I].East && A.Draw()[I].Up == B.Draw()[I].Up;
 	TestTrue(TEXT("in the same places"), bSame);
 	TestTrue(TEXT("some birds about"), A.Draw().size() > 0);
+	return true;
+}
+
+// Every drawn bird carries its own key (FBirdDraw::Key) for as long as it lives, so the renderer can keep it on one
+// instance and its motion vectors are its own: no two drawn birds share one, and a key drawn on consecutive frames is the
+// same bird (it moved a frame's flight, not across the flock). No bird flies to its slot faster than its flock can
+// (kCloseInSpeed): opening out of a circle or joining after a take-off, gulls and pelicans crossed at 40 to 160 m/s.
+// (A flock just taken into the drawing budget catches up up to four frames' steps at once, so a bird counts from its
+// third frame drawn.)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingWildlifeKeysTest, "SailingSim.Wildlife.Keys", WildlifeTestsLocal::Flags)
+bool FSailingWildlifeKeysTest::RunTest(const FString&)
+{
+	using namespace WildlifeTestsLocal;
+	FWildlifeTable T;
+	if (!LoadTable(TableJson({ Bird(TEXT("gull"), TEXT("flap_hang"), TEXT("\"open_water\""), 6, 30),
+		Bird(TEXT("tern"), TEXT("hover_plunge"), TEXT("\"open_water\""), 3, 12),
+		Bird(TEXT("pelican"), TEXT("heavy_glider"), TEXT("\"open_water\""), 12, 40, 150.0) }), T, *this)) return false;
+	FWildlifeHabitatMap Map;
+	Map.Build(RoundLake(), 0.0, 0.0);
+	FBirdFlocks F;
+	F.Reset(T, 7);
+	const FWildlifeConditions C = Noon();
+	constexpr double Dt = 1.0 / 30.0;
+	struct FAt { double N, E, Up; };
+	std::unordered_map<uint64_t, FAt> Was2, Was, Now;
+	int32 Repeats = 0, Continued = 0, Jumps = 0, Zero = 0, Frames = 0;
+	double Fastest = 0.0;
+	for (int32 K = 0; K < 30 * 240; ++K)
+	{
+		// sailing across the lake at 3 m/s, so flocks come, flush, pass and go
+		F.Update(Dt, C, At(-1500.0 + 3.0 * Dt * K, 200.0, 0.0, 3.0), Map);
+		Now.clear();
+		for (const FBirdDraw& D : F.Draw())
+		{
+			Zero += D.Key == 0 ? 1 : 0;
+			if (!Now.emplace(D.Key, FAt{ D.North, D.East, D.Up }).second) { ++Repeats; continue; }
+			const auto Before = Was.find(D.Key);
+			if (Before != Was.end() && Was2.count(D.Key))
+			{
+				++Continued;
+				const FAt& B = Before->second;
+				const double Speed = std::sqrt((D.North - B.N) * (D.North - B.N) + (D.East - B.E) * (D.East - B.E) + (D.Up - B.Up) * (D.Up - B.Up)) / Dt;
+				Fastest = FMath::Max(Fastest, Speed);
+				Jumps += Speed > 40.0 ? 1 : 0;
+			}
+		}
+		Frames += F.Draw().empty() ? 0 : 1;
+		std::swap(Was2, Was);
+		std::swap(Was, Now);
+	}
+	AddInfo(FString::Printf(TEXT("%d frames with birds, %d bird-frames carried on, fastest %.1f m/s"), Frames, Continued, Fastest));
+	TestTrue(TEXT("birds drawn most of the run"), Frames > 30 * 200);
+	TestEqual(TEXT("no bird without a key"), Zero, 0);
+	TestEqual(TEXT("no two drawn birds share a key in a frame"), Repeats, 0);
+	TestTrue(TEXT("birds carried on frame to frame"), Continued > 30 * 200 * 10);
+	TestEqual(TEXT("a key kept frame to frame is the same bird (under 40 m/s)"), Jumps, 0);
 	return true;
 }
 
