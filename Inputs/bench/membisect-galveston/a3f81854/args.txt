@@ -1,0 +1,1 @@
+PackagedWindows-a3f81854SailingSim.exe -SailingBench=1800 -windowed -ResX=3840 -ResY=2160 -ForceRes -SailingShot=membisect-a3f81854 -SailingQuality=Ultra -SailingWorld=1 "-SailingStartAt=-20900,23500,120" -SailingDemo -SailingBenchTrace -SailingScreenPct=100 -SailingHour=15
