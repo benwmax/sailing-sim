@@ -17,7 +17,7 @@ command line (`args.txt`). Bean's Saved held aside and restored (7B5CA7BE) each 
 
 - **Not wildlife:** with `-SailingNoWildlife`, 95220b32 is flat to minute 28 and takes the same 100 MB step at 29.
 - **Not #839 or #844:** a3f81854 takes the same step at minute 30.
-- **It follows the place, not the build.** All three runs sailed the same track to about 25 min (south from the start to
+- **(Withdrawn: see `run-95220b32/`, where the steps come on a different route too.)** It follows the place, not the build. All three runs sailed the same track to about 25 min (south from the start to
   about -23,350 N, 23,710 E: `track.txt`), and the step comes when they get there. The demo then parts ways (the nowildlife
   run turned back north at 1,800 s; the soak and a3f81854 were at -23,627 N).
 - **8ae5a0b1 climbs too** (corrected: `../soak-95220b32-galveston/`): about 8 MB/min over 2 h, on a track that went west.
