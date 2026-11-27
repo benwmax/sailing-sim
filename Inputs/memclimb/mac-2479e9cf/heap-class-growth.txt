@@ -1,0 +1,51 @@
+heap census growth min 2 -> 10: bytes, count, class
+   33.80 MB   174792  malloc in FMallocAnsi::TryMalloc(unsigned long, unsigned int)
+   26.83 MB   172237  malloc in AnsiReallocInternal(void*, unsigned long, unsigned int)
+   10.24 MB    93161  CFString
+    9.70 MB      408  malloc in AnsiReallocInternal(void*, unsigned long, unsigned int) (.cold.1)
+    8.53 MB    55875  MTLInstanceAccelerationStructureDescriptor
+    6.82 MB    37250  AGXG17XFamilyRayTracingGPUBuilder
+    5.68 MB    37251  AGXG17XFamilyComputeContext
+    4.55 MB    18625  CAMetalDrawable
+    3.53 MB      452  @autoreleasepool content
+    2.27 MB    37253  NSMutableArray
+    1.14 MB    18625  IOSurfaceSharedEvent
+    0.19 MB        0  calloc in grow_refs_and_insert(weak_entry_t*, objc_object**)
+    0.15 MB      344  AGXG17XFamilyBuffer
+    0.09 MB        1  AGXG17XFamilyComputeContext._impl (malloc)
+    0.08 MB      109  AGX::HAL300::Texture
+    0.07 MB      109  AGXG17XFamilyTexture
+    0.05 MB        1  AGX::HAL300::BlitDispatchContext
+    0.02 MB        2  memalign in AutoreleasePoolPage::autoreleaseFullPage(objc_object*, AutoreleasePoolPage*)
+    0.01 MB       33  AGXG17XFamilyRayTracingAccelerationStructure
+    0.01 MB       29  IOGPUMetalPooledResource
+    0.01 MB       45  MTLAccelerationStructureTriangleGeometryDescriptor
+    0.00 MB       29  calloc in _CFRuntimeCreateInstance
+    0.00 MB        2  NSData
+    0.00 MB        6  calloc in -[AGXG17XFamilyCommandBuffer initWithQueue:retainedReferences:]
+    0.00 MB        7  Class.methodCache._buckets (bucket_t)
+    0.00 MB       22  malloc_with_options_outlined in cache_t::insert(objc_selector*, void (*)(), objc_object*)
+    0.00 MB       37  MTLPrimitiveAccelerationStructureDescriptor
+    0.00 MB        2  AGXG17XFamilyCommandBuffer
+    0.00 MB        8  MTLRenderPassColorAttachmentDescriptorInternal
+    0.00 MB        4  malloc in IOGPUMetalCommandBufferStorageAllocResourceAtIndex
+    0.00 MB        2  AGXG17XFamilyCommandBuffer._impl (malloc)
+    0.00 MB        1  malloc in MTLCompilerFSCache::getElementImpl(MTLUINT256_t, void**, unsigned long*)
+    0.00 MB        1  AGXG17XFamilyComputeProgram
+    0.00 MB       18  _MTLCommandBufferEncoderInfo
+    0.00 MB        1  AGXG17XFamilyComputePipeline
+    0.00 MB        4  MTLBuiltInArgument
+    0.00 MB        4  NSMutableArray (Storage)
+    0.00 MB        3  MTLBufferBindingInternal
+    0.00 MB       11  malloc in __Balloc_D2A
+    0.00 MB        1  malloc in CopyEventInternal
+    0.00 MB        5  AGXG17XFamilyCommandBuffer._completedCallbackBlockPtr (malloc)
+    0.00 MB        1  MTLRenderPassDescriptorInternal
+    0.00 MB        1  MTLPipelineBufferDescriptorArrayInternal
+    0.00 MB        1  MTLComputePipelineDescriptorInternal
+    0.00 MB        6  AGXG17XFamilyCommandBuffer._scheduledCallbackBlockPtr (malloc)
+    0.00 MB        3  MTLPointerTypeInternal
+    0.00 MB        1  dispatch_mach_msg_t
+    0.00 MB        1  MTLRenderPassStencilAttachmentDescriptorInternal
+    0.00 MB        1  MTLRenderPassDepthAttachmentDescriptorInternal
+    0.00 MB        3  MTLStructTypeInternal
