@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "Misc/App.h"
 #include "BoatModel.h"
 #include "FixedStepper.h"
 #include "Chart.h"
@@ -722,6 +723,7 @@ bool FSailingCoastTideStepTest::RunTest(const FString&)
 	TestEqual(TEXT("First period: nothing"), ASailingGameMode::ForcedTideStep(5.0, 10.0), 0.0, 1e-12);
 	TestEqual(TEXT("Second period: forced up"), ASailingGameMode::ForcedTideStep(15.0, 10.0), 0.03, 1e-12);
 	TestEqual(TEXT("Third: back"), ASailingGameMode::ForcedTideStep(25.0, 10.0), 0.0, 1e-12);
+	TestEqual(TEXT("A larger forced step (-SailingTideStepSize)"), ASailingGameMode::ForcedTideStep(15.0, 10.0, 1.0), 1.0, 1e-12);
 	// Forced on top of a tide sitting mid-step, it still moves the followers once each period.
 	int32 Forced = 0;
 	Last = ASailingGameMode::TideStepped(0.305);
@@ -899,7 +901,9 @@ bool FSailingCoastKeptKeepsProxyTest::RunTest(const FString&)
 		}
 		else
 		{
-			AddInfo(TEXT("No render proxies in this world (no renderer): the proxy checks were skipped"));
+			// scripts/test.sh runs -nullrhi, where this is expected: the proxy checks need a run with a renderer (docs/tide-memory).
+			if (FApp::CanEverRender()) AddError(TEXT("A renderer is up but the test meshes have no render proxies: the proxy checks could not run"));
+			else AddWarning(TEXT("No renderer (-nullrhi): the proxy checks were skipped; run this test with a renderer to check them"));
 		}
 	}
 	GEngine->DestroyWorldContext(World);

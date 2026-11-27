@@ -34,23 +34,42 @@ it updates the position in place, the way it does for moving things, instead of 
 in-place path a Movable mesh takes (`SetTransform`, the distance-field and Lumen updates, the GPU scene upload). That is safe
 for the engine's static mesh proxy: it always draws through the GPU scene (`bStaticElementsAlwaysUseProxyPrimitiveUniformBuffer`
 is set in `FStaticMeshSceneProxy`'s constructor, so the cached draw commands don't hold the transform), and cached ray-tracing
-instances take their transforms from the GPU scene. The components stay Static for culling, shadows and everything else.
+instances take their transforms from the GPU scene. The baked kit tiles and the tree models are Nanite, which has its own
+proxy and draws entirely through the GPU scene, so the same holds for them. The components stay Static for culling and
+everything else.
+
+Two things are not proven and are what the look check is for:
+
+- Ray tracing (High and Ultra): that a cached primitive's ray-tracing instances follow an in-place move. If they didn't,
+  reflections and hardware Lumen hits from the houses and crowns would stay where they were, and with nothing rebuilding
+  them any more the gap would grow to the whole tide range.
+- Shadows: the kept casters use `ShadowCacheInvalidationBehavior::Static`, so an in-place move may not invalidate their
+  cached virtual shadow map pages the way the old rebuild did. The sun turns in 0.05 degree steps, which re-renders its
+  pages about every 12 s, so a stale shadow should be short-lived; no shadowing local lights sit on the shore.
+
+If either shows, the fallback is to rebuild only on a big move (or the plan's longer-term fix, moving the water instead).
 
 The kept components are made as these classes: the crown proxies and tiles (and the tile clones of `TreeMid`/`TreeFar`), the
 houses and docks, the far ring's tiles, and the terrain actor's baked kit tiles (`SpawnKitTiles` with a keeper).
-`-SailingTideRecreate` gives the engine's behaviour back, to compare.
+`-SailingTideRecreate` gives the engine's behaviour back, to compare. It is read when each component is kept, so give it at
+launch (and `SailingSim.Coast.KeptKeepsProxy` fails under it, as it should). A Static component kept as a plain class still
+rebuilds on every step, so any new `KeepWithActor` caller must make one of the kept classes.
 
 Test: `SailingSim.Coast.KeptKeepsProxy` (the kept classes keep their proxy through a step and stand at the new place; a plain
-Static mesh still doesn't; the switch).
+Static mesh still doesn't; the switch). `scripts/test.sh` runs `-nullrhi`, where the proxy checks are skipped with a warning;
+they need one run with a renderer (an error there if the proxies are missing).
 
 ## To check (PC, before merging)
 
 1. Memory: the tide baseline (`-SailingTideStepEvery=20`, stationary Galveston, private bytes and `D3D12AllocatorUnused` per
    minute, 15-20 min) on this branch, then the same with `-SailingTideRecreate`. Main grew about 75 MB a step.
 2. The step's hitch: peak render-thread ms per step (`docs/tide-hitch/`'s table). It should be no worse, likely better.
-3. Looks: Ultra stills of the Kemah shore and docks before and after a few forced steps, and a dusk still (ray-traced
-   reflections and Lumen on the houses and crowns), against main. Watch for shadows or reflections left behind by 2-3 cm.
-4. `SailingSim.Coast.*`, Smoke, and the gate's coast views on both machines.
+3. Looks, with a large forced step so a lag can be seen: `-SailingTideStepEvery=30 -SailingTideStepSize=1` (the land drops
+   and rises 1 m every 30 s). Ultra stills of the Kemah shore and docks in both halves, each pair taken within a few seconds of
+   each other so the sun hasn't turned a step (the stale-shadow case), plus the ray-tracing debug view and a dusk still (reflections and Lumen on the houses and crowns),
+   against main and `-SailingTideRecreate`. Look for shadows, reflections or lighting left 1 m off.
+4. `SailingSim.Coast.*`, Smoke, and the gate's coast views on both machines, and `SailingSim.Coast.KeptKeepsProxy` once with a
+   renderer (the editor without `-nullrhi`) so its proxy checks run.
 
 ## Known, not changed here
 

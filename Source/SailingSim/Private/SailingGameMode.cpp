@@ -478,14 +478,18 @@ void ASailingGameMode::UpdateTide()
 	}
 	TideHeight = Lake.Tides.HeightAt(X, Y, GetUnixTime());
 	static double StepEvery = -1.0;
+	static double StepSize = 0.03;
 	static uint32 StepEveryGen = MAX_uint32;
 	if (StepEveryGen != SailingArgs::Generation())
 	{
 		StepEveryGen = SailingArgs::Generation();
 		StepEvery = 0.0;
 		FParse::Value(SailingArgs::Dev(), TEXT("SailingTideStepEvery="), StepEvery);
+		// docs/tide-memory: a larger forced step (metres, e.g. 1) makes a shadow or reflection left behind by a move easy to see.
+		StepSize = 0.03;
+		FParse::Value(SailingArgs::Dev(), TEXT("SailingTideStepSize="), StepSize);
 	}
-	TideHeight += ForcedTideStep(GetWorld()->GetTimeSeconds(), StepEvery);
+	TideHeight += ForcedTideStep(GetWorld()->GetTimeSeconds(), StepEvery, StepSize);
 	if (FMath::Abs(GetUnixTime() - NextTideUpdate) > 60.0)
 	{
 		NextTideUpdate = GetUnixTime();

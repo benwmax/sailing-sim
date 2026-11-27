@@ -16,10 +16,15 @@
  *
  * These two keep the proxy and take the move in place, as a Movable mesh's move is taken (the engine's static mesh proxy draws
  * through the GPU scene, bStaticElementsAlwaysUseProxyPrimitiveUniformBuffer, so its cached draw commands don't hold the
- * transform; the ray-tracing instances of a cached primitive read their transforms from the GPU scene too). They stay Static
- * for everything else: scene culling's still bins, the shadow cache and the instance culling are as before.
+ * transform; the ray-tracing instances of a cached primitive read their transforms from the GPU scene too; Nanite meshes draw
+ * through the GPU scene entirely). They stay Static for everything else: scene culling's still bins and the instance culling.
+ * Not proven yet (docs/tide-memory, to check): that cached ray-tracing instances follow an in-place move, and the virtual shadow
+ * map cache. The kept casters use ShadowCacheInvalidationBehavior::Static, so a move in place may not invalidate their cached
+ * shadow pages the way the old rebuild did (the sun's 0.05 degree steps re-render them about every 12 s anyway).
  *
- * -SailingTideRecreate puts the engine's behaviour back (compare, measure): set on each component when it is kept.
+ * -SailingTideRecreate puts the engine's behaviour back (compare, measure): read when each component is kept, so give it at
+ * launch. A Static component kept as a plain class (not one of these) still rebuilds on every step: KeepWithActor callers must
+ * make these classes.
  */
 UCLASS(ClassGroup = Rendering)
 class SAILINGSIM_API USailingKeptMeshComponent : public UStaticMeshComponent

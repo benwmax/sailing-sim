@@ -78,7 +78,7 @@ public:
 	/** -SailingTideStepEvery=<s> (measuring the tide step's hitch without a 2 h soak): the extra height (m) that forces a
 	 *  step every <s> seconds of play, 0 and 0.03 in turn; 0 without the argument (Every <= 0). 3 cm, not 2: past the dead
 	 *  band from anywhere inside it (a tide 1.1 cm under its held step plus 2 cm is only 0.9 cm over, and nothing moved). */
-	static double ForcedTideStep(double Seconds, double Every) { return Every > 0.0 && FMath::FloorToInt64(Seconds / Every) % 2 == 1 ? 0.03 : 0.0; }
+	static double ForcedTideStep(double Seconds, double Every, double Size = 0.03) { return Every > 0.0 && FMath::FloorToInt64(Seconds / Every) % 2 == 1 ? Size : 0.0; }
 	/** Tidal current at a point (m/s, map frame). */
 	Sailing::Vec3 GetCurrentAt(double X, double Y) const { return Lake.IsTidal() ? Lake.Tides.CurrentAt(X, Y, GetUnixTime()) : Sailing::Vec3(); }
 
