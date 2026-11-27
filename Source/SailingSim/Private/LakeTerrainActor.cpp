@@ -1576,8 +1576,9 @@ void ALakeTerrainActor::PlaceShoreEdges()
 		for (int32 V = 0; V < Pair.Value.Num(); ++V)
 		{
 			if (Pair.Value[V].Num() == 0) continue;
-			UInstancedStaticMeshComponent* Comp = NewObject<UInstancedStaticMeshComponent>(this);
-			Comp->SetupAttachment(RootComponent);
+			// Kept, not attached (a Static child of the movable root is refused: the "cannot attach" warnings at load), so on a
+			// coast they would follow the tide's steps with the land, in place (docs/tide-memory). Lake-only today (ShoreEdgesOn).
+			UInstancedStaticMeshComponent* Comp = NewObject<USailingKeptInstancesComponent>(this);
 			Comp->SetStaticMesh(List[V]);
 			Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Comp->SetMobility(EComponentMobility::Static);
@@ -1589,6 +1590,7 @@ void ALakeTerrainActor::PlaceShoreEdges()
 			Comp->ShadowCacheInvalidationBehavior = EShadowCacheInvalidationBehavior::Static;
 			Comp->SetUseConservativeBounds(true);
 			Comp->SetCanEverAffectNavigation(false);
+			KeepWithActor(Comp);   // before registering, as the houses are; the world-space instances are made relative to it
 			Comp->RegisterComponent();
 			Comp->AddInstances(SailingFrame::ToWorldTransforms(GetWorld(), Pair.Value[V]), false, true);
 			Instances += Pair.Value[V].Num();
