@@ -56,3 +56,39 @@ seeded conditions (16:30, 6 kn, `-SailingWildlifeScale=1.5`). At 6 kn she makes 
 - Or an approach fast enough to reach it before it's retired, such as more wind or a powerboat.
 - The wildlife thread knows which; it may need a debug aid that places a raft, which would be a code change, so not mine
   to make.
+
+## The take (Nov 27): `take/`, on main 95220b32 with #844's placed raft
+
+**It works.** 24 American white pelicans rest in a line on the water between the camera and the J/22. As she comes on,
+they run, lift off and fly in low over the water toward the camera.
+
+**Files in `take/`:**
+- `W20b-1-rafted.webp`;
+- `W20b-2-first-runner.webp`;
+- `W20b-3-flock-airborne.webp` (the pelicans big in frame, wings out);
+- `W20b-4-boat-passing.webp`;
+- `W20b-take-720p.mp4` (32 s, 30 fps; the 1080p frames are on the PC at
+  `D:\dev\reel\w20raft3-95220b32\W20b-pelicans-lift\rec`);
+- `args.txt` (the exact command line).
+
+**Setup:**
+- **Package:** `Windows-95220b32`, film mode, 1080p Ultra, crew and traffic off, the default date (Nov 27, in the
+  pelicans' season).
+- **Boat:** starts at the 3 km spot `"-SailingStartAt=3000,-550,20"`, demo at TWA 160, 10 kn AfternoonBreeze, 16:30.
+- **Raft:** `"-SailingBirdRaft=american_white_pelican,3233,-492,24"`. The log confirms "Wildlife: placed a raft of
+  american_white_pelican at 3233, -492".
+- **Camera:** `-SailingCapture=Tripod "-SailingTripod=437,1.5,25" -SailingCaptureBearing=-4`. That's 1.5 m high with a
+  25 deg lens, 437 m from her start, about 197 m beyond the raft.
+- **Recording:** `-SailingBenchWarmup=58 -SailingRecord=32`, from 58 s to 90 s of her run. The log's flush counter goes
+  0 to 1 during the take.
+
+**How it was placed:**
+- **Take 1** put the raft 250 m ahead on her starting heading. It missed: the demo's heading followed the backing wind
+  (about 4-10 deg, not 20), so she passed about 115 m off, outside the 80 m flush range.
+- **The fix:** her track repeats in film mode, so takes 2 and 3 put the raft on her real track (take 1's telemetry), 25 m
+  to starboard of her 110 s point.
+- **Take 2** started recording at 70 s, just after the lift began.
+- **Take 3** starts at 58 s, so all four moments are in.
+
+**What it doesn't have:** the boat stays well back, about 300-400 m from the camera, so "boat passing" is her sailing on
+under the lifting flock rather than close by. Closer would need the tripod nearer her line.
