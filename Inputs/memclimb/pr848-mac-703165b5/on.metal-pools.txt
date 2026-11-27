@@ -1,0 +1,10 @@
+[2026.11.27-17.19.58:308][  0]LogSailing: Display: Metal pools: on (-SailingMetalPools): a pool a frame on the render and RHI threads (docs/mac-autorelease)
+[2026.11.27-17.21.02:090][601]LogSailing: Display: Metal pools: 3600 frames; RHI-thread swaps 3599, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.22.09:625][201]LogSailing: Display: Metal pools: 7200 frames; RHI-thread swaps 7199, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.23.14:764][801]LogSailing: Display: Metal pools: 10800 frames; RHI-thread swaps 10799, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.24.18:814][401]LogSailing: Display: Metal pools: 14400 frames; RHI-thread swaps 14399, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.25.22:016][  1]LogSailing: Display: Metal pools: 18000 frames; RHI-thread swaps 17999, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.26.26:044][601]LogSailing: Display: Metal pools: 21600 frames; RHI-thread swaps 21599, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.27.28:773][201]LogSailing: Display: Metal pools: 25200 frames; RHI-thread swaps 25199, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.28.32:497][801]LogSailing: Display: Metal pools: 28800 frames; RHI-thread swaps 28799, lambdas on the render thread 0, on other threads 0
+[2026.11.27-17.29.35:578][401]LogSailing: Display: Metal pools: 32400 frames; RHI-thread swaps 32399, lambdas on the render thread 0, on other threads 0

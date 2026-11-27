@@ -1,0 +1,19 @@
+   12963    1659264     128.0   MTLInstanceAccelerationStructureDescriptor        ObjC    Metal
+   10785     517680      48.0   NSMutableArray                                    ObjC    CoreFoundation
+    8642    1382720     160.0   AGXG17XFamilyRayTracingGPUBuilder                 ObjC    AGXMetalG17X
+    4321     967904     224.0   CAMetalDrawable                                   ObjC    QuartzCore
+    2071      88016      42.5   NSMutableArray (Storage)                          C       CoreFoundation
+      12        192      16.0   NSMutableArray.cow (struct __cow_state_t)         C       CoreFoundation
+       1        160     160.0   CAMetalDrawable._priv (struct _CAMetalDrawablePrivate)  C       QuartzCore
+Process:         SailingSim [46861]
+Path:            /Users/USER/*/pr848-703165b5.app/Contents/MacOS/SailingSim
+Load Address:    0x1024dc000
+Identifier:      com.benwmax.SailingSim
+Version:         5.8.4 (58902052.0.234)
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  launchd [1]
+Target Type:     live task (Roots Present)
+
+Date/Time:       2026-11-27 10:24:19.372 -0600
+Launch Time:     2026-11-27 10:22:39.308 -0600
