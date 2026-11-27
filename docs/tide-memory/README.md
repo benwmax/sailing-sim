@@ -73,9 +73,10 @@ they need one run with a renderer (an error there if the proxies are missing).
 
 ## Known, not changed here
 
-- The shore edge models (`ALakeTerrainActor`'s bulkheads, limestone, timber and the scatter beside them) are Static and
-  `SetupAttachment` to the movable root, which the engine refuses (the "is not static, cannot attach" warnings at load), so
-  they don't follow the tide at all. On Galveston they can end up a tide's range off the ground. Keeping them
-  (`KeepWithActor`, kept class, with their world-space instances made relative) is the follow-up.
+- The shore edge models (`ALakeTerrainActor::PlaceShoreEdges`: bulkheads, limestone, timber and the natural-shore scatter)
+  are Static and `SetupAttachment` to the movable root, which the engine refuses (the "is not static, cannot attach" warnings
+  at load). Today that is harmless: they are only placed on inland lakes (`ShoreEdgesOn`: the coasts wait for a region pack
+  of their own), where the terrain actor never steps, and a re-centre shifts them with everything else. A coast pack (the
+  Florida map) would need them kept like the rest (`KeepWithActor`, kept class): a separate draft PR.
 - Longer term the tide should move the water, not the land (a handful of things instead of half a million). See the large-world
   plan.
