@@ -123,7 +123,9 @@ water moves by i k/|k| times its height (for h = A cos kx, -A sin kx, toward the
   further out, most of its gaps close, and it is torn into streaks about 3 cm across that drift aft; the face outboard
   of it carries streaks of the same. Offline (the material's code in numpy on the J/22's sheet) the white past half is
   a band about 2 cm wide on average over the sheet's length at 6 kn and 7 cm at 7 kn, strongest in the first half metre,
-  against none before. Breaking 0 is the sheet exactly as before. It needs a look on the PC before the label.
+  against none before. Breaking 0 is the sheet exactly as before. On the PC (Nov 26, `Inputs/bench/bow-wave-839/phase3/`):
+  a torn white crest in several strands from just aft of the stem, streaks down the face, no blob, 3 kn unchanged; the
+  white band is about 1.5 to 2 m long, about what a real J/22's is.
 
 Offline, at 6 kn: the water moves up to 9 cm, the fold is 0.84 on the crest beside her bow (about 2.9 m aft of the
 stem, where the crest is 2.7 cm high) and 0.68 at the lowest in her wake. It averages 1, and is 0.96 on crests and 1.04
@@ -143,5 +145,6 @@ texture stays.
 **Test:** `SailingSim.Visual.WakeFold` checks the fold at her bow at 6 kn (0.7 to 0.95, on the crest), that it is gentler
 at 3 kn, that crests bunch and troughs spread, that it averages 1, and that her waves never fold in flat water.
 
-Phase 3 changes `make_materials.py`, so its pull request needs Bean's `bean-approved` label. It goes in after the lake
-wind streaks PR (#837), which changes the same material.
+Phase 3 changes `make_materials.py` (`build_water_v4`, `build_bow_wave`), so its pull request needs the Mac's rebuilt
+`M_WaterV4` and `M_BowWave` and Bean's `bean-approved` label. The lake wind streaks (#837), which change the same material,
+are already in.
