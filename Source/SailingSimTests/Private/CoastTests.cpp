@@ -13,6 +13,7 @@
 #include "Tides.h"
 #include "SailingEnvironment.h"
 #include "LakeTerrainActor.h"
+#include "KeptComponents.h"
 #include "SailingGameMode.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -838,6 +839,68 @@ bool FSailingCoastTideStepBatchedTest::RunTest(const FString&)
 		Terrain->SetActorLocation(Terrain->GetActorLocation() + FVector(0.0, 0.0, -2.0));
 		for (int32 Frame = 0; Frame < 4; ++Frame) Terrain->FollowActor();
 		TestEqual(TEXT("Two quick steps: every part ends 4 cm down, none moved twice by one step"), AtZ(64.0), 5);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// docs/tide-memory: a tide step moves the terrain actor's kept components (Static), and the engine rebuilds a moved Static mesh's
+// render proxy from scratch (UStaticMeshComponent::ShouldRecreateProxyOnUpdateTransform). On Galveston that was half a million
+// instances' render state every 2 cm step, and D3D12 kept 75-100 MB more after each. The kept classes take the move in place:
+// the same proxy, at the new place. A plain Static mesh still gets a new proxy, and -SailingTideRecreate gives the old way back.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSailingCoastKeptKeepsProxyTest, "SailingSim.Coast.KeptKeepsProxy", Flags)
+bool FSailingCoastKeptKeepsProxyTest::RunTest(const FString&)
+{
+	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+	if (!TestNotNull(TEXT("The engine's cube"), Cube)) return false;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, TEXT("SailingKeptProxyWorld"));
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	ALakeTerrainActor* Terrain = World->SpawnActor<ALakeTerrainActor>(FVector(0.0, 0.0, -30.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("Terrain actor"), Terrain))
+	{
+		auto Make = [&](UStaticMeshComponent* C, double Y)
+		{
+			C->SetMobility(EComponentMobility::Static);
+			C->SetStaticMesh(Cube);
+			C->SetRelativeLocation(FVector(0.0, Y, 100.0));
+			Terrain->KeepWithActor(C);
+			C->RegisterComponent();
+			return C;
+		};
+		UStaticMeshComponent* Mesh = Make(NewObject<USailingKeptMeshComponent>(Terrain), 0.0);
+		USailingKeptInstancesComponent* Ism = CastChecked<USailingKeptInstancesComponent>(Make(NewObject<USailingKeptInstancesComponent>(Terrain), 1000.0));
+		TArray<FTransform> X;
+		X.Init(FTransform::Identity, 100);
+		Ism->AddInstances(X, false);
+		UStaticMeshComponent* Plain = Make(NewObject<UStaticMeshComponent>(Terrain), 2000.0);
+		TestTrue(TEXT("The kept mesh keeps its proxy on a move"), SailingKept::KeepsProxyOnMove(Mesh));
+		TestTrue(TEXT("... and the kept instances"), SailingKept::KeepsProxyOnMove(Ism));
+		TestFalse(TEXT("A plain Static mesh doesn't (the engine's rule)"), SailingKept::KeepsProxyOnMove(Plain));
+		Ism->bRecreateOnMove = true;
+		TestFalse(TEXT("-SailingTideRecreate: the engine's rule again"), SailingKept::KeepsProxyOnMove(Ism));
+		Ism->bRecreateOnMove = false;
+
+		World->SendAllEndOfFrameUpdates();   // the renderer takes the moves here (a recreate swaps the proxy on the game thread)
+		const FPrimitiveSceneProxy* MeshProxy = Mesh->GetSceneProxy();
+		const FPrimitiveSceneProxy* IsmProxy = Ism->GetSceneProxy();
+		const FPrimitiveSceneProxy* PlainProxy = Plain->GetSceneProxy();
+		Terrain->SetActorLocation(FVector(0.0, 0.0, -32.0));   // a 2 cm step
+		for (int32 Frame = 0; Frame < 4; ++Frame) Terrain->FollowActor();
+		World->SendAllEndOfFrameUpdates();   // the renderer takes the moves here (a recreate swaps the proxy on the game thread)
+		TestTrue(FString::Printf(TEXT("Moved with the step (%s)"), *Ism->GetComponentLocation().ToString()), FMath::IsNearlyEqual(Ism->GetComponentLocation().Z, 68.0, 0.01));
+		if (MeshProxy && IsmProxy && PlainProxy)
+		{
+			// (The old proxy is deleted on the render thread after the new one is made, so a recreate always changes the pointer.)
+			TestTrue(TEXT("The plain Static mesh got a new proxy (what the test would catch)"), Plain->GetSceneProxy() != PlainProxy);
+			TestTrue(TEXT("The kept mesh's proxy is the same one after the step"), Mesh->GetSceneProxy() == MeshProxy);
+			TestTrue(TEXT("... and the instances'"), Ism->GetSceneProxy() == IsmProxy);
+		}
+		else
+		{
+			AddInfo(TEXT("No render proxies in this world (no renderer): the proxy checks were skipped"));
+		}
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

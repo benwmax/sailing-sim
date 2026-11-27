@@ -5,6 +5,7 @@
 #include "MarinaActor.h"
 #include "FarRing.h"
 #include "LakeTerrainActor.h"
+#include "KeptComponents.h"
 #include "SailingGameMode.h"
 #include "SailingSettings.h"
 #include "BenchRunner.h"
@@ -335,7 +336,8 @@ int32 SpawnKitTiles(AActor* Owner, const TMap<FIntPoint, FKitGeometry>& Tiles, c
 		UStaticMesh* Mesh = bProcedural ? nullptr : LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Baked/%s.%s"), *Name, *Name));
 		if (Mesh)
 		{
-			UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(Owner);
+			// docs/tide-memory: a kept tile is the kept class, so a tide step moves it without a new render proxy.
+			UStaticMeshComponent* C = Keeper ? NewObject<USailingKeptMeshComponent>(Owner) : NewObject<UStaticMeshComponent>(Owner);
 			C->SetMobility(Mobility);
 			if (Mobility != EComponentMobility::Static || Keeper) MarkTideFollower(C, Owner->GetWorld());   // docs/tide-hitch
 			Place(C);
