@@ -30,7 +30,7 @@ used 3,945 MB, peak 5,366 (bench.json).
 - **After that:** one to three per 10 min, 51-74 ms, render-bound (render 54-76 ms), at or near the tide steps
   (`tide-steps.txt`: 8 steps of 2 cm), as before.
 
-## Memory: private bytes climb on this route
+## Memory: private bytes climb on this route (8ae5a0b1 too: corrected)
 
 From `galveston-memory.csv` (the game process, every minute):
 
@@ -45,8 +45,14 @@ From `galveston-memory.csv` (the game process, every minute):
 
 - **Private:** +513 MB from minute 5 to 58 (9.7 MB/min), almost all after minute 20: 15 MB/min from 20 to 58.
 - **Working set:** flat (+103 MB).
-- **8ae5a0b1, same route:** private 15,214 at minute 5, 15,261 at minute 58, flat.
+- **Correction (09:58 UTC):** I first wrote that 8ae5a0b1 was flat on this route. It isn't: I compared its minute 5
+  (before a 390 MB drop at minute 8) with minute 58. Its private bytes go 14,825 at minute 10, 15,026 at 30, 15,206 at
+  60, 15,645 at 110: about 8 MB/min for two hours, in the same 100 MB steps every few minutes.
+- **Earlier Galveston soaks, same arguments:** 02eea166 climbed about 11 MB/min from minute 20 to 60, then levelled
+  (15,178 at 60, 15,294 at 100); 83aa7652 stayed flat (15,097 at 20, 15,153 at 100). The demo's track differs run to
+  run (`../soak-8ae5a0b1-galveston/`), so the climb may follow where she sails rather than the build.
+- **The steps:** 95220b32's climb is about 100 MB steps at minutes 29, 33, 36, 41, 46 and 52, flat between.
 - **This morning's lake check on this package** (`memchk`, 30 min at High, wildlife on and off): no climb.
 
-So on Windows the growth shows on the Galveston route and not the lake, near the Mac's ~12 MB/min. The boat ends at
+So on Windows the growth shows on the Galveston route (in this and earlier builds) and not the lake. The boat ends at
 -22,552 N, 24,675 E (1.8 km south and 1.2 km east of the start). The 1 h Gulf soak runs next on the same package.
