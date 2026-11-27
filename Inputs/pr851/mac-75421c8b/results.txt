@@ -1,0 +1,15 @@
+#851 head 75421c8b 19:26:21
+build ok, warnings: 0
+SailingSim: 484 passed, 1 failed, 485 total
+Fail     SailingSim.World.ObjectTiles.Instances
+         ! Expected 'A house 1 km up the coast stands at its map position, 30 cm down with the tide' to be true.
+         ! Expected 'The start's house, made again, follows the tide (32 cm down)' to be true.
+Success  SailingSim.World.ObjectTiles.Rules
+Success  SailingSim.World.Streaming.Recentre
+Success  SailingSim.World.Streaming.Rules
+Success  SailingSim.World.Streaming.Sail
+Success  SailingSim.World.Streaming.Windows
+Success  SailingSim.World.FarLights
+SailingSim.Smoke: 38 passed, 0 failed, 38 total
+world gate exit 1 21:19:03
+Fail     SailingSim.World.ObjectTiles.Instances
