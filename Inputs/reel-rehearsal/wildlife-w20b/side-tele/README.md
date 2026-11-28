@@ -57,3 +57,28 @@ behind.
 - **Her sail comes on at the right edge** from about frame 720 (82 s) to the end (`4-sail-on`).
 - Not retaken, as asked. Another pass needs the window starting earlier (warm-up about 48 s) or the raft about 20 m
   further along her track.
+
+## r3c (`tele13-r3/W20b-side-tele13-r3c-*`): the raft 40 m further along, camera fixed at yaw 90
+
+The same camera spot as r3b (shot pos `[175,-361,1.5]`, map 3675,-3911, 1.5 m, pitch 1, fov 13). The raft is moved 40 m
+along her track to (3713,-3449), and the window starts 10 s earlier (warm-up 48 s, recording 48 to 92 s, 1,320 frames).
+At r3b's yaw 91.5 the raft sat at the frame's left edge (`framing-still-r3c.webp`). So this take holds **yaw 90 with no
+pan** (`shot-r3c.json`): the raft about 4.7 deg left of centre, her track on the right.
+
+- **The lift:** the first birds run at about 76 s (frame 840), the flock is up at 77-78 s, and it leaves frame left by
+  about 80 s.
+- **Her sail** enters at the right edge at about 76 s (frame 840) and is fully in by 78 s. **The lift and her sail share
+  the frame from about 76 to 79 s.**
+- The log: "placed a raft ... at 3713, -3449"; the first flush is in the 9th 10 s sample.
+
+## r3c-pan (`tele13-r3/W20b-side-tele13-r3c-pan-*`): the same take with r3b's framing and pan
+
+The r3b keys shifted +10 s, so they land at the same game times (`shot-r3c-pan.json`): yaw 91.5, left to 84.5 from 67 to
+72 s, back to 90 from 75 to 82 s.
+
+- **The lift** comes at the same time (first runners about 76 s, the flock up 77-78 s). The camera is then easing back
+  right, so the flock crosses the frame's middle and leaves left by about 80 s.
+- **Her sail** enters at the right edge only at about 82-84 s, after the flock has gone.
+
+Each has first (48 s), middle (frame 870, 77 s, the flock up) and last (92 s) stills, `args-*.txt` and `shot-*.json`.
+No further passes.
