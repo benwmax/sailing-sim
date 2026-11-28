@@ -12,6 +12,7 @@
 #include "TreePlacement.h"
 #include "GroundDress.h"
 #include "WorldKit.h"
+#include "KeptComponents.h"
 #include "FarRing.h"
 #include "Components/StaticMeshComponent.h"
 #include "Async/Async.h"
@@ -370,7 +371,8 @@ int32 ALakeTerrainActor::TileComponent(int32 Tile, uint8 Band, int32 Model)
 	if (const int32* Found = TileComps.Find(Key)) return *Found;
 	// A clone of the band's template component (TreeMid / TreeFar: mesh, lighting, shadow, cull and custom-data settings).
 	UInstancedStaticMeshComponent* Template = Band == 2 ? TreeMid[Model].Get() : TreeFar[Model].Get();
-	UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this, NAME_None, RF_NoFlags, Template);
+	// docs/tide-memory: the kept class (the template is one), so a tide step moves the tile without a new render proxy.
+	UInstancedStaticMeshComponent* C = NewObject<USailingKeptInstancesComponent>(this, NAME_None, RF_NoFlags, Template);
 	C->ClearInstances();
 	C->SetRelativeTransform(FTransform::Identity);   // the template's own placement is the actor's; KeepWithActor gives it again
 	C->SetRemoveSwap();
@@ -520,6 +522,8 @@ void ALakeTerrainActor::KeepWithActor(USceneComponent* Component)
 	// docs/tide-hitch: on a coast the kept components (the crowns' tiles and proxies, the houses, the kit tiles) move with every
 	// 2 cm tide step; where the distance fields don't show they stay out of them (callers register after this).
 	MarkTideFollower(Cast<UPrimitiveComponent>(Component), GetWorld());
+	// docs/tide-memory: a kept class takes those moves in place, without a new render proxy (-SailingTideRecreate: as the engine).
+	SailingKept::ApplyRecreateOnMove(Component);
 	Component->SetRelativeTransform(Component->GetRelativeTransform() * GetActorTransform());   // where attaching would put it
 	// The crown tiles turn over as the trees regroup (their clones are destroyed): on a lake nothing else walks the list,
 	// so drop the dead entries whenever it has doubled since the last time.
@@ -914,7 +918,7 @@ void ALakeTerrainActor::UpdateFarRing(const FVector2D& Camera)
 			continue;
 		}
 		const FFarRingTile& Tile = Ring->Tiles[A.Key];
-		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+		UStaticMeshComponent* C = NewObject<USailingKeptMeshComponent>(this);
 		C->SetMobility(EComponentMobility::Static);
 		C->SetRelativeLocation(FVector(Ring->TileOrigin(Tile) * CmPerMeter, 0.0));
 		C->SetStaticMesh(Mesh);
@@ -1211,7 +1215,7 @@ void ALakeTerrainActor::PlaceTrees()
 						// only primitives that affect indirect lighting into its scene, ray traced or not, so these do (an opaque
 						// crown's few surface-cache cards, not a leaf card's thousands). A little smaller than the tree, so the
 						// sunny outer leaves stay lit.
-						UInstancedStaticMeshComponent* P = NewObject<UInstancedStaticMeshComponent>(this);
+						UInstancedStaticMeshComponent* P = NewObject<USailingKeptInstancesComponent>(this);
 						// Static: a movable instanced primitive is re-culled as dynamic by the renderer every frame (scene culling's
 						// IsOftenMoving), and the regroups only add and remove instances. The tiles cloned from these inherit it.
 						P->SetMobility(EComponentMobility::Static);
@@ -1231,7 +1235,7 @@ void ALakeTerrainActor::PlaceTrees()
 						continue;
 					}
 					UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Trees/%s.%s"), *Name, *Name));
-					UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this);
+					UInstancedStaticMeshComponent* C = NewObject<USailingKeptInstancesComponent>(this);
 					C->SetMobility(EComponentMobility::Static);   // as the proxies above
 					C->SetStaticMesh(Mesh);
 					C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -1799,7 +1803,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	{
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Houses/%s.%s"), Name, Name));
 		if (!Mesh) return false;
-		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this);
+		UInstancedStaticMeshComponent* I = NewObject<USailingKeptInstancesComponent>(this);
 		I->SetMobility(EComponentMobility::Static);
 		I->SetStaticMesh(Mesh);
 		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -1829,7 +1833,7 @@ bool ALakeTerrainActor::PlaceHouseModels(const FLakeData& Lake)
 	{
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/World/Houses/%s.%s"), *Name, *Name));
 		if (!Mesh) return nullptr;
-		UInstancedStaticMeshComponent* I = NewObject<UInstancedStaticMeshComponent>(this);
+		UInstancedStaticMeshComponent* I = NewObject<USailingKeptInstancesComponent>(this);
 		I->SetMobility(EComponentMobility::Static);
 		I->SetStaticMesh(Mesh);
 		I->SetCollisionEnabled(ECollisionEnabled::NoCollision);
