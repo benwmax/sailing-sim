@@ -1,0 +1,1 @@
+depth samples 203959, covered 100% of the grid, land 39%

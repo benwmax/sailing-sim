@@ -1,18 +1,49 @@
-#850 head 650f2274 03:48:25
-list: start 03:48:25
-list: exit 0 03:48:25
+#850 head 650f2274 04:10:01
+list: start 04:10:01
+list: exit 0 04:10:02
   MiamiBiscayne: 26 ENC cells in bands 3-5: US3FL1CG US4FL1HY US4FL1HZ US4FL2AI US4FL2AJ US4FL2BI US4FL2BJ US5FL5KL US5FL5KM US5FL5KN US5FL5LM US5FL5LN US5FL5MM US5FL5MN US5FL5MO US5MIABA US5MIABB US5MIABC US5MIABD US5MIACB US5MIACC US5MIACD US5MIADB US5MIADC US5MIADD US5MIAEC
     tide stations to fetch: 8723214
   FloridaStraits: 3 ENC cells in bands 2-3: US2ATLMB US3FL1CG US3FL1CH
     tide stations to fetch: 8723214
   Bimini: 6 ENC cells in bands 3-5: US3FL1CG US3FL1CH US4FL2AL US4FL2AM US4FL2BL US4FL2BM
     tide stations to fetch: 8723214
-fetch: start 03:48:25
-fetch: exit 1 03:48:25
-    File "/Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Tools/coast/fetch_miami_bimini.py", line 169, in fetch_world
-      fetch_dem(box, os.path.join(raw, "dem_3dep.tif"), force)
-      ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    File "/Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Tools/coast/fetch_miami_bimini.py", line 61, in fetch_dem
-      import tifffile
-  ModuleNotFoundError: No module named 'tifffile'
-fetch failed: stopping before the bakes
+fetch: start 04:10:02
+fetch: exit 0 04:14:23
+    tide stations to fetch: 8723214
+    fetched into /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Data/FloridaStraits/raw
+  Bimini: 6 ENC cells in bands 3-5: US3FL1CG US3FL1CH US4FL2AL US4FL2AM US4FL2BL US4FL2BM
+    0 harmonic tide stations in the box: 
+    tide stations to fetch: 8723214
+    fetched into /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Data/Bimini/raw
+bake-MiamiBiscayne: start 04:14:23
+bake-MiamiBiscayne: exit 0 04:14:36
+  deepest 239.6 m below the datum, water cells 9995786
+  navaids 628 (151 lit), landmarks 80
+  docks and jetties 1399, bridges 246
+  buildings near the water 0
+  chart: 68373 triangles, 1700 contours, 4842 soundings
+  wrote /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Content/TerrainData and /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/docs/world-bimini
+bake-FloridaStraits: start 04:14:36
+bake-FloridaStraits: exit 0 04:14:38
+  deepest 876.0 m below the datum, water cells 162416
+  navaids 15 (11 lit), landmarks 0
+  docks and jetties 3, bridges 2
+  buildings near the water 0
+  chart: 1577 triangles, 47 contours, 299 soundings
+  wrote /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Content/TerrainData and /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/docs/world-bimini
+bake-Bimini: start 04:14:38
+bake-Bimini: exit 0 04:14:41
+  deepest 743.6 m below the datum, water cells 6154586
+  navaids 6 (6 lit), landmarks 1
+  docks and jetties 5, bridges 0
+  buildings near the water 0
+  chart: 3159 triangles, 49 contours, 37 soundings
+  wrote /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Content/TerrainData and /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/docs/world-bimini
+bake-MiamiBimini: start 04:14:41
+bake-MiamiBimini: exit 1 04:14:41
+  Traceback (most recent call last):
+    File "/Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Tools/coast/build_coast.py", line 64, in <module>
+      CELL = CFG["cell"]
+             ~~~^^^^^^^^
+  KeyError: 'cell'
+bake MiamiBimini failed: stopping
