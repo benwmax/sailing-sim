@@ -1,0 +1,4 @@
+(3) Shipping packaged from Packaged/Mac/SailingSim-Mac-Shipping.app
+(3) bench exit:  No bench result; see /Users/ben/myProjects/sailing-sim/Artifacts/wt-code/Artifacts/bench.log
+(3) footprint_mb slope 4.3 MB/min over 14 min (9596 -> 9634)
+(3) resident_mb slope -51.0 MB/min over 14 min (2724 -> 2145)
