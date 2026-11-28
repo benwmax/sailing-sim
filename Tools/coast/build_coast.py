@@ -55,6 +55,11 @@ for _p in sorted(glob.glob(os.path.join(os.path.dirname(__file__), "worlds", "*.
     if "alias" in _w:
         WORLDS[_w["alias"]] = _w
 CFG = WORLDS[REGION]
+if "compose" in CFG:
+    # A composed world (TexasCoast, MiamiBimini) is baked from other bakes, not from raw data: compose_world.py does it.
+    import compose_world  # noqa: E402
+    compose_world.compose(CFG)
+    sys.exit(0)
 NAME = CFG["name"]
 CHART = CFG.get("chart", "enc")
 TIDES_CFG = CFG.get("tides", {"source": "none"})
