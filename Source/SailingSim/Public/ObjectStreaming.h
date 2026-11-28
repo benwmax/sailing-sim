@@ -28,6 +28,8 @@ namespace SailingObjects
 	SAILINGSIM_API Sailing::FObjectRing NoCullRing();
 	/** The ring for a component's instances by its cull distance (cm; 0 = none). */
 	SAILINGSIM_API Sailing::FObjectRing RingForCullCm(float CullCm);
+	/** A component cloned from a template, back at the identity before it is kept with its owner (not registered yet). */
+	SAILINGSIM_API void ClearClonedPlacement(USceneComponent* C);
 	/** On every world (not only a streamed one) the model trees past this leave the instance lists (m): the far crowns stop
 	 *  drawing at 9 km. */
 	constexpr double TreeKeepM = 9500.0;

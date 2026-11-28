@@ -30,6 +30,11 @@ Now they work like the ground:
   square ahead, instead of being thrown away and made again. On a long sail the number of drawing pieces stops growing once
   the ring around the boat is full.
 
+- **A tide fix on the way.** A drawing piece copied from a template took the boat-side tide offset twice: on the coast the
+  crown tiles of the trees (already before this change) stood one tide height lower than they should, and the first house
+  cells did too (the Mac's test run caught it). `SailingObjects::ClearClonedPlacement` puts a copy back at the start before
+  it is placed with the terrain.
+
 What is not in this part yet:
 
 - The house, crown and dock *data* still loads whole from disk at the start; only the drawing side streams. It is small

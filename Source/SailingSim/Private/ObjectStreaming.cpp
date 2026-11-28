@@ -42,6 +42,19 @@ namespace SailingObjects
 	{
 		return Sailing::ObjectRingForCull(double(CullCm) / 100.0, NoCullRing());
 	}
+
+	void ClearClonedPlacement(USceneComponent* C)
+	{
+		if (!C) return;
+		// A clone made from a template copies its relative transform and its "component-to-world is up to date" flag, but
+		// not the component-to-world itself (identity). SetRelativeTransform(Identity) then sees no move (identity to
+		// identity) and leaves the copied relative transform in place, so the owner's transform was applied twice: a clone
+		// of a template kept 30 cm down with the tide stood 60 cm down. Set the fields directly and recompute.
+		C->SetRelativeLocation_Direct(FVector::ZeroVector);
+		C->SetRelativeRotation_Direct(FRotator::ZeroRotator);
+		C->SetRelativeScale3D_Direct(FVector::OneVector);
+		C->UpdateComponentToWorld();
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -140,7 +153,7 @@ void FTiledInstances::MakeCell(FKind& K, int32 Cell)
 		// to cell.
 		C = NewObject<UInstancedStaticMeshComponent>(O, Template->GetClass(), NAME_None, RF_NoFlags, Template);
 		C->ClearInstances();
-		C->SetRelativeTransform(FTransform::Identity);   // the template's placement is the owner's; Keep gives it again
+		SailingObjects::ClearClonedPlacement(C);   // the template's placement is the owner's; Keep gives it again
 		if (Keep) Keep(C);
 		else C->SetupAttachment(O->GetRootComponent());
 		C->RegisterComponent();

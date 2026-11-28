@@ -383,7 +383,7 @@ int32 ALakeTerrainActor::TileComponent(int32 Tile, uint8 Band, int32 Model)
 	UInstancedStaticMeshComponent* Template = Band == 2 ? TreeMid[Model].Get() : TreeFar[Model].Get();
 	UInstancedStaticMeshComponent* C = NewObject<UInstancedStaticMeshComponent>(this, NAME_None, RF_NoFlags, Template);
 	C->ClearInstances();
-	C->SetRelativeTransform(FTransform::Identity);   // the template's own placement is the actor's; KeepWithActor gives it again
+	SailingObjects::ClearClonedPlacement(C);   // the template's own placement is the actor's; KeepWithActor gives it again
 	C->SetRemoveSwap();
 	// Bounds far past r.SceneCulling.MaxCellSize (10.5 km), as the lake-wide band components had: the renderer then
 	// leaves the tile's crowns out of its culling hierarchy and culls them per instance on the GPU. Hashed into the
