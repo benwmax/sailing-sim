@@ -131,6 +131,12 @@ class Frames:
         return (math.degrees(math.atan2(Y2 - Y1, X2 - X1)) + 360.0) % 360.0
 
 
+def tile_unit(z):
+    """Metres per int16 step for one tile: centimetres (+-327 m) unless the tile reaches deeper or higher, then 5 cm
+    (+-1,638 m: the Florida Straits run to about 900 m between Miami and Bimini). FTileIndex reads each tile's own unit."""
+    return 0.01 if float(np.nanmax(np.abs(z))) < 320.0 else 0.05
+
+
 def composite_heights(frames, frame, others, X, Y):
     """The composed ground at frame points: the frame grid where it reaches (blended into the next member over BLEND_M
     inside its edge), else the first other member with data there, else NO_DATA_M. Returns heights and a has-data mask."""
@@ -161,7 +167,9 @@ def compose(cfg):
     name = cfg["name"]
     members = [load_member(n) for n in cfg["compose"]]
     frame = next(m for m in members if m.name == cfg["frame"])
-    others = [m for m in members if m is not frame]
+    # Finest first: where two members overlap outside the frame grid (Bimini's 10 m bake inside the Florida Straits' 200 m
+    # one), the finer one's heights win (composite_heights takes the first member with data).
+    others = sorted((m for m in members if m is not frame), key=lambda m: m.cell)
     frames = Frames(frame.proj, members)
 
     # The tile lattice: the frame grid's origin, extended by whole tiles until every member's box is covered.
@@ -210,13 +218,25 @@ def compose(cfg):
         C = np.clip((Y - oy) / FILL, 0, fc - 1)
         return ndimage.map_coordinates(filled, [R, C], order=1, mode="nearest")
 
+    # Each member's box in the frame (its corners and edge midpoints), for the tile spacing above.
+    mbox = {}
+    for m in others:
+        pts = [frames.from_member(m, xx, yy) for xx in (m.x0, 0.5 * (m.x0 + m.x1), m.x1) for yy in (m.y0, 0.5 * (m.y0 + m.y1), m.y1)]
+        mbox[m.name] = (min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts))
+
+    def tile_overlaps(m, tx0, ty0):
+        b = mbox[m.name]
+        return not (tx0 > b[2] or tx0 + TILE_M < b[0] or ty0 > b[3] or ty0 + TILE_M < b[1])
+
     entries, blobs = [], []
     raw_bytes = 0
     for i in range(nr):
         for j in range(nc):
             tx0, ty0 = ox + i * TILE_M, oy + j * TILE_M
             overlaps_frame = not (tx0 > frame.x1 or tx0 + TILE_M < frame.x0 or ty0 > frame.y1 or ty0 + TILE_M < frame.y0)
-            cell = fine if overlaps_frame else coarse
+            # Off the frame grid a tile takes the finest member it overlaps (a second port's 10 m bake keeps its 10 m),
+            # else the coarsest spacing. With one other member (TexasCoast) that is the coarse spacing, as before.
+            cell = fine if overlaps_frame else min([m.cell for m in others if tile_overlaps(m, tx0, ty0)] or [coarse])
             n = int(round(TILE_M / cell))
             k = np.arange(n + 1) * cell
             X, Y = np.meshgrid(tx0 + k, ty0 + k, indexing="ij")
@@ -225,21 +245,24 @@ def compose(cfg):
                 # only at the grid's edge, which this tile does not reach.
                 r0, c0 = int(round((tx0 - frame.x0) / frame.cell)), int(round((ty0 - frame.y0) / frame.cell))
                 q = frame.h[r0:r0 + n + 1, c0:c0 + n + 1].astype(np.int16)
+                unit = frame.unit
                 data = np.ones(q.shape, bool)
                 inside_blend = frame.edge_distance(X, Y) < BLEND_M
                 if inside_blend.any():
                     z, data = composite_heights(frames, frame, others, X, Y)
                     z = np.where(data, z, fill_at(X, Y))
-                    q = np.clip(np.round(z / 0.01), -32768, 32767).astype("<i2")
+                    unit = tile_unit(z)
+                    q = np.clip(np.round(z / unit), -32768, 32767).astype("<i2")
             else:
                 z, data = composite_heights(frames, frame, others, X, Y)
                 z = np.where(data, z, fill_at(X, Y))
-                q = np.clip(np.round(z / 0.01), -32768, 32767).astype("<i2")
+                unit = tile_unit(z)
+                q = np.clip(np.round(z / unit), -32768, 32767).astype("<i2")
             q = np.ascontiguousarray(q, dtype="<i2")
             flags = 1 | (2 if (q < 0).any() else 0) | (4 if (q > 0).any() else 0)
             blob = zlib.compress(q.tobytes(), ZLIB_LEVEL)
             raw_bytes += q.nbytes
-            entries.append((i, j, n, cell, 0.01, flags, int(q.min()), int(q.max()), len(blob)))
+            entries.append((i, j, n, cell, unit, flags, int(q.min()), int(q.max()), len(blob)))
             blobs.append(blob)
     header_size = 48 + 40 * len(entries)
     off = header_size

@@ -1,0 +1,30 @@
+{
+  "_doc": "Stage 1 of the Florida-to-Bahamas map (docs/world-bimini): the open water of the Florida Straits between Miami and Bimini, 200 m cells from the NOAA ENC overview and approach cells (charts 11469 and 11013 cover the Bimini side), no DEM (the coast strips are flat land; the finer members draw the shores). Depths reach about 900 m: heights take 5 cm steps (height_unit_m). The Gulf Stream is baked over the composed world by Tools/coast/gulf_stream.py. Positions are lat/lon (NAD83).",
+  "name": "FloridaStraits",
+  "display": "The Florida Straits, Miami to Bimini",
+  "docs": "world-bimini",
+  "alias": "straits",
+  "cell": 200.0,
+  "center": [25.70, -79.70],
+  "bbox": [-80.15, 25.40, -79.15, 26.00],
+  "ellipsoid": "NAD83",
+  "chart": "enc",
+  "ocean": true,
+  "height_unit_m": 0.05,
+  "elevation": [],
+  "datum": {"name": "MLLW (chart datum); heights in meters above it"},
+  "tides": {"source": "noaa", "datum_station": "8723214", "stations": ["8723214"], "current": false, "reference": false},
+  "check": [
+    ["Fowey Rocks Light", 25.5904, -80.0963]
+  ],
+  "launch": [
+    ["Mid-Straits, in the Gulf Stream", 25.70, -79.75, 90.0],
+    ["West of Bimini, on the bank edge", 25.72, -79.33, 90.0]
+  ],
+  "passage": [
+    ["Off Fowey Rocks", 25.5950, -80.0850],
+    ["The Gulf Stream's axis", 25.6400, -79.9000],
+    ["Mid-Straits", 25.6800, -79.6500],
+    ["Off North Bimini", 25.7150, -79.3300]
+  ]
+}
