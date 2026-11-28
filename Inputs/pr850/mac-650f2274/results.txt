@@ -1,0 +1,18 @@
+#850 head 650f2274 03:48:25
+list: start 03:48:25
+list: exit 0 03:48:25
+  MiamiBiscayne: 26 ENC cells in bands 3-5: US3FL1CG US4FL1HY US4FL1HZ US4FL2AI US4FL2AJ US4FL2BI US4FL2BJ US5FL5KL US5FL5KM US5FL5KN US5FL5LM US5FL5LN US5FL5MM US5FL5MN US5FL5MO US5MIABA US5MIABB US5MIABC US5MIABD US5MIACB US5MIACC US5MIACD US5MIADB US5MIADC US5MIADD US5MIAEC
+    tide stations to fetch: 8723214
+  FloridaStraits: 3 ENC cells in bands 2-3: US2ATLMB US3FL1CG US3FL1CH
+    tide stations to fetch: 8723214
+  Bimini: 6 ENC cells in bands 3-5: US3FL1CG US3FL1CH US4FL2AL US4FL2AM US4FL2BL US4FL2BM
+    tide stations to fetch: 8723214
+fetch: start 03:48:25
+fetch: exit 1 03:48:25
+    File "/Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Tools/coast/fetch_miami_bimini.py", line 169, in fetch_world
+      fetch_dem(box, os.path.join(raw, "dem_3dep.tif"), force)
+      ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Tools/coast/fetch_miami_bimini.py", line 61, in fetch_dem
+      import tifffile
+  ModuleNotFoundError: No module named 'tifffile'
+fetch failed: stopping before the bakes
