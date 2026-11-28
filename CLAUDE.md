@@ -212,7 +212,7 @@ with `xcrun metal -v`, since `xcrun -f metal` finds the path even when it is mis
 
 27. Florida to the Bahamas, stage 1 (`docs/world-bimini/`, draft until after Dec 11): `MiamiBimini` is composed from
    `MiamiBiscayne` (frame, 10 m), `FloridaStraits` (200 m, `height_unit_m` 0.05: about 900 m deep) and `Bimini` (10 m);
-   `python3 -I Tools/coast/fetch_miami_bimini.py [--list]` picks ENC cells from NOAA's catalog by box (Mac only: the cloud is
+   `Tools/venv/bin/python -I Tools/coast/fetch_miami_bimini.py [--list]` (the venv: tifffile, scipy) picks ENC cells from NOAA's catalog by box (Mac only: the cloud is
    refused). `compose_world.py` gives a tile off the frame the finest overlapping member's spacing and its own height unit
    (`tile_unit`). `Tools/coast/gulf_stream.py <World> [--nc]` bakes `<World>.stream` ("SSGS": monthly north/east surface
    current, mm/s), an analytic Florida Current unless model means are given; `--self-test`. Nothing in the game reads it yet.

@@ -1,7 +1,7 @@
 """Downloads the free data stage 1 of the Florida-to-Bahamas map bakes from (docs/world-bimini): Miami and Biscayne Bay,
 the Florida Straits and Bimini, the three members of MiamiBimini.
 
-  python3 -I Tools/coast/fetch_miami_bimini.py [MiamiBiscayne FloridaStraits Bimini] [--force] [--list]
+  Tools/venv/bin/python -I Tools/coast/fetch_miami_bimini.py [MiamiBiscayne FloridaStraits Bimini] [--force] [--list]
 
 Everything lands in Data/<World>/raw (git-ignored, as for Galveston); files already there are kept unless --force.
 --list only prints the ENC cells and tide stations it would fetch. Run it on the Mac: most of these hosts refuse cloud

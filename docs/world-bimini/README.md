@@ -23,8 +23,8 @@ Sources and licences: [data-sources.md](data-sources.md).
 ## Running it (on the Mac, after the release)
 
 ```
-python3 -I Tools/coast/fetch_miami_bimini.py --list          # the ENC cells and tide stations it would fetch
-python3 -I Tools/coast/fetch_miami_bimini.py                 # into Data/<World>/raw (git-ignored)
+Tools/venv/bin/python -I Tools/coast/fetch_miami_bimini.py --list # the ENC cells and tide stations it would fetch
+Tools/venv/bin/python -I Tools/coast/fetch_miami_bimini.py        # into Data/<World>/raw (git-ignored)
 Tools/venv/bin/python Tools/coast/build_coast.py MiamiBiscayne
 Tools/venv/bin/python Tools/coast/build_coast.py FloridaStraits
 Tools/venv/bin/python Tools/coast/build_coast.py Bimini

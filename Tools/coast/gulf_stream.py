@@ -1,7 +1,7 @@
 """Bakes a steady ocean current (the Gulf Stream's Florida Current) for a coast world: <World>.stream.
 
   Tools/venv/bin/python -I Tools/coast/gulf_stream.py MiamiBimini [--nc <monthly means .nc>] [--cell 1000]
-  python3 -I Tools/coast/gulf_stream.py --self-test
+  Tools/venv/bin/python -I Tools/coast/gulf_stream.py --self-test   (numpy only; any Python with numpy works)
 
 Docs: docs/world-bimini/README.md (stage 1, Miami to Bimini). The tidal current a world already has (<World>.current,
 "SSCF", Tides.h) is a direction and gain per cell times one station's prediction: right for a bay entrance, wrong for an
