@@ -1,0 +1,3 @@
+(a) #850 head ded1fe22; compose_world.py tiles 7ab5ba1be926e332f60c826080a185c56d42c9a0a0669e44e3b60b9f502df6ee
+(a) build_coast.py MiamiBimini exit 0
+(a) MiamiBimini.tiles identical to compose_world.py's (7ab5ba1be926e332f60c826080a185c56d42c9a0a0669e44e3b60b9f502df6ee)
