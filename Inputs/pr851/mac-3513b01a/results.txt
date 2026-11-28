@@ -1,0 +1,19 @@
+#851 head 3513b01a 02:40:42
+build ok, warnings: 0
+SailingSim.World.ObjectTiles: 3 passed, 0 failed, 3 total
+SailingSim.Smoke: 38 passed, 0 failed, 38 total
+world gate exit 0 03:46:20
+view           tier       fps  p99 ms  gpu ms  gate
+marina         High      54.0   19.43   17.62  ok
+coast-day      High      52.6    19.8   17.83  ok
+coast-night    High      56.1   18.57    16.9  ok
+helm-eye       High      55.6   19.27   16.94  ok
+slip           High      47.1   22.28    21.0  ok
+bridge         High      59.6   17.75   15.64  ok
+marina-night   High      55.2   19.12   17.38  ok
+far-coast      High      64.4   16.34   14.56  ok
+far-coast-night High      80.3   12.97   11.28  ok
+marseille-port High      52.9   21.19   18.42  ok
+stream-run     High      50.0    21.3   18.63  ok
+gate: pass
+[gate 3863 s] gate passed
