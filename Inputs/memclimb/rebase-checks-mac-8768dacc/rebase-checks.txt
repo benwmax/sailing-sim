@@ -1,0 +1,9 @@
+(2) #847 aaacbcd8 merged onto 8768dacc cleanly
+(2) #847 build ok, warnings 0
+(2) #847 SailingSim: 483 passed, 0 failed, 483 total
+(2) #848 703165b5 merged onto 8768dacc cleanly
+(2) #848 build ok, warnings 0
+(2) #848 SailingSim.Smoke: 38 passed, 0 failed, 38 total
+(2) #848 on main packaged
+(2) #848 on main, pools off: "avg_fps":56.3 "p99_ms":19.73  footprint Footprint: 9326 MB -> Footprint: 9427 MB
+(2) #848 on main, pools on: "avg_fps":56.3 "p99_ms":19.56  footprint Footprint: 9319 MB -> Footprint: 9377 MB
