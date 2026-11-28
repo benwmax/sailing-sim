@@ -47,3 +47,32 @@ bake-MiamiBimini: exit 1 04:14:41
              ~~~^^^^^^^^
   KeyError: 'cell'
 bake MiamiBimini failed: stopping
+pushed inputs 7c57af72ff6a9459dccc3d118aef69f4d2096227 Inputs/pr850/mac-650f2274
+PR850DONE 04:14:44
+compose-MiamiBimini: start 04:16:01
+compose-MiamiBimini: exit 0 04:16:13
+  MiamiBimini: tile lattice 11 x 19 of 6.4 km from (-37110, -12960); frame MiamiBiscayne at 10 m, others to 200 m
+  MiamiBimini: 22517 of 214977 fill cells had no member's data (15 GLO-90 tiles for land and sea)
+  MiamiBimini.tiles: 209 tiles (74 at 10 m, 135 at 200 m), 61.1 MB of heights in 18.3 MB
+  MiamiBimini: 16 launch spots, 641 navaids, 81 landmarks, 1404 docks, 1 tide stations; chart 72698 triangles; 12 s
+stream: start 04:16:13
+stream: exit 0 04:16:14
+  MiamiBimini: current grid 122 x 67 at 1000 m, deepest 869 m
+  wrote /Users/ben/myProjects/sailing-sim/Artifacts/wt-850/Content/TerrainData/MiamiBimini.stream (0.39 MB); peak 1.89 m/s
+stream-selftest: start 04:16:14
+stream-selftest: exit 0 04:16:14
+  PASS channel about 60-70 km wall to wall
+  PASS nothing in the bay (2 m)
+  PASS nothing on the bank (4 m)
+  PASS runs north
+  PASS under 40% of the peak at the Florida wall
+  PASS still a knot or more 20 km off the bank
+  PASS file round trip to 1 mm/s
+  section (km east of the wall, m/s): -5.0:0.04 0.0:0.18 5.0:0.35 10.0:0.96 15.0:1.77 20.0:1.88 25.0:1.78 30.0:1.62 35.0:1.41 40.0:1.17 45.0:0.94 50.0:0.73 55.0:0.55 60.0:0.42 65.0:0.32 70.0:0.00
+texas: start 04:16:14
+texas: exit 0 04:16:22
+  TexasCoast: tile lattice 16 x 14 of 6.4 km from (-90440, -41250); frame GalvestonBay at 10 m, others to 50 m
+  TexasCoast: 60476 of 230337 fill cells had no member's data (15 GLO-90 tiles for land and sea)
+  TexasCoast.tiles: 224 tiles (72 at 10 m, 152 at 50 m), 64.2 MB of heights in 16.4 MB
+  TexasCoast: 11 launch spots, 873 navaids, 429 landmarks, 5008 docks, 8 tide stations; chart 96921 triangles; 8 s
+TexasCoast.tiles byte-identical (d77c20afbcb01ba847cf8ced5c8bcca7ae7b29285056224c8e8fb7fbb5282e21)

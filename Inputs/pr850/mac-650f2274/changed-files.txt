@@ -1,3 +1,4 @@
+ M Content/TerrainData/TexasCoast.json
 ?? Content/TerrainData/Bimini.chart.json
 ?? Content/TerrainData/Bimini.height
 ?? Content/TerrainData/Bimini.json
@@ -6,6 +7,12 @@
 ?? Content/TerrainData/FloridaStraits.height
 ?? Content/TerrainData/FloridaStraits.json
 ?? Content/TerrainData/FloridaStraits.trees
+?? Content/TerrainData/MiamiBimini.chart.json
+?? Content/TerrainData/MiamiBimini.json
+?? Content/TerrainData/MiamiBimini.stream
+?? Content/TerrainData/MiamiBimini.stream.json
+?? Content/TerrainData/MiamiBimini.tiles
+?? Content/TerrainData/MiamiBimini.trees
 ?? Content/TerrainData/MiamiBiscayne.chart.json
 ?? Content/TerrainData/MiamiBiscayne.height
 ?? Content/TerrainData/MiamiBiscayne.json
@@ -23,6 +30,12 @@
 -rw-r--r--@  1 ben  staff    329372 Nov 27 22:14 FloridaStraits.height
 -rw-r--r--@  1 ben  staff      6235 Nov 27 22:14 FloridaStraits.json
 -rw-r--r--@  1 ben  staff    658708 Nov 27 22:14 FloridaStraits.trees
+-rw-r--r--@  1 ben  staff   4744478 Nov 27 22:16 MiamiBimini.chart.json
+-rw-r--r--@  1 ben  staff    402262 Nov 27 22:16 MiamiBimini.json
+-rw-r--r--@  1 ben  staff    392392 Nov 27 22:16 MiamiBimini.stream
+-rw-r--r--@  1 ben  staff      2932 Nov 27 22:16 MiamiBimini.stream.json
+-rw-r--r--@  1 ben  staff  18348427 Nov 27 22:16 MiamiBimini.tiles
+-rw-r--r--@  1 ben  staff  21401628 Nov 27 22:16 MiamiBimini.trees
 -rw-r--r--@  1 ben  staff   4451365 Nov 27 22:14 MiamiBiscayne.chart.json
 -rw-r--r--@  1 ben  staff  32995552 Nov 27 22:14 MiamiBiscayne.height
 -rw-r--r--@  1 ben  staff    396478 Nov 27 22:14 MiamiBiscayne.json
