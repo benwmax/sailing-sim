@@ -1,0 +1,1 @@
+Packaged/Windows-pr849-8a5768b3/SailingSim.exe -SailingBench=1200 -SailingBenchTrace -windowed -ResX=3840 -ResY=2160 -ForceRes -SailingQuality=Ultra -SailingNoGpuSlices -SailingScreenPct=100 -SailingWorld=Lake -SailingLaunch=1 -SailingDemo -SailingHour=15 -SailingShowCrew=0 -SailingShot=pr849-lake20
