@@ -1,0 +1,85 @@
+[5/44] Compile [x64] Module.SailingSim.7.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\MemoryOps.h(121,45): error C2280: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': attempting to reference a deleted function
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+		::new ((void*)Dest) DestinationElementType(*Source);
+		                                          ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: see declaration of 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr'
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+	TUniquePtr(const TUniquePtr&) = delete;
+	^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': function was explicitly deleted
+--
+	                        ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\MemoryOps.h(121,45): error C2280: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': attempting to reference a deleted function
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+		::new ((void*)Dest) DestinationElementType(*Source);
+		                                          ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: see declaration of 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr'
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+	TUniquePtr(const TUniquePtr&) = delete;
+	^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': function was explicitly deleted
+--
+[7/44] Compile [x64] Module.SailingSim.6.cpp
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\MemoryOps.h(121,45): error C2280: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': attempting to reference a deleted function
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+		::new ((void*)Dest) DestinationElementType(*Source);
+		                                          ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: see declaration of 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr'
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+	TUniquePtr(const TUniquePtr&) = delete;
+	^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': function was explicitly deleted
+--
+	                                              ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\MemoryOps.h(121,45): error C2280: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': attempting to reference a deleted function
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+		::new ((void*)Dest) DestinationElementType(*Source);
+		                                          ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: see declaration of 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr'
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+	TUniquePtr(const TUniquePtr&) = delete;
+	^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': function was explicitly deleted
+--
+	             ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\MemoryOps.h(121,45): error C2280: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': attempting to reference a deleted function
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+		::new ((void*)Dest) DestinationElementType(*Source);
+		                                          ^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: see declaration of 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr'
+        with
+        [
+            T=FTiledInstances::FKind
+        ]
+	TUniquePtr(const TUniquePtr&) = delete;
+	^
+C:\Program Files\Epic Games\UE_5.8\Engine\Source\Runtime\Core\Public\Templates\UniquePtr.h(108,2): note: 'TUniquePtr<FTiledInstances::FKind,TDefaultDelete<T>>::TUniquePtr(const TUniquePtr<T,TDefaultDelete<T>> &)': function was explicitly deleted
+--
