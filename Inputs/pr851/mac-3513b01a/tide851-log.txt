@@ -1,0 +1,7 @@
+   2 LogAssetRegistry: Display: CleanupOrphanedCacheFiles: 1 total binaries, 1 referenced (kept), 0 old-style pre-migration (kept), 0 orphans deleted, 0 orphans locked (kept)
+   1 LogSailing: Display: Tide step: the followers stand at -8 cm (frame 999)
+   1 LogSailing: Display: Tide step: the followers stand at -4 cm (frame 1)
+   1 LogSailing: Display: Lake Galveston Bay: 4356x4815 terrain, 4572 docks, 2277 decks, 1163 moored boats, 125 bridges, 16543 buildings, 61091 houses, 7 launch spots, 733 navaids, 5 tide stations
+   1 LogInit: Command Line: -nocrashreports -windowed -ResX=1440 -ResY=1080 -SailingBench=25 -SailingDemo -SailingBoat=J22 -SailingWorld=1 -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=11 -SailingCamYaw=250 -SailingCamPitch=-10 -SailingDemo -SailingQuality=High -SailingNoGpuSlices -SailingTideStepEvery=20 -SailingShot=tide851-25s -game
+   1 LogCsvProfiler: Display: Metadata set : commandline="" /Users/ben/myProjects/sailing-sim/Artifacts/wt-code/SailingSim.uproject -game -nocrashreports -windowed -ResX=1440 -ResY=1080 -SailingBench=25 -SailingDemo -SailingBoat=J22 -SailingWorld=1 -SailingLaunch=1 -SailingWeather=AfternoonBreeze -SailingWind=12 -SailingTWA=60 -SailingHoldTWA=60 -SailingHour=11 -SailingCamYaw=250 -SailingCamPitch=-10 -SailingDemo -SailingQuality=High -SailingNoGpuSlices -SailingTideStepEvery=20 -SailingShot=tide851-25s""
+   1 LogCore: Display: Tracing Screenshot "tide851-25s" taken with size: 1440 x 1080
