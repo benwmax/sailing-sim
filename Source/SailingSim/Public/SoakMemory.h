@@ -26,9 +26,12 @@ namespace SailingSoak
 	{
 		int32 Rows = 0;              // rows after the warm-up
 		double MBPerHour = 0.0;      // the least-squares slope against time
-		double MBPer100Km = 0.0;     // ... against distance (0 when she hasn't moved 1 km)
+		double MBPer100Km = 0.0;     // ... against distance (0 under MinDistanceFitM: a short hop extrapolates wildly)
 		double FirstMB = 0.0, LastMB = 0.0, PeakMB = 0.0;
 	};
+
+	/** Distance after the warm-up below which there's no per-100 km figure: 2 km on the lake once fitted a 3 GB "per 100 km". */
+	constexpr double MinDistanceFitM = 10000.0;
 
 	/** The rows from WarmupS on (the first 10 minutes fill caches and pools: their growth isn't a leak). */
 	inline FMemFit Fit(const TArray<FMemRow>& All, double WarmupS = 600.0)
@@ -52,7 +55,7 @@ namespace SailingSoak
 			return Sxx > 0.0 ? Sxy / Sxx : 0.0;
 		};
 		Out.MBPerHour = Slope([](const FMemRow& Row) { return Row.T; }) * 3600.0;
-		if (R.Last()->TravelledM - R[0]->TravelledM >= 1000.0) Out.MBPer100Km = Slope([](const FMemRow& Row) { return Row.TravelledM; }) * 100000.0;
+		if (R.Last()->TravelledM - R[0]->TravelledM >= MinDistanceFitM) Out.MBPer100Km = Slope([](const FMemRow& Row) { return Row.TravelledM; }) * 100000.0;
 		return Out;
 	}
 }

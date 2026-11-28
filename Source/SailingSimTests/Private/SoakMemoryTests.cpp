@@ -36,6 +36,13 @@ bool FSailingSoakMemoryFitTest::RunTest(const FString&)
 	for (SailingSoak::FMemRow& Row : Parked) Row.TravelledM = 0.0;
 	TestEqual(TEXT("Parked: no per-distance growth"), SailingSoak::Fit(Parked).MBPer100Km, 0.0, 1e-12);
 
+	// A short hop (2 km after the warm-up, as on the lake): no per-distance figure, only the hourly one.
+	TArray<SailingSoak::FMemRow> Hop = Growing;
+	for (SailingSoak::FMemRow& Row : Hop) Row.TravelledM *= 2000.0 / 33000.0;
+	const SailingSoak::FMemFit H = SailingSoak::Fit(Hop);
+	TestEqual(TEXT("A 2 km hop: no per-distance growth"), H.MBPer100Km, 0.0, 1e-12);
+	TestEqual(TEXT("... but the hourly figure stands"), H.MBPerHour, 60.0, 0.5);
+
 	// Too short to say.
 	TArray<SailingSoak::FMemRow> Short;
 	Short.Add({ 30.0, 0.0, 3000.0 });

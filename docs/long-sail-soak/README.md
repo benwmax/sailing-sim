@@ -27,6 +27,8 @@ game's memory once a minute. At the end it draws a straight line through those n
 - At the end, `bench.json` gets `soak_mem`: the rows after the warm-up, MB/h, MB per 100 km, first, last and peak MB,
   km travelled, the budget and the verdict. The log gets one line:
   `SailingBench memory: flat, +3.1 MB/h and +0.4 MB per 100 km after the warm-up (...)`.
+  The MB per 100 km figure needs at least 10 km sailed after the warm-up, and is 0 below that. A 2 km lake run once
+  fitted -3,451 MB per 100 km from a small dip.
 - `-SailingMemBudget=<MB/h>` sets the budget.
 - `Source/SailingSim/Public/SoakMemory.h` holds the fit, and `SailingSim.Smoke.SoakMemory.Fit` tests it.
 
