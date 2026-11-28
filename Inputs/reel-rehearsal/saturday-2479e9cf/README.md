@@ -40,3 +40,16 @@ middle and last frames, 1280 wide, WebP quality 80 (`<take>-first|mid|last.webp`
   precision ensure CLAUDE.md notes for uncooked runs.
 - No take stopped, timed out or came up short of its frame count. R08b's seeded logbook is kept on the PC and the
   package's own was restored. Bean's Saved was restored (7B5CA7BE).
+
+## P1-lightingonly re-take (`P1-lightingonly-relit-first|mid|last.webp`)
+
+The first P1-lightingonly kept the sail number and showed grey squares on the far water. It was launched with
+`-ExecCmds=viewmode lightingonly`, which sets the engine's view mode only. The pawn takes the sails' marks and colour off
+only on the `-SailingViewMode` route (`FilmMode.cpp`). The squares are the far whitecap sprites (`M_FarCap`, masked quads
+300 m to 1.25 km out): a 1-frame 1080p pair with and without `-SailingNoFarCaps` showed them on and gone.
+
+**Re-take:** 4K, P1-final's shot and timing (720 frames from frame 600), with `-SailingViewMode=lightingonly
+-SailingNoFarCaps`. The log says "Film view mode: lighting only (the engine's view mode)". No sail number, no squares.
+Frames are in `D:\dev\reel\saturday-Windows-2479e9cf-lofix\P1-lightingonly\rec`; the old take is kept. Its telemetry has
+the same checksum as the three earlier P1 passes, so she sails the same path. `P1-relock/overlay-final-vs-lightingonly-relit-f*.webp`
+lay it over P1-final at frames 0, 360 and 719.
