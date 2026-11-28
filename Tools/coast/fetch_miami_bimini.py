@@ -44,8 +44,62 @@ def curl(url, path, force, timeout=900):
         return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
     # A generic client name: no personal details go to outside services.
-    subprocess.run(["curl", "-sS", "-f", "-L", "-m", str(timeout), "-A", "SailingSim-bake/0.1", "-o", path, url], check=True)
+    subprocess.run(["curl", "-sS", "-f", "-L", "--retry", "3", "--retry-all-errors", "--retry-delay", "10", "-m", str(timeout),
+                    "-A", "SailingSim-bake/0.1", "-o", path, url], check=True)
     return True
+
+
+DEM_TILE_DEG = 0.1   # one export per 0.1 degree square (about 1,100 x 1,000 px): the whole Miami box in one request (3110 x 5344) was dropped
+
+
+def fetch_dem(box, out, force):
+    """The 3DEP 1/3 arc-second DEM over a box, as one GeoTIFF the bake reads (dem_3dep.tif): fetched in DEM_TILE_DEG tiles
+    with a small overlap, then each tile is resampled by its own GeoTIFF tags onto one grid of DEM_M cells (the export
+    widens a requested box, so tiles are never pasted by their requested corners)."""
+    import math
+    import numpy as np
+    import tifffile
+    from scipy import ndimage
+    if not force and os.path.exists(out) and os.path.getsize(out) > 0:
+        return
+    w, s, e, n = box
+    dlat = DEM_M / 111320.0
+    dlon = DEM_M / (111320.0 * math.cos(math.radians(0.5 * (s + n))))
+    rows, cols = int(math.ceil((n - s) / dlat)) + 1, int(math.ceil((e - w) / dlon)) + 1
+    mosaic = np.full((rows, cols), np.nan, np.float32)
+    tiles = os.path.join(os.path.dirname(out), "dem_tiles")
+    pad = 0.005
+    lat0 = s
+    while lat0 < n - 1e-9:
+        lon0 = w
+        while lon0 < e - 1e-9:
+            tw, ts, te, tn = lon0 - pad, lat0 - pad, min(lon0 + DEM_TILE_DEG, e) + pad, min(lat0 + DEM_TILE_DEG, n) + pad
+            tr, tc = int(math.ceil((tn - ts) / dlat)), int(math.ceil((te - tw) / dlon))
+            path = os.path.join(tiles, f"dem_{lat0:.2f}_{lon0:.2f}.tif")
+            curl(TNM_EXPORT.format(w=tw, s=ts, e=te, n=tn, cols=tc, rows=tr), path, force)
+            with tifffile.TiffFile(path) as tif:
+                d = tif.pages[0].asarray().astype(np.float32)
+                tie = tif.pages[0].tags["ModelTiepointTag"].value
+                scale = tif.pages[0].tags["ModelPixelScaleTag"].value
+            d[(d < -1000.0) | (d > 10000.0)] = np.nan
+            # The mosaic cells this tile covers, sampled bilinearly from the tile by its own georeferencing.
+            r0, r1 = max(0, int((n - (tie[4])) / dlat)), min(rows, int(math.ceil((n - (tie[4] - d.shape[0] * scale[1])) / dlat)) + 1)
+            c0, c1 = max(0, int((tie[3] - w) / dlon)), min(cols, int(math.ceil((tie[3] + d.shape[1] * scale[0] - w) / dlon)) + 1)
+            R, C = np.meshgrid(np.arange(r0, r1), np.arange(c0, c1), indexing="ij")
+            lat, lon = n - R * dlat, w + C * dlon
+            fr, fc = (tie[4] - lat) / scale[1] - 0.5, (lon - tie[3]) / scale[0] - 0.5
+            ok = (fr >= 0) & (fc >= 0) & (fr <= d.shape[0] - 1) & (fc <= d.shape[1] - 1)
+            v = ndimage.map_coordinates(np.nan_to_num(d, nan=-9999.0), [fr, fc], order=1, mode="nearest")
+            v = np.where(ok & (v > -1000.0), v, np.nan)
+            block = mosaic[r0:r1, c0:c1]
+            fill = np.isnan(block) & ~np.isnan(v)
+            block[fill] = v[fill]
+            lon0 += DEM_TILE_DEG
+        lat0 += DEM_TILE_DEG
+    print(f"  3DEP mosaic {cols} x {rows}, {np.isnan(mosaic).mean() * 100:.1f}% without data")
+    # GeoTIFF with the two tags the bake reads: the tiepoint at the upper-left cell's corner and the pixel scale.
+    tifffile.imwrite(out, mosaic, extratags=[(33550, 12, 3, (dlon, dlat, 0.0), False),
+                                             (33922, 12, 6, (0.0, 0.0, 0.0, w - 0.5 * dlon, n + 0.5 * dlat, 0.0), False)])
 
 
 def local(tag):
@@ -112,11 +166,7 @@ def fetch_world(name, cells, force, list_only):
         curl(f"{CO_OPS}/stations/{st}.json", os.path.join(raw, "tides", f"station_{st}.json"), force, 60)
     # Land: only where the world names the 3DEP export (Miami). The bake reads the real extent from the GeoTIFF tags.
     if any(src.get("path") == "dem_3dep.tif" for src in world.get("elevation", [])):
-        w, s, e, n = box
-        import math
-        rows = int(math.ceil((n - s) * 111320.0 / DEM_M))
-        cols = int(math.ceil((e - w) * 111320.0 * math.cos(math.radians(0.5 * (s + n))) / DEM_M))
-        curl(TNM_EXPORT.format(w=w, s=s, e=e, n=n, cols=cols, rows=rows), os.path.join(raw, "dem_3dep.tif"), force)
+        fetch_dem(box, os.path.join(raw, "dem_3dep.tif"), force)
     print(f"  fetched into {raw}")
 
 
