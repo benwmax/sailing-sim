@@ -1,0 +1,3 @@
+Process Physical Memory: 3863.25 MB used, 5896.96 MB peak
+Process Virtual Memory: 14484.38 MB used, 17280.17 MB peak
+Total allocated from OS: 1947.761108mb
