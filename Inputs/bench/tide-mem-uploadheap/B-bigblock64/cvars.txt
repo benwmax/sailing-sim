@@ -1,0 +1,2 @@
+d3d12.UploadHeap.PoolAllocationStrategy = "1"      LastSetBy: Constructor
+d3d12.UploadHeap.BigBlock.PoolSize = "67108864"      LastSetBy: SystemSettingsIni

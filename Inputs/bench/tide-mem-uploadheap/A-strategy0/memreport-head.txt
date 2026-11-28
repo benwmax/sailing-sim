@@ -1,0 +1,6 @@
+Process Physical Memory: 3718.59 MB used, 5437.73 MB peak
+Process Virtual Memory: 14504.22 MB used, 16870.79 MB peak
+Physical Memory: 15768.39 MB used,  49704.83 MB free, 65473.23 MB total
+Total allocated from OS: 1949.515015mb
+      1698.812MB  -  Reserved Resource Physical Memory - STAT_D3D12ReservedResourcePhysical - STATGROUP_D3D12MemoryDetails - STATCAT_Advanced
+       190.723MB  -  Total Physical Memory - STAT_TotalPhysicalMemory - STATGROUP_VirtualTextureMemory - STATCAT_Advanced
