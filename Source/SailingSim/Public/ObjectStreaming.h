@@ -42,6 +42,14 @@ namespace SailingObjects
 class SAILINGSIM_API FTiledInstances
 {
 public:
+	// Not copyable: MSVC makes every special member of an exported class, and the kinds are unique pointers.
+	FTiledInstances() = default;
+	~FTiledInstances() = default;
+	FTiledInstances(const FTiledInstances&) = delete;
+	FTiledInstances& operator=(const FTiledInstances&) = delete;
+	FTiledInstances(FTiledInstances&&) = default;
+	FTiledInstances& operator=(FTiledInstances&&) = default;
+
 	/** Keep: places a new component with the owner (ALakeTerrainActor::KeepWithActor for Static components), before it
 	 *  registers; null attaches it to the owner's root. Holder: an owner's UPROPERTY list the clones are added to. */
 	void Init(AActor* InOwner, TFunction<void(USceneComponent*)> InKeep, TArray<TObjectPtr<UPrimitiveComponent>>* InHolder);
@@ -106,6 +114,13 @@ private:
 class SAILINGSIM_API FTiledMeshes
 {
 public:
+	FTiledMeshes() = default;
+	~FTiledMeshes() = default;
+	FTiledMeshes(const FTiledMeshes&) = delete;
+	FTiledMeshes& operator=(const FTiledMeshes&) = delete;
+	FTiledMeshes(FTiledMeshes&&) = default;
+	FTiledMeshes& operator=(FTiledMeshes&&) = default;
+
 	/** MakeComponent: a new Static component for a tile, kept with the owner, not registered (the pool registers it). */
 	void Init(TFunction<UStaticMeshComponent*()> InMake, TArray<TObjectPtr<UPrimitiveComponent>>* InHolder, const Sailing::FObjectRing& InRing, double TileM);
 	/** A tile: the cell holding Center and its mesh's object path (/Game/World/Baked/<Name>.<Name>). */
