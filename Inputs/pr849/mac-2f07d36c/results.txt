@@ -1,0 +1,4 @@
+#849 head 2f07d36c 03:46:34
+build ok, warnings: 2
+SailingSim.Smoke.SoakMemory: 1 passed, 0 failed, 1 total
+SailingSim.Smoke: 39 passed, 0 failed, 39 total
