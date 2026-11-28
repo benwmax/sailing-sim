@@ -15,6 +15,7 @@
 #include "Chart.h"
 #include "WorldStreaming.h"
 #include "FilmMode.h"
+#include "SoakMemory.h"
 #include "Async/Future.h"
 #include "SailingGameMode.generated.h"
 
@@ -339,6 +340,10 @@ private:
 	int32 NextExecAt = 0;
 	float NextPosLog = 0.f;   // -SailingBenchTrace: the player's position once a minute (soaks: is the boat parked?)
 	FVector LastPosLog = FVector::ZeroVector;
+	// docs/long-sail-soak: -SailingBenchTrace's memory row a minute (Saved/Bench/<shot>.mem.csv) and its fit in bench.json.
+	TArray<SailingSoak::FMemRow> MemRows;
+	FString MemCsv;
+	double MemTravelledM = 0.0;
 	float RecordInterval = 0.1f;
 	float NextFrameTime = 0.f;
 	int32 FrameIndex = 0;
